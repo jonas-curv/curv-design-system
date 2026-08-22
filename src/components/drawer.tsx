@@ -19,6 +19,8 @@ export interface DrawerProps {
   side?: "right" | "left";
   title?: React.ReactNode;
   description?: React.ReactNode;
+  /** Actions rendered beside Close without becoming part of the dialog title. */
+  headerActions?: React.ReactNode;
   children?: React.ReactNode;
   /** Pinned footer (actions). */
   footer?: React.ReactNode;
@@ -34,6 +36,7 @@ export function Drawer({
   side = "right",
   title,
   description,
+  headerActions,
   children,
   footer,
   className,
@@ -56,18 +59,21 @@ export function Drawer({
             className,
           )}
         >
-          {(title || description) && (
+          {(title || description || headerActions) && (
             <div className="flex items-start justify-between gap-3 border-b border-border px-5 py-4">
-              <div className="min-w-0">
+              <div className="min-w-0 flex-1">
                 {title && <D.Title className="truncate text-[15px] font-semibold text-foreground">{title}</D.Title>}
                 {description && <D.Description className="mt-0.5 text-[13px] text-muted-foreground">{description}</D.Description>}
               </div>
-              <D.Close
-                aria-label="Close"
-                className="-mr-1 -mt-1 shrink-0 rounded-md p-1.5 text-muted-foreground/70 transition-colors hover:bg-accent hover:text-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-foreground/20"
-              >
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" aria-hidden><path d="M18 6 6 18M6 6l12 12" /></svg>
-              </D.Close>
+              <div className="-mr-1 -mt-1 flex shrink-0 items-center gap-1">
+                {headerActions}
+                <D.Close
+                  aria-label="Close"
+                  className="shrink-0 rounded-md p-1.5 text-muted-foreground/70 transition-colors hover:bg-accent hover:text-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-foreground/20"
+                >
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" aria-hidden><path d="M18 6 6 18M6 6l12 12" /></svg>
+                </D.Close>
+              </div>
             </div>
           )}
           <div className="min-h-0 flex-1 overflow-y-auto px-5 py-4 text-[13px] text-foreground">{children}</div>
