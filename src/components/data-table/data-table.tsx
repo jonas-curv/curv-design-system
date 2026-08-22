@@ -81,6 +81,8 @@ export interface DataTableColumn<Row> {
    */
   sticky?: boolean;
   className?: string;
+  /** Extra header control rendered beside the column label. */
+  headerSuffix?: React.ReactNode;
 }
 
 /** A segmented view-swapper tab (All deals / Confirmed / To collect …). */
@@ -468,23 +470,26 @@ export function DataTable<Row>({
               );
               return (
                 <div key={c.key} className={sc.className} style={sc.style}>
-                  {sortable ? (
-                    <button
-                      type="button"
-                      onClick={() => toggleSort(c.key)}
-                      aria-label={`Sort by ${c.header}`}
-                      className={cn(
-                        "inline-flex items-center gap-1 whitespace-nowrap transition hover:text-foreground",
-                        aligns[i] === "right" && "flex-row-reverse",
-                        active && "text-foreground",
-                      )}
-                    >
-                      {c.header}
-                      <IconSort dir={active ? sort!.order : null} />
-                    </button>
-                  ) : (
-                    <span className="whitespace-nowrap">{c.header}</span>
-                  )}
+                  <span className={cn("inline-flex items-center gap-1", aligns[i] === "right" && "flex-row-reverse")}>
+                    {sortable ? (
+                      <button
+                        type="button"
+                        onClick={() => toggleSort(c.key)}
+                        aria-label={`Sort by ${c.header}`}
+                        className={cn(
+                          "inline-flex items-center gap-1 whitespace-nowrap transition hover:text-foreground",
+                          aligns[i] === "right" && "flex-row-reverse",
+                          active && "text-foreground",
+                        )}
+                      >
+                        {c.header}
+                        <IconSort dir={active ? sort!.order : null} />
+                      </button>
+                    ) : (
+                      <span className="whitespace-nowrap">{c.header}</span>
+                    )}
+                    {c.headerSuffix}
+                  </span>
                 </div>
               );
             })}
