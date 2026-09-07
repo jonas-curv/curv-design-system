@@ -98,3 +98,5 @@ export {
   type RangeValue,
   type RangePreset,
 } from "./components/data-table/filter-bar";
+export { MobileBottomNav, type MobileBottomNavProps, type MobileNavItem } from "./components/shell/mobile-bottom-nav";
+export type { MobilePriority } from "./components/data-table/data-table";

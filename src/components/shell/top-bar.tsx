@@ -21,7 +21,7 @@ export function TopBar({ logo, center, actions, className }: TopBarProps) {
   return (
     <header
       className={cn(
-        "sticky top-0 z-50 grid h-14 shrink-0 grid-cols-[auto_1fr_auto] items-center gap-3 bg-topbar px-3 text-topbar-foreground",
+        "sticky top-0 z-50 grid h-[calc(3.5rem+env(safe-area-inset-top))] shrink-0 grid-cols-[auto_1fr_auto] items-center gap-3 bg-topbar pt-[env(safe-area-inset-top)] pl-[max(0.75rem,env(safe-area-inset-left))] pr-[max(0.75rem,env(safe-area-inset-right))] text-topbar-foreground",
         className,
       )}
     >

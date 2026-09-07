@@ -50,11 +50,16 @@ function IconSort({ dir }: { dir: "asc" | "desc" | null }) {
   );
 }
 
+import { MobileRows, type MobilePriority } from "./mobile-rows";
+export type { MobilePriority } from "./mobile-rows";
+
 /* ---------- types ---------- */
 
 export interface DataTableColumn<Row> {
   key: string;
   header: string;
+  headerSuffix?: React.ReactNode;
+  mobilePriority?: MobilePriority;
   render?: (row: Row) => React.ReactNode;
   /** Sort + export + search value. Defaults to `row[key]`. */
   value?: (row: Row) => CellValue;
@@ -125,6 +130,8 @@ export interface DataTableProps<Row> {
   maxHeight?: number | string;
   /** Horizontal min-width; below it the grid scrolls sideways. */
   minWidth?: number;
+  /** Keep spatial report/workbook comparison scrollable on phones. */
+  mobileLayout?: "cards" | "scroll";
   onRowClick?: (row: Row) => void;
   /**
    * Make rows real links (cmd+click, middle-click, copy-link, native keyboard
@@ -216,6 +223,7 @@ export function DataTable<Row>({
   rowHeight = 44,
   maxHeight = "60vh",
   minWidth,
+  mobileLayout = "cards",
   onRowClick,
   getRowHref,
   getRowLabel,
@@ -389,7 +397,8 @@ export function DataTable<Row>({
                 value={query}
                 onChange={(e) => setQuery(e.target.value)}
                 placeholder={searchPlaceholder}
-                className="h-9 w-full rounded-md border border-border bg-card pl-9 pr-3 text-[13px] text-foreground placeholder:text-muted-foreground/70 focus:outline-none focus:ring-1 focus:ring-foreground/20"
+                aria-label={searchPlaceholder}
+                className="h-11 sm:h-9 w-full rounded-md border border-border bg-card pl-9 pr-3 text-base sm:text-[13px] text-foreground placeholder:text-muted-foreground/70 focus:outline-none focus:ring-1 focus:ring-foreground/20"
               />
             </div>
           )}
@@ -430,7 +439,7 @@ export function DataTable<Row>({
       )}
 
       {tabs?.length ? (
-        <div className="flex items-center border-b border-border px-3 py-2">
+        <div className="flex items-center overflow-x-auto border-b border-border px-3 py-2">
           <SegmentedControl
             aria-label="View"
             size="sm"
@@ -451,7 +460,8 @@ export function DataTable<Row>({
         <ActiveFilterBar defs={filters} values={filterValues} onChange={setFilterValues} />
       ) : null}
 
-      <div className="relative">
+      {mobileLayout === "cards" && <MobileRows columns={columns} rows={sorted} getRowId={getRowId} getRowHref={getRowHref} getRowLabel={getRowLabel} onRowClick={onRowClick} loading={loading} emptyLabel={emptyLabel} sort={sort} onSort={toggleSort} resetKey={JSON.stringify([query, sort, filterValues, activeTab])} />}
+      <div className={cn("relative", mobileLayout === "cards" && "hidden md:block")}>
       <div ref={parentRef} onScroll={updateEdges} aria-busy={loading} className="overflow-auto" style={{ maxHeight }}>
         <div style={minWidth ? { minWidth } : undefined}>
           {/* header */}
@@ -485,6 +495,7 @@ export function DataTable<Row>({
                   ) : (
                     <span className="whitespace-nowrap">{c.header}</span>
                   )}
+                  {c.headerSuffix}
                 </div>
               );
             })}
@@ -520,7 +531,7 @@ export function DataTable<Row>({
                 return (
                   <div
                     key={getRowId ? getRowId(row, vi.index) : vi.key}
-                    onClick={onRowClick ? () => onRowClick(row) : undefined}
+                    onClick={onRowClick ? (e) => { if (!(e.target as HTMLElement).closest("a,button,input,select,textarea,[role=button]")) onRowClick(row); } : undefined}
                     className={cn(
                       "group absolute left-0 top-0 grid w-full min-w-min w-full items-center border-b border-border text-[13px] hover:bg-accent/30",
                       (onRowClick || href) && "cursor-pointer",
@@ -564,6 +575,7 @@ export function DataTable<Row>({
                               aria-hidden
                               className="pointer-events-none absolute inset-0 -z-10 bg-accent/30 opacity-0 transition-opacity duration-150 group-hover:opacity-100"
                             />
+                            {href && <a href={href} tabIndex={-1} aria-hidden className="absolute inset-0 z-[1]" />}
                             <span className="min-w-0 truncate">{content}</span>
                           </div>
                         );
