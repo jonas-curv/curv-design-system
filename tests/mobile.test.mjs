@@ -19,7 +19,7 @@ test('mobile list bounds rendered records and preserves details and independent 
  assert.match(html, /Preserved detail/);
  assert.match(html, /href="\/status\/0"/);
  assert.match(html, /href="\/records\/0"/);
- assert.match(html, /aria-label="Sort records"/);
+ assert.match(html, /Sort records/);
  assert.match(html, /1 \/ 3/);
 });
 test('report opt-out keeps scroll table rather than rendering mobile cards', () => {

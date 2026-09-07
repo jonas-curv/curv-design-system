@@ -460,7 +460,7 @@ export function DataTable<Row>({
         <ActiveFilterBar defs={filters} values={filterValues} onChange={setFilterValues} />
       ) : null}
 
-      {mobileLayout === "cards" && <MobileRows columns={columns} rows={sorted} getRowId={getRowId} getRowHref={getRowHref} getRowLabel={getRowLabel} onRowClick={onRowClick} loading={loading} emptyLabel={emptyLabel} sort={sort} onSort={toggleSort} />}
+      {mobileLayout === "cards" && <MobileRows columns={columns} rows={sorted} getRowId={getRowId} getRowHref={getRowHref} getRowLabel={getRowLabel} onRowClick={onRowClick} loading={loading} emptyLabel={emptyLabel} sort={sort} onSort={toggleSort} resetKey={JSON.stringify([query, sort, filterValues, activeTab])} />}
       <div className={cn("relative", mobileLayout === "cards" && "hidden md:block")}>
       <div ref={parentRef} onScroll={updateEdges} aria-busy={loading} className="overflow-auto" style={{ maxHeight }}>
         <div style={minWidth ? { minWidth } : undefined}>

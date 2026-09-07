@@ -1,32 +1,31 @@
 "use client";
 import * as React from "react";
+import { Select } from "../select";
+import { Skeleton } from "../skeleton";
 import type { DataTableColumn, DataTableProps } from "./data-table";
 
 export type MobilePriority = "primary" | "secondary" | "hidden";
 /** Same priority vocabulary as the table-customization branch; no separate data owner. */
-export function MobileRows<Row>({ columns, rows, getRowId, getRowHref, getRowLabel, onRowClick, loading, emptyLabel, sort, onSort }: Pick<DataTableProps<Row>, "columns" | "rows" | "getRowId" | "getRowHref" | "getRowLabel" | "onRowClick" | "loading" | "emptyLabel"> & { sort: { key: string; order: "asc" | "desc" } | null; onSort: (key: string) => void }) {
+export function MobileRows<Row>({ columns, rows, getRowId, getRowHref, getRowLabel, onRowClick, loading, emptyLabel, sort, onSort, resetKey }: Pick<DataTableProps<Row>, "columns" | "rows" | "getRowId" | "getRowHref" | "getRowLabel" | "onRowClick" | "loading" | "emptyLabel"> & { resetKey: string; sort: { key: string; order: "asc" | "desc" } | null; onSort: (key: string) => void }) {
   const [page, setPage] = React.useState(0);
+  const sortId = React.useId();
   const count = 25;
   const last = Math.max(0, Math.ceil(rows.length / count) - 1);
   const current = Math.min(page, last);
-  React.useEffect(() => setPage(0), [rows]);
+  React.useEffect(() => setPage(0), [resetKey]);
   const primary = columns.filter(c => c.mobilePriority === "primary");
   if (!primary.length && columns[0]) primary.push(columns[0]);
-  const secondary = columns.filter(c => !primary.includes(c) && c.mobilePriority !== "hidden").slice(0, 3);
+  const secondary = columns.filter(c => !primary.includes(c) && c.mobilePriority !== "hidden").sort((a, b) => Number(b.mobilePriority === "secondary") - Number(a.mobilePriority === "secondary")).slice(0, 3);
   const detail = columns.filter(c => !primary.includes(c) && !secondary.includes(c));
   const cell = (c: DataTableColumn<Row>, row: Row) => c.render ? c.render(row) : c.value ? c.value(row) : (row as Record<string, React.ReactNode>)[c.key];
   const value = (c: DataTableColumn<Row>, row: Row) => c.value ? c.value(row) : (row as Record<string, unknown>)[c.key];
   return <div className="md:hidden" aria-busy={loading}>
     <div className="flex items-center gap-2 border-b border-border px-3 py-2">
-      <label className="flex min-w-0 flex-1 items-center gap-2 text-[13px]">Sort
-        <select aria-label="Sort records" value={sort?.key ?? ""} onChange={e => onSort(e.target.value)} className="h-11 min-w-0 flex-1 rounded-md border border-border bg-card px-2 text-base">
-          <option value="" disabled>Choose column</option>
-          {columns.filter(c => c.sortable !== false).map(c => <option key={c.key} value={c.key}>{c.header}</option>)}
-        </select>
-      </label>
+      <label htmlFor={sortId} className="text-[13px]">Sort records</label>
+      <Select id={sortId} value={sort?.key ?? ""} onValueChange={onSort} placeholder="Choose column" items={columns.filter(c => c.sortable !== false).map(c => ({ value: c.key, label: c.header }))} className="min-w-0 flex-1" />
       {sort && <button type="button" onClick={() => onSort(sort.key)} className="min-h-11 rounded-md px-2 text-[13px]" aria-label={`Sort ${sort.order === "asc" ? "descending" : "ascending"}`}>{sort.order === "asc" ? "Ascending ↑" : "Descending ↓"}</button>}
     </div>
-    {loading ? <div role="status" className="p-4 text-[13px] text-muted-foreground">Loading…</div> : !rows.length ? <div className="p-4 text-[13px] text-muted-foreground">{emptyLabel}</div> : <ul className="m-0 list-none p-0">
+    {loading ? <div role="status" aria-label="Loading records">{Array.from({ length: 4 }, (_, i) => <div key={i} className="space-y-3 border-b border-border p-3"><Skeleton width="55%" height={18} /><div className="grid grid-cols-2 gap-3"><Skeleton height={30} /><Skeleton height={30} /></div></div>)}</div> : !rows.length ? <div className="p-4 text-[13px] text-muted-foreground">{emptyLabel}</div> : <ul className="m-0 list-none p-0">
       {rows.slice(current * count, (current + 1) * count).map((row, index) => {
         const href = getRowHref?.(row);
         const label = getRowLabel?.(row) ?? String(columns[0] ? value(columns[0], row) ?? "record" : "record");
