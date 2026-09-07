@@ -33,7 +33,7 @@ export function AppFrame({ topBar, sidebar, children, mobileNav }: AppFrameProps
         <div className="relative flex min-w-0 flex-1 flex-col">
           <div
             aria-hidden
-            className="pointer-events-none sticky top-14 z-30 flex h-0 justify-end"
+            className="pointer-events-none sticky top-[calc(3.5rem+env(safe-area-inset-top))] z-30 flex h-0 justify-end"
           >
             <div
               className="h-3 w-3"

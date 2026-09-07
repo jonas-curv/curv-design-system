@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import React from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
-import { DataTable, MobileBottomNav, AppFrame } from '../dist/index.js';
+import { DataTable, MobileBottomNav, AppFrame, TopBar } from '../dist/index.js';
 const h = React.createElement;
 const columns = [
   { key: 'name', header: 'Name', mobilePriority: 'primary' },
@@ -35,4 +35,9 @@ test('navigation caps slots including search and menu and names active destinati
 test('frame reserves safe-area space only when mobile navigation is supplied', () => {
  assert.match(renderToStaticMarkup(h(AppFrame,{topBar:null,sidebar:null,mobileNav:'Nav'},'Content')), /safe-area-inset-bottom/);
  assert.doesNotMatch(renderToStaticMarkup(h(AppFrame,{topBar:null,sidebar:null},'Content')), /safe-area-inset-bottom/);
+});
+
+test("top chrome includes top and landscape safe areas", () => {
+ const html = renderToStaticMarkup(h(TopBar, {logo:"Product OS"}));
+ for (const edge of ["top", "left", "right"]) assert.ok(html.includes(`safe-area-inset-${edge}`));
 });
