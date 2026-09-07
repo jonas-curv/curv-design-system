@@ -41,3 +41,18 @@ test("top chrome includes top and landscape safe areas", () => {
  const html = renderToStaticMarkup(h(TopBar, {logo:"Product OS"}));
  for (const edge of ["top", "left", "right"]) assert.ok(html.includes(`safe-area-inset-${edge}`));
 });
+
+test('externally sorted lists do not expose an empty mobile sort control', () => {
+ const html = renderToStaticMarkup(h(DataTable, { columns: columns.map(column => ({ ...column, sortable: false })), rows, searchable: false }));
+ assert.doesNotMatch(html, /Sort records|Choose column/);
+ assert.match(html, /Preserved detail/);
+});
+
+test('additive mobile entry exposes mobile controls without replacing charts', async () => {
+ const entry = await import('../dist/mobile.js');
+ assert.equal(typeof entry.DataTable, 'function');
+ assert.equal(typeof entry.MobileBottomNav, 'function');
+ assert.equal('LineChart' in entry, false);
+ const html = renderToStaticMarkup(h(entry.DataTable, { columns, rows }));
+ assert.match(html, /Preserved detail/);
+});
