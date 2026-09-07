@@ -57,7 +57,7 @@ export function Dialog({
         />
         <D.Popup
           className={cn(
-            "fixed left-1/2 top-1/2 z-50 w-[calc(100vw-2rem)] max-w-md -translate-x-1/2 -translate-y-1/2",
+            "fixed max-h-[calc(100dvh-2rem)] overflow-y-auto overscroll-contain left-1/2 top-1/2 z-50 w-[calc(100vw-2rem)] max-w-md -translate-x-1/2 -translate-y-1/2",
             "rounded-xl border border-border bg-card p-5 text-card-foreground shadow-card outline-none",
             // Modals scale from center (not the trigger); exit is quicker.
             "transition-[transform,opacity] duration-200 ease-[cubic-bezier(0.23,1,0.32,1)]",
@@ -74,7 +74,7 @@ export function Dialog({
             </D.Description>
           ) : null}
           {children ? <div className="mt-4 text-[13px] text-foreground">{children}</div> : null}
-          {footer ? <div className="mt-5 flex items-center justify-end gap-2">{footer}</div> : null}
+          {footer ? <div className="mt-5 flex flex-wrap items-center justify-end gap-2">{footer}</div> : null}
         </D.Popup>
       </D.Portal>
     </D.Root>

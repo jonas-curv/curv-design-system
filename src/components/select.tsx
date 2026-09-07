@@ -45,7 +45,7 @@ export function Select({
       <S.Trigger
         id={id}
         className={cn(
-          "flex h-9 w-full items-center justify-between gap-2 rounded-md border border-border bg-card px-3 text-[13px] text-foreground transition focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-foreground/20 disabled:cursor-not-allowed disabled:opacity-50 data-[popup-open]:ring-1 data-[popup-open]:ring-foreground/20",
+          "flex h-11 sm:h-9 w-full items-center justify-between gap-2 rounded-md border border-border bg-card px-3 text-[13px] text-foreground transition focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-foreground/20 disabled:cursor-not-allowed disabled:opacity-50 data-[popup-open]:ring-1 data-[popup-open]:ring-foreground/20",
           className,
         )}
       >

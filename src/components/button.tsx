@@ -18,9 +18,9 @@ const VARIANTS: Record<ButtonVariant, string> = {
 };
 
 const SIZES: Record<ButtonSize, string> = {
-  sm: "h-8 gap-1.5 px-2.5 text-[13px]",
-  default: "h-9 gap-1.5 px-3.5 text-[13px]",
-  icon: "size-9",
+  sm: "h-11 sm:h-8 gap-1.5 px-2.5 text-[13px]",
+  default: "h-11 sm:h-9 gap-1.5 px-3.5 text-[13px]",
+  icon: "size-11 sm:size-9",
 };
 
 export interface ButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElement> {

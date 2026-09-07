@@ -116,11 +116,13 @@ export function CommandPalette({
         <D.Popup
           initialFocus={false}
           className={cn(
-            "fixed left-1/2 top-[14vh] z-50 flex max-h-[70vh] w-[36rem] max-w-[calc(100vw-2rem)] origin-top -translate-x-1/2 flex-col overflow-hidden rounded-xl border border-border bg-popover text-popover-foreground shadow-lg outline-none",
+            "fixed left-1/2 top-[max(0.5rem,env(safe-area-inset-top))] sm:top-[14vh] z-50 flex max-h-[calc(100dvh-1rem)] sm:max-h-[70vh] w-[36rem] max-w-[calc(100vw-2rem)] origin-top -translate-x-1/2 flex-col overflow-hidden rounded-xl border border-border bg-popover text-popover-foreground shadow-lg outline-none",
             "transition-[transform,opacity] duration-200 ease-[cubic-bezier(0.23,1,0.32,1)] data-[ending-style]:duration-150",
             "data-[starting-style]:opacity-0 data-[ending-style]:opacity-0 motion-safe:data-[starting-style]:scale-[0.98] motion-safe:data-[ending-style]:scale-[0.98]",
           )}
         >
+          <D.Title className="sr-only">Search</D.Title>
+          <D.Close className="min-h-11 px-4 text-right text-[13px] sm:hidden">Close</D.Close>
           {/* search row */}
           <div className="flex items-center gap-2.5 border-b border-border px-4">
             <span className="text-muted-foreground/70" aria-hidden>
@@ -136,7 +138,7 @@ export function CommandPalette({
               aria-expanded
               aria-controls="command-list"
               aria-activedescendant={filtered[active] ? `command-item-${active}` : undefined}
-              className="h-12 w-full bg-transparent text-[14px] text-foreground placeholder:text-muted-foreground/70 focus:outline-none"
+              className="h-12 w-full bg-transparent text-base sm:text-[14px] text-foreground placeholder:text-muted-foreground/70 focus:outline-none"
             />
           </div>
 
@@ -160,7 +162,7 @@ export function CommandPalette({
                       onClick={() => select(it)}
                       onMouseMove={() => setActive(i)}
                       className={cn(
-                        "flex cursor-default items-center gap-2.5 rounded-md px-2 py-2 text-[13px]",
+                        "flex min-h-11 sm:min-h-0 cursor-default items-center gap-2.5 rounded-md px-2 py-2 text-[13px]",
                         isActive ? "bg-accent text-foreground" : "text-popover-foreground",
                       )}
                     >
