@@ -7,6 +7,8 @@ export interface AppFrameProps {
   sidebar: React.ReactNode;
   /** Page content — render a <PageContainer> inside for the max-width level. */
   children: React.ReactNode;
+  /** MobileBottomNav; destinations must already be permission-filtered. */
+  mobileNav?: React.ReactNode;
 }
 
 /**
@@ -22,9 +24,9 @@ export interface AppFrameProps {
  * own corner wouldn't stay pinned, but the mask does. `main` itself is NOT
  * rounded.
  */
-export function AppFrame({ topBar, sidebar, children }: AppFrameProps) {
+export function AppFrame({ topBar, sidebar, children, mobileNav }: AppFrameProps) {
   return (
-    <div className="flex min-h-screen flex-col bg-topbar text-foreground">
+    <div className="flex min-h-dvh flex-col bg-topbar text-foreground">
       {topBar}
       <div className="flex min-w-0 flex-1">
         {sidebar}
@@ -43,9 +45,11 @@ export function AppFrame({ topBar, sidebar, children }: AppFrameProps) {
           </div>
           <main className="min-w-0 flex-1 overflow-x-clip bg-background">
             {children}
+            {mobileNav && <div aria-hidden className="h-[calc(4rem+env(safe-area-inset-bottom))] md:hidden" />}
           </main>
         </div>
       </div>
+      {mobileNav}
     </div>
   );
 }

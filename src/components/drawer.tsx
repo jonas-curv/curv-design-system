@@ -48,7 +48,7 @@ export function Drawer({
         <D.Backdrop className="fixed inset-0 z-50 bg-overlay transition-opacity duration-200 data-[starting-style]:opacity-0 data-[ending-style]:opacity-0" />
         <D.Popup
           className={cn(
-            "fixed inset-y-0 z-50 flex h-dvh w-[26rem] max-w-[calc(100vw-3rem)] flex-col bg-card shadow-card outline-none",
+            "fixed inset-y-0 z-50 flex h-dvh w-[26rem] max-w-full sm:max-w-[calc(100vw-3rem)] pb-[env(safe-area-inset-bottom)] pt-[env(safe-area-inset-top)] flex-col bg-card shadow-card outline-none",
             side === "right" ? "right-0" : "left-0",
             // Slide from the anchored edge; exit a touch faster. Reduced-motion
             // keeps the fade, drops the slide.
@@ -69,7 +69,7 @@ export function Drawer({
                 {headerActions}
                 <D.Close
                   aria-label="Close"
-                  className="shrink-0 rounded-md p-1.5 text-muted-foreground/70 transition-colors hover:bg-accent hover:text-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-foreground/20"
+                  className="flex size-11 sm:size-8 items-center justify-center shrink-0 rounded-md p-1.5 text-muted-foreground/70 transition-colors hover:bg-accent hover:text-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-foreground/20"
                 >
                   <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" aria-hidden><path d="M18 6 6 18M6 6l12 12" /></svg>
                 </D.Close>
@@ -77,7 +77,7 @@ export function Drawer({
             </div>
           )}
           <div className="min-h-0 flex-1 overflow-y-auto px-5 py-4 text-[13px] text-foreground">{children}</div>
-          {footer && <div className="flex shrink-0 items-center justify-end gap-2 border-t border-border px-5 py-3">{footer}</div>}
+          {footer && <div className="flex flex-wrap shrink-0 items-center justify-end gap-2 border-t border-border px-5 py-3">{footer}</div>}
         </D.Popup>
       </D.Portal>
     </D.Root>

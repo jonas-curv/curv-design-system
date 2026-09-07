@@ -59,13 +59,13 @@ export function Tabs({
       onValueChange={onValueChange ? (v) => onValueChange(String(v)) : undefined}
       className={cn(bar && "border-b border-border bg-card", className)}
     >
-      <T.List aria-label={ariaLabel} className="-ml-3 flex items-center">
+      <T.List aria-label={ariaLabel} className="-ml-3 flex min-w-0 items-center overflow-x-auto">
         {items.map((it) => (
           <T.Tab
             key={it.value}
             value={it.value}
             className={cn(
-              "relative inline-flex h-11 items-center rounded-t-md px-3 text-[13px] font-medium outline-none transition-colors",
+              "relative inline-flex shrink-0 whitespace-nowrap h-11 items-center rounded-t-md px-3 text-[13px] font-medium outline-none transition-colors",
               // NB: base-ui Tabs.Tab marks the active tab with `data-active`
               // (Select/Menu items use `data-selected` — the attribute differs).
               "text-muted-foreground hover:text-foreground data-[active]:text-foreground",

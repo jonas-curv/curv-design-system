@@ -60,7 +60,7 @@ export function SegmentedControl({
         // names segmented toggles as h-9 controls (design-system.md → Control
         // height), so a default SegmentedControl aligns with Select/Button.
         "inline-flex items-stretch gap-0.5 rounded-[8px] border border-border bg-muted p-0.5",
-        size === "sm" ? "h-8" : "h-9",
+        size === "sm" ? "h-11 sm:h-8" : "h-11 sm:h-9",
         disabled && "opacity-50",
         className,
       )}
