@@ -19,3 +19,5 @@ Import components from `@curvgroup/design-system/mobile` and import `@curvgroup/
 Search always stays within the current OS. Switching OS uses existing navigation and session checks. Do not cache authenticated records in service workers or local storage. No shared mobile component fetches data or grants access.
 
 Desktop styling and reporting semantics remain owned by their existing components. The approved mobile scale and footer architecture supersede older desktop-only guidance at the configured mobile breakpoint.
+
+The dock reports browser offline/restored events without polling or fetching. Optional `onRefresh` is an explicit current-route read refresh supplied by the app. Loaded records remain only in existing page memory; this adds no service worker, persisted business data, or queued writes. A restored browser connection is not proof of a successful server refresh.

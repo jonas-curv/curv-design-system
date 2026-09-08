@@ -13,6 +13,8 @@ export interface MobileBottomNavProps {
   items: MobileNavItem[];
   renderLink?: (item: MobileNavItem, props: { className: string; children: React.ReactNode; "aria-current"?: "page" }) => React.ReactNode;
   onSearch?: () => void;
+  /** Explicit read refresh, owned by the authenticated app router. Never replay writes. */
+  onRefresh?: () => void;
   onMenu?: () => void;
   menuOpen?: boolean;
   searchOpen?: boolean;
@@ -39,14 +41,27 @@ function useSoftwareKeyboard() {
   return visible;
 }
 /** Shared approved order: Home, Search, core work, reporting, More. */
-export function MobileBottomNav({ items, renderLink, onSearch, onMenu, menuOpen = false, searchOpen = false, breakpoint = "md" }: MobileBottomNavProps) {
+export function MobileBottomNav({ items, renderLink, onSearch, onRefresh, onMenu, menuOpen = false, searchOpen = false, breakpoint = "md" }: MobileBottomNavProps) {
   const keyboard = useSoftwareKeyboard();
+  const [connection, setConnection] = React.useState<"online" | "offline" | "restored">("online");
+  React.useEffect(() => {
+    const offline = () => setConnection("offline");
+    const online = () => setConnection(current => current === "offline" ? "restored" : current);
+    if (!navigator.onLine) offline();
+    window.addEventListener("offline", offline);
+    window.addEventListener("online", online);
+    return () => { window.removeEventListener("offline", offline); window.removeEventListener("online", online); };
+  }, []);
   const destinations = items.slice(0, 5 - Number(Boolean(onSearch)) - Number(Boolean(onMenu)));
   const renderItem = (item: MobileNavItem) => {
     const props = { className: "curv-mobile-destination", "aria-current": item.active && !menuOpen && !searchOpen ? "page" as const : undefined, children: <><span aria-hidden="true" className="curv-mobile-dock-icon">{item.icon}</span><span className="curv-mobile-dock-label">{item.label}</span></> };
     return <React.Fragment key={item.id}>{renderLink ? renderLink(item, props) : <a href={item.href} {...props} />}</React.Fragment>;
   };
   return <nav aria-label="Mobile navigation" className="curv-mobile-dock curv-mobile-only" data-breakpoint={breakpoint} hidden={keyboard || searchOpen}>
+    {connection !== "online" && <div className="curv-mobile-connection" role="status">
+      <span>{connection === "offline" ? "Offline. Loaded information may be out of date." : "Connection restored. Refresh for current information."}</span>
+      {connection === "restored" && <span className="curv-mobile-connection-actions">{onRefresh && <button type="button" onClick={onRefresh}>Refresh view</button>}<button type="button" aria-label="Dismiss connection notice" onClick={() => setConnection("online")}>Dismiss</button></span>}
+    </div>}
     <div className="curv-mobile-dock-items">
       {destinations[0] && renderItem(destinations[0])}
       {onSearch && <button type="button" onClick={onSearch} aria-label="Search this OS"><span className="curv-mobile-dock-icon"><SearchIcon /></span><span>Search</span></button>}
