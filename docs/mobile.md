@@ -1,11 +1,27 @@
-# Mobile foundation
+# Approved mobile command center
 
-Use `AppFrame` with `mobileNav={<MobileBottomNav ... />}` below 768px. Pass already permission-filtered destinations; Search and Menu handlers open the app's existing CommandPalette and Drawer. The navigation reserves at most five slots, including those actions. Put remaining allowed destinations in Menu. AppFrame reserves the footer and device safe area.
+Jonas approved the September 2026 Curv Mobile Redesign Proposal. This is the mobile extension of the existing design system, not a separate theme or data layer.
 
-DataTable renders the same filtered and sorted records as mobile rows below 768px. Mark identity/status columns `mobilePriority: "primary"`; up to three remaining columns become labeled secondary values. Other columns remain reachable through More details (`"hidden"` means hidden from the initial summary, never deleted). Native Open links/buttons remain separate from interactive cell content. Mobile pagination renders 25 rows at a time, preserving access to the complete result set. Search, filters, exports and sorting retain their shared data owners.
+## Adoption
 
-For financial workbooks where column comparison matters, set `mobileLayout="scroll"`. Do not convert those into cards. Desktop table rendering is unchanged. `headerSuffix` is a sibling of the native sorting button so suffix controls remain independently interactive.
+Import components from `@curvgroup/design-system/mobile` and import `@curvgroup/design-system/mobile.css` once after existing application styles. The additive entry preserves existing desktop chart contracts. Consume a pinned build of this source; do not copy components into app folders.
 
-Phone inputs use 16px text; buttons and small tabs gain 44px touch targets. Dialogs cap height to the dynamic viewport; drawers use full phone width and safe areas. Desktop sizes remain at their prior breakpoints.
+## Shared patterns
 
-Validation: `npm run build && node --test tests/mobile.test.mjs`, `npm run typecheck`, `npm run lint`. App integrations must verify actual viewport layouts and permission-filtered navigation.
+- `MobileBottomNav`: at most five labelled destinations. Home, Search, core work, reporting, More. App adapters pass permission-filtered links and active state. Hides for the software keyboard. The app reserves 88px plus the bottom safe area below content.
+- `MobileHeader` or `MobileHeaderTitle` inside an existing top bar: one 20px title, optional context, one action. Back on records. Existing notification state mounts once.
+- `MobilePage`, `MobileMetricCard`, `MobileSupportingMetrics`, `MobileSection`: 16px rails, 18px surfaces, one 32px primary value and two supporting values. Existing source adapters own calculations, scope, dates and comparisons.
+- `MobileList` and `MobileRecordRow`: identity, amount, metadata and meaningful exception. Real link or button. Complete detail remains one tap away. Search, sort, totals and exports operate on the whole dataset.
+- `MobileDetailSection`: accessible progressive disclosure for secondary record data.
+- `MobileSheet`, `MobileMoreMenu`, `MobileSearchSurface`: Base UI focus management and keyboard dismissal. Fullscreen surfaces follow the visual viewport, including keyboard resize. Filter sheets use one Apply and Reset.
+- `MobileNotice`: visible network failure or domain exception. Never substitute zero for an unavailable financial value.
+
+Search always stays within the current OS. Switching OS uses existing navigation and session checks. Do not cache authenticated records in service workers or local storage. No shared mobile component fetches data or grants access.
+
+Desktop styling and reporting semantics remain owned by their existing components. The approved mobile scale and footer architecture supersede older desktop-only guidance at the configured mobile breakpoint.
+
+The dock reports browser offline/restored events without polling or fetching. Optional `onRefresh` is an explicit current-route read refresh supplied by the app. Loaded records remain only in existing page memory; this adds no service worker, persisted business data, or queued writes. A restored browser connection is not proof of a successful server refresh.
+
+## Glass navigation
+
+The mobile dock uses a restrained translucent card surface with native CSS backdrop blur. This is a web treatment, not the iOS Liquid Glass API. Content cards, forms, sheets and financial figures remain opaque. The existing safe-area spacing, selected states, keyboard handling and permission-filtered navigation remain the component owners. Browsers without backdrop-filter receive the solid card surface; reduced transparency, increased contrast and forced colors disable the effect. No animated filters or additional rendering dependencies.
