@@ -123,13 +123,94 @@
 .curv-mobile-connection-actions { display:flex; gap:12px; }
 .curv-mobile-connection-actions button { min-height:44px; font-size:13px; font-weight:600; }
 
-/* Mobile navigation floats above content; records and financial surfaces stay solid. */
+/* ── The lens ──────────────────────────────────────────────────────────────
+   Glass reads as a lens when there is little fill and a lot of blur: what is
+   behind stays a wash of colour, never legible. Above ~85% fill it is a tinted
+   panel and the blur costs GPU for nothing. The inset highlights are the
+   refracted edge — bright where light lands on top, fading down the sides.
+   Only the dock lenses. Records, cards and financial surfaces stay solid so
+   long lists stay cheap to scroll. */
+:root {
+  --curv-lens: 255 255 255;
+  --curv-lens-fill: 40%;
+  --curv-lens-blur: 30px;
+  --curv-lens-sat: 190%;
+  --curv-lens-top: 0.92;
+  --curv-lens-side: 0.44;
+  --curv-lens-base: 0.24;
+  --curv-lens-active: 74%;
+  --curv-lens-cast: 17 22 26;
+  --curv-lens-cast-a: 0.16;
+  --curv-ground-1: rgb(23 27 29 / 0.055);
+  --curv-ground-2: rgb(23 27 29 / 0.035);
+  --curv-ground-3: rgb(23 27 29 / 0.07);
+}
+.dark {
+  --curv-lens-fill: 52%;
+  --curv-lens-blur: 32px;
+  --curv-lens-sat: 160%;
+  --curv-lens-top: 0.24;
+  --curv-lens-side: 0.11;
+  --curv-lens-base: 0.05;
+  --curv-lens-active: 86%;
+  --curv-lens-cast: 0 0 0;
+  --curv-lens-cast-a: 0.5;
+  --curv-ground-1: rgb(255 255 255 / 0.05);
+  --curv-ground-2: rgb(255 255 255 / 0.03);
+  --curv-ground-3: rgb(255 255 255 / 0.055);
+}
+
+/* Something for the lens to bend. Glass over a flat fill is just flat fill.
+   Fixed to the viewport so the wash under the dock never scrolls away, and
+   scoped to the phone page, so no desktop surface is touched. */
+.curv-mobile-page { position: relative; isolation: isolate; }
+.curv-mobile-page::before {
+  content: ""; position: fixed; inset: 0; z-index: -1; pointer-events: none;
+  background:
+    radial-gradient(72% 40% at 10% 2%, var(--curv-ground-1), transparent 62%),
+    radial-gradient(58% 36% at 96% 24%, var(--curv-ground-2), transparent 60%),
+    radial-gradient(80% 46% at 50% 101%, var(--curv-ground-3), transparent 64%);
+}
+
 @supports ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
   .curv-mobile-dock {
-    background: color-mix(in srgb, var(--card, white) 94%, transparent);
-    -webkit-backdrop-filter: blur(18px) saturate(120%);
-    backdrop-filter: blur(18px) saturate(120%);
+    background: color-mix(in srgb, var(--card, white) var(--curv-lens-fill), transparent);
+    -webkit-backdrop-filter: blur(var(--curv-lens-blur)) saturate(var(--curv-lens-sat));
+    backdrop-filter: blur(var(--curv-lens-blur)) saturate(var(--curv-lens-sat));
+    border-color: rgb(var(--curv-lens) / var(--curv-lens-side));
+    box-shadow:
+      inset 0 1px 0 rgb(var(--curv-lens) / var(--curv-lens-top)),
+      inset 0 -1px 0 rgb(var(--curv-lens) / var(--curv-lens-base)),
+      inset 1px 0 0 rgb(var(--curv-lens) / var(--curv-lens-side)),
+      inset -1px 0 0 rgb(var(--curv-lens) / var(--curv-lens-base)),
+      0 18px 40px rgb(var(--curv-lens-cast) / var(--curv-lens-cast-a)),
+      0 1px 2px rgb(var(--curv-lens-cast) / calc(var(--curv-lens-cast-a) * 0.5));
   }
+  /* The specular sweep across the top half. */
+  .curv-mobile-dock::before {
+    content: ""; position: absolute; inset: 0; border-radius: inherit; pointer-events: none;
+    background: linear-gradient(
+      180deg,
+      rgb(var(--curv-lens) / calc(var(--curv-lens-top) * 0.62)),
+      rgb(var(--curv-lens) / calc(var(--curv-lens-top) * 0.11)) 46%,
+      transparent 100%
+    );
+  }
+  .curv-mobile-dock-items { position: relative; z-index: 1; }
+  /* The selected destination is a second, smaller lens sitting on the bar:
+     lit along its top edge and lifted a hair, so it reads as raised glass
+     rather than a tinted rectangle. */
+  .curv-mobile-dock :is(a, button)[aria-current="page"],
+  .curv-mobile-dock button[aria-expanded="true"] {
+    background: color-mix(in srgb, var(--card, white) var(--curv-lens-active), transparent);
+    box-shadow:
+      inset 0 1px 0 rgb(var(--curv-lens) / var(--curv-lens-top)),
+      0 0 0 1px rgb(var(--curv-lens) / var(--curv-lens-side)),
+      0 5px 14px rgb(var(--curv-lens-cast) / calc(var(--curv-lens-cast-a) * 0.85));
+    transform: translateY(-1px);
+  }
+  .curv-mobile-dock [aria-current="page"] .curv-mobile-dock-icon,
+  .curv-mobile-dock [aria-expanded="true"] .curv-mobile-dock-icon { background: transparent; }
 }
 @media (prefers-reduced-transparency: reduce), (prefers-contrast: more), (forced-colors: active) {
   .curv-mobile-dock {
@@ -137,5 +218,36 @@
     -webkit-backdrop-filter: none;
     backdrop-filter: none;
     box-shadow: none;
+    border-color: var(--border, #e1e5e8);
   }
+  .curv-mobile-dock::before { display: none; }
+  .curv-mobile-dock :is(a, button)[aria-current="page"],
+  .curv-mobile-dock button[aria-expanded="true"] {
+    background: transparent; box-shadow: none; transform: none;
+  }
+  .curv-mobile-dock [aria-current="page"] .curv-mobile-dock-icon,
+  .curv-mobile-dock [aria-expanded="true"] .curv-mobile-dock-icon { background: var(--muted, #f3f4f5); }
+  .curv-mobile-page::before { display: none; }
 }
+
+/* ── Charts ────────────────────────────────────────────────────────────────
+   A fixed viewBox scaled to the container: it paints on the first frame with
+   no measurement pass, and the height follows the aspect ratio instead of a
+   desktop pixel value. `> svg` and not a descendant selector — the descendant
+   form reaches icons inside the same figure and blows them up to full width. */
+.curv-mobile-chart { margin: 0; color: var(--foreground, #1b1b1b); }
+.curv-mobile-chart > svg { display: block; width: 100%; overflow: visible; }
+.curv-mobile-chart-head { display: flex; align-items: baseline; justify-content: space-between; gap: 10px; flex-wrap: wrap; }
+.curv-mobile-chart-value { font-size: 28px; font-weight: 600; letter-spacing: -.035em; line-height: 1.1; font-variant-numeric: tabular-nums; }
+.curv-mobile-chart-delta { font-size: 12.5px; font-weight: 500; color: var(--muted-foreground, #6b7280); font-variant-numeric: tabular-nums; }
+.curv-mobile-chart-delta[data-tone="up"] { color: var(--positive, #0a7a4b); }
+.curv-mobile-chart-delta[data-tone="down"] { color: var(--negative, #b42318); }
+.curv-mobile-chart figcaption { display: flex; justify-content: space-between; gap: 12px; margin-top: 6px; font-size: 12px; color: var(--muted-foreground, #6b7280); }
+/* Phones have no hover: a range input scrubs the series instead of a tooltip. */
+.curv-mobile-chart-scrub { display: block; width: 100%; margin: 6px 0 0; min-height: 44px; -webkit-appearance: none; appearance: none; background: transparent; }
+.curv-mobile-chart-scrub::-webkit-slider-thumb { -webkit-appearance: none; width: 30px; height: 30px; border-radius: 15px; background: transparent; }
+.curv-mobile-chart-scrub::-moz-range-thumb { width: 30px; height: 30px; border: 0; border-radius: 15px; background: transparent; }
+.curv-mobile-chart-scrub:focus-visible { outline: 2px solid var(--ring, currentColor); outline-offset: 2px; border-radius: 12px; }
+.curv-mobile-chart-readout { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; font-size: 13px; font-variant-numeric: tabular-nums; }
+.curv-mobile-chart-readout strong { font-weight: 600; }
+.curv-mobile-chart-empty { padding: 20px 0; font-size: 13px; color: var(--muted-foreground, #6b7280); }

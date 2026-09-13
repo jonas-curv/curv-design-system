@@ -56,3 +56,24 @@ test('additive mobile entry exposes mobile controls without replacing charts', a
  const html = renderToStaticMarkup(h(entry.DataTable, { columns, rows }));
  assert.match(html, /Preserved detail/);
 });
+
+test('chart renders server-side with values drawn in and no fixed pixel height', async () => {
+ const { MobileChart } = await import('../dist/mobile.js');
+ const points = [
+   { label: 'Mon', value: 12 }, { label: 'Tue', value: 30 },
+   { label: 'Wed', value: 18 }, { label: 'Thu', value: null },
+ ];
+ const html = renderToStaticMarkup(h(MobileChart, { points, label: 'Orders by day', headline: '60' }));
+ assert.match(html, /viewBox="0 0 260 108"/);        // scales to its box, never a px height
+ assert.doesNotMatch(html, /<svg[^>]*height=/);       // no measured or hard-coded plot height
+ assert.doesNotMatch(html, /x="-/);                   // every mark inside the viewBox
+ assert.match(html, />30</);                          // the peak is drawn, not hovered
+ assert.match(html, /role="img" aria-label="Orders by day"/);
+ assert.match(html, /type="range"/);                  // scrub, not tooltip
+});
+test('chart says so when a period has nothing, instead of drawing a flat line', async () => {
+ const { MobileChart } = await import('../dist/mobile.js');
+ const html = renderToStaticMarkup(h(MobileChart, { points: [{ label: 'Mon', value: null }], label: 'Orders' }));
+ assert.match(html, /No data for this period/);
+ assert.doesNotMatch(html, /<svg/);
+});
