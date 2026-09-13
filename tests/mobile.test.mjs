@@ -69,7 +69,18 @@ test('chart renders server-side with values drawn in and no fixed pixel height',
  assert.doesNotMatch(html, /x="-/);                   // every mark inside the viewBox
  assert.match(html, />30</);                          // the peak is drawn, not hovered
  assert.match(html, /role="img" aria-label="Orders by day"/);
- assert.match(html, /type="range"/);                  // scrub, not tooltip
+ assert.doesNotMatch(html, /type="range"/);           // bars print their values; nothing to scrub
+});
+test('a line scrubs instead of hovering, and crowded bars fall back to peak and latest', async () => {
+ const { MobileChart } = await import('../dist/mobile.js');
+ const wide = Array.from({ length: 7 }, (_, i) => ({ label: `W${32 + i}`, value: [41200, 38600, 52800, 47300, 61400, 55900, 29100][i] }));
+ const usd = value => '$' + value.toLocaleString();
+ const bars = renderToStaticMarkup(h(MobileChart, { points: wide, variant: 'bars', format: usd, label: 'Revenue by week' }));
+ assert.equal((bars.match(/font-weight="600"/g) || []).length, 2);  // peak and latest only, no collision
+ assert.doesNotMatch(bars, /x="-|x="2[7-9]\d/);                    // every label inside the viewBox
+ const line = renderToStaticMarkup(h(MobileChart, { points: wide, variant: 'line', format: usd, label: 'Revenue by week' }));
+ assert.match(line, /type="range"/);
+ assert.match(line, /aria-valuetext="W38: \$29,100"/);
 });
 test('chart says so when a period has nothing, instead of drawing a flat line', async () => {
  const { MobileChart } = await import('../dist/mobile.js');

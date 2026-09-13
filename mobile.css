@@ -235,7 +235,7 @@
    no measurement pass, and the height follows the aspect ratio instead of a
    desktop pixel value. `> svg` and not a descendant selector — the descendant
    form reaches icons inside the same figure and blows them up to full width. */
-.curv-mobile-chart { margin: 0; color: var(--foreground, #1b1b1b); }
+.curv-mobile-chart { margin: 0; color: var(--curv-chart-ink, var(--chart, var(--foreground, #1b1b1b))); }
 .curv-mobile-chart > svg { display: block; width: 100%; overflow: visible; }
 .curv-mobile-chart-head { display: flex; align-items: baseline; justify-content: space-between; gap: 10px; flex-wrap: wrap; }
 .curv-mobile-chart-value { font-size: 28px; font-weight: 600; letter-spacing: -.035em; line-height: 1.1; font-variant-numeric: tabular-nums; }
@@ -243,10 +243,14 @@
 .curv-mobile-chart-delta[data-tone="up"] { color: var(--positive, #0a7a4b); }
 .curv-mobile-chart-delta[data-tone="down"] { color: var(--negative, #b42318); }
 .curv-mobile-chart figcaption { display: flex; justify-content: space-between; gap: 12px; margin-top: 6px; font-size: 12px; color: var(--muted-foreground, #6b7280); }
-/* Phones have no hover: a range input scrubs the series instead of a tooltip. */
-.curv-mobile-chart-scrub { display: block; width: 100%; margin: 6px 0 0; min-height: 44px; -webkit-appearance: none; appearance: none; background: transparent; }
-.curv-mobile-chart-scrub::-webkit-slider-thumb { -webkit-appearance: none; width: 30px; height: 30px; border-radius: 15px; background: transparent; }
-.curv-mobile-chart-scrub::-moz-range-thumb { width: 30px; height: 30px; border: 0; border-radius: 15px; background: transparent; }
+/* Phones have no hover: a range input scrubs the series instead of a tooltip.
+   It has to look like a control — an invisible 44px strip is dead space that
+   nobody discovers. */
+.curv-mobile-chart-scrub { display: block; width: 100%; margin: 2px 0 0; height: 44px; -webkit-appearance: none; appearance: none; background: transparent; }
+.curv-mobile-chart-scrub::-webkit-slider-runnable-track { height: 4px; border-radius: 2px; background: color-mix(in srgb, currentColor 16%, transparent); }
+.curv-mobile-chart-scrub::-moz-range-track { height: 4px; border-radius: 2px; background: color-mix(in srgb, currentColor 16%, transparent); }
+.curv-mobile-chart-scrub::-webkit-slider-thumb { -webkit-appearance: none; width: 22px; height: 22px; margin-top: -9px; border-radius: 11px; background: var(--card, #fff); border: 2px solid currentColor; box-shadow: 0 1px 3px rgb(0 0 0 / 0.2); }
+.curv-mobile-chart-scrub::-moz-range-thumb { width: 22px; height: 22px; border-radius: 11px; background: var(--card, #fff); border: 2px solid currentColor; box-shadow: 0 1px 3px rgb(0 0 0 / 0.2); }
 .curv-mobile-chart-scrub:focus-visible { outline: 2px solid var(--ring, currentColor); outline-offset: 2px; border-radius: 12px; }
 .curv-mobile-chart-readout { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; font-size: 13px; font-variant-numeric: tabular-nums; }
 .curv-mobile-chart-readout strong { font-weight: 600; }

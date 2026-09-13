@@ -19,6 +19,8 @@ export interface MobileChartProps {
   format?: (value: number) => string;
   /** Describes the series for screen readers. Required — the plot is not self-describing. */
   label: string;
+  /** A note under the plot — freshness, source, coverage. The axis ends are
+   *  already drawn inside the plot, so do not repeat them here. */
   caption?: [React.ReactNode, React.ReactNode];
   /** Plot aspect. The height follows the container width, so a phone never
    *  gets a desktop pixel height. 2.4 is a phone-shaped chart. */
@@ -49,7 +51,7 @@ export function MobileChart({
   className,
 }: MobileChartProps) {
   const known = points.filter(point => point.value !== null);
-  const scrubbable = (scrub ?? points.length > 2) && points.length > 1;
+  const scrubbable = (scrub ?? variant === "line") && points.length > 1;
   const [active, setActive] = React.useState<number | null>(null);
 
   if (!known.length) return <figure className={cn("curv-mobile-chart", className)}><p className="curv-mobile-chart-empty">{emptyMessage}</p></figure>;
@@ -73,10 +75,25 @@ export function MobileChart({
   const shown = active === null ? null : points[active];
   const lastKnown = points.reduce((last, point, index) => (point.value === null ? last : index), -1);
 
-  // Label every bar while they still fit; past that, only the peak and the end.
-  const dense = points.length > 7;
-  const peak = values.length ? points.findIndex(point => point.value === top && point.value !== null) : -1;
-  const labelled = (index: number) => !dense || index === peak || index === lastKnown;
+  // Label every bar while the labels actually fit their band; past that, only
+  // the peak and the latest value. Counting points was wrong: "$52,800" needs
+  // four times the room of "12".
+  const FONT = 11;
+  const textWidth = (text: string) => text.length * FONT * 0.58;
+  const slot = bars ? band : step;
+  const fitsAll = points.every(point => point.value === null || textWidth(show(point, format)) <= slot - 2);
+  const peak = points.findIndex(point => point.value !== null && point.value === top);
+  // With only two labels left, drop the peak when it would sit on the latest.
+  const peakClear = peak >= 0 && peak !== lastKnown
+    && Math.abs(x(peak) - x(lastKnown)) > (textWidth(show(points[peak], format)) + textWidth(show(points[lastKnown], format))) / 2 + 4;
+  const labelled = (index: number) => fitsAll || index === lastKnown || (index === peak && peakClear);
+  // Keep the outermost labels inside the viewBox instead of hanging off the card.
+  const anchorAt = (index: number, width: number): { anchor: "start" | "middle" | "end"; at: number } => {
+    const centre = x(index);
+    if (centre - width / 2 < 0) return { anchor: "start", at: 0 };
+    if (centre + width / 2 > W) return { anchor: "end", at: W };
+    return { anchor: "middle", at: centre };
+  };
 
   const path = (series: (number | null)[]) => {
     let open = false;
@@ -130,17 +147,22 @@ export function MobileChart({
 
         {/* The value the reader came for, drawn into the plot. */}
         {variant === "bars"
-          ? points.map((point, index) => point.value !== null && labelled(index) ? (
-              <text key={index} x={x(index)} y={Math.min(y(point.value), zeroY) - 6} textAnchor="middle"
-                fontSize="11" fontWeight="600" fill="currentColor" style={{ fontVariantNumeric: "tabular-nums" }}>
-                {show(point, format)}
-              </text>
-            ) : null)
+          ? points.map((point, index) => {
+              if (point.value === null || !labelled(index)) return null;
+              const text = show(point, format);
+              const { anchor, at } = anchorAt(index, textWidth(text));
+              return (
+                <text key={index} x={at} y={Math.min(y(point.value), zeroY) - 6} textAnchor={anchor}
+                  fontSize={FONT} fontWeight="600" fill="currentColor" style={{ fontVariantNumeric: "tabular-nums" }}>
+                  {text}
+                </text>
+              );
+            })
           : lastKnown >= 0 && (
               <>
                 <circle cx={x(lastKnown)} cy={y(points[lastKnown].value as number)} r="3.5" fill="currentColor" stroke="var(--card, #fff)" strokeWidth="2" />
-                <text x={x(lastKnown)} y={y(points[lastKnown].value as number) - 9} textAnchor="end"
-                  fontSize="11" fontWeight="600" fill="currentColor" style={{ fontVariantNumeric: "tabular-nums" }}>
+                <text x={Math.min(W, x(lastKnown) + 2)} y={Math.max(FONT, y(points[lastKnown].value as number) - 9)} textAnchor="end"
+                  fontSize={FONT} fontWeight="600" fill="currentColor" style={{ fontVariantNumeric: "tabular-nums" }}>
                   {show(points[lastKnown], format)}
                 </text>
               </>
