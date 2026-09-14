@@ -141,9 +141,9 @@
   --curv-lens-active: 74%;
   --curv-lens-cast: 17 22 26;
   --curv-lens-cast-a: 0.16;
-  --curv-ground-1: rgb(23 27 29 / 0.055);
-  --curv-ground-2: rgb(23 27 29 / 0.035);
-  --curv-ground-3: rgb(23 27 29 / 0.07);
+  --curv-ground-1: rgb(23 27 29 / 0.13);
+  --curv-ground-2: rgb(23 27 29 / 0.075);
+  --curv-ground-3: rgb(23 27 29 / 0.16);
 }
 .dark {
   --curv-lens-fill: 52%;
@@ -155,21 +155,28 @@
   --curv-lens-active: 86%;
   --curv-lens-cast: 0 0 0;
   --curv-lens-cast-a: 0.5;
-  --curv-ground-1: rgb(255 255 255 / 0.05);
-  --curv-ground-2: rgb(255 255 255 / 0.03);
-  --curv-ground-3: rgb(255 255 255 / 0.055);
+  --curv-ground-1: rgb(255 255 255 / 0.10);
+  --curv-ground-2: rgb(255 255 255 / 0.055);
+  --curv-ground-3: rgb(255 255 255 / 0.115);
 }
 
 /* Something for the lens to bend. Glass over a flat fill is just flat fill.
-   Fixed to the viewport so the wash under the dock never scrolls away, and
-   scoped to the phone page, so no desktop surface is touched. */
-.curv-mobile-page { position: relative; isolation: isolate; }
-.curv-mobile-page::before {
-  content: ""; position: fixed; inset: 0; z-index: -1; pointer-events: none;
-  background:
-    radial-gradient(72% 40% at 10% 2%, var(--curv-ground-1), transparent 62%),
-    radial-gradient(58% 36% at 96% 24%, var(--curv-ground-2), transparent 60%),
-    radial-gradient(80% 46% at 50% 101%, var(--curv-ground-3), transparent 64%);
+   This has to hold on EVERY phone screen, not only ones built out of
+   MobilePage — Customs OS and Sales OS mount that component zero times, so a
+   ground scoped to it left their docks blurring a flat colour. Compositing the
+   washes onto the body's own background-image layer needs no wrapper element
+   and no stacking context, and `fixed` keeps the wash under the dock steady
+   while the page scrolls. The whole rule lives behind the phone breakpoint, so
+   no desktop surface is touched. */
+@media (max-width: 767px) {
+  body {
+    background-image:
+      radial-gradient(72% 38% at 8% 0%, var(--curv-ground-1), transparent 60%),
+      radial-gradient(56% 34% at 98% 22%, var(--curv-ground-2), transparent 58%),
+      radial-gradient(86% 44% at 50% 100%, var(--curv-ground-3), transparent 62%);
+    background-attachment: fixed;
+    background-repeat: no-repeat;
+  }
 }
 
 @supports ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
@@ -227,7 +234,7 @@
   }
   .curv-mobile-dock [aria-current="page"] .curv-mobile-dock-icon,
   .curv-mobile-dock [aria-expanded="true"] .curv-mobile-dock-icon { background: var(--muted, #f3f4f5); }
-  .curv-mobile-page::before { display: none; }
+  body { background-image: none; }
 }
 
 /* ── Charts ────────────────────────────────────────────────────────────────
