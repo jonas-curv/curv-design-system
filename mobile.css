@@ -145,7 +145,8 @@
   --curv-ground-2: rgb(23 27 29 / 0.075);
   --curv-ground-3: rgb(23 27 29 / 0.16);
 }
-.dark {
+.dark,
+[data-theme="dark"] {
   --curv-lens-fill: 52%;
   --curv-lens-blur: 32px;
   --curv-lens-sat: 160%;
