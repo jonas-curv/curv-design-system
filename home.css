@@ -1,0 +1,402 @@
+/* @curvgroup/design-system — Home kit (home.css).
+ *
+ * The Home page's shared look, ported from the Sales OS home (round 5) and the
+ * Curv OS port of it: the dark pulse card with a warm coral glow, a score that
+ * counts up, bars that rise, a track that sweeps, tiles that lift, and the
+ * panels and month clock under it. Import once in the app's global stylesheet:
+ *
+ *     @import "@curvgroup/design-system/home.css";
+ *
+ * No Tailwind: every rule is a plain class the components in
+ * `@curvgroup/design-system/home` emit, and every color resolves from the
+ * app's own tokens through the --home-* variables below (docs/home.md).
+ * Unlayered, like the app rules it replaces, so they behave the same.
+ *
+ * Entrances are CSS keyframes, never a motion-library `initial`: a keyframe
+ * paints from first frame, before hydration, and `backwards` fill holds the
+ * start frame only until the animation starts, so nothing the server drew
+ * stays hidden. Stagger with an inline animation-delay. */
+
+/* ---------- Pulse tokens: fixed in both themes, like the top bar ----------
+   Zero specificity, so any app `:root` or theme rule overrides them whatever
+   the import order. */
+:where(:root) {
+  --home-signal: #ff6b4a; /* coral: progress toward goal, nothing else */
+  --home-signal-soft: #ff8a6b;
+  --home-signal-ink: #ff3a0e; /* the same signal on a light canvas: deeper, holds contrast on white */
+  --home-pulse-ink: #ffffff;
+  --home-pulse-line: rgba(255, 255, 255, 0.07);
+  --home-pulse-track: #212227;
+  --home-pulse-tooltip: #2a2b31;
+}
+
+/* ---------- The pulse card ---------- */
+
+/* A warm glow from the top-left, a faint lift from the bottom-right, over a
+   near-black vertical fade. */
+.home-pulse-surface {
+  color: var(--home-pulse-ink);
+  background:
+    radial-gradient(640px 320px at 8% 0%, rgba(255, 107, 74, 0.13), rgba(255, 107, 74, 0) 70%),
+    radial-gradient(900px 400px at 100% 100%, rgba(255, 255, 255, 0.03), rgba(255, 255, 255, 0) 60%),
+    linear-gradient(180deg, #18191d 0%, #121316 100%);
+  border: 1px solid #232429;
+  border-radius: 20px;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.05);
+}
+
+/* The score: Inter at its display optical size, proportional figures
+   (tabular leave a hole beside a 1 at this size), tight tracking. */
+.home-score {
+  font-variation-settings: "opsz" 32;
+  font-variant-numeric: proportional-nums;
+  font-feature-settings: normal;
+  letter-spacing: -0.035em;
+}
+
+/* The score's vertical gradient text, solid coral where background-clip: text is missing. */
+.home-score-gradient {
+  color: var(--home-signal);
+  background: linear-gradient(180deg, #ff9a7c 0%, var(--home-signal) 70%);
+  -webkit-background-clip: text;
+  background-clip: text;
+}
+@supports (background-clip: text) or (-webkit-background-clip: text) {
+  .home-score-gradient {
+    -webkit-text-fill-color: transparent;
+    color: transparent;
+  }
+}
+
+/* A banked bar: coral to ember. */
+.home-bar-gain {
+  background: linear-gradient(180deg, #ff9272 0%, var(--home-signal) 55%, #f0522f 100%);
+}
+/* Booked, not yet banked: the same coral, quieter. */
+.home-bar-booked {
+  background: rgba(255, 107, 74, 0.35);
+}
+/* The needed-per-period ghost column: a dashed outline with no floor, a target not yet banked. */
+.home-ghost-col {
+  background: rgba(255, 107, 74, 0.06);
+  border: 1px dashed rgba(255, 107, 74, 0.4);
+  border-bottom: none;
+}
+/* The needed line across what is left: solid coral with a soft glow. */
+.home-needed-line {
+  background: var(--home-signal);
+  box-shadow: 0 0 10px rgba(255, 107, 74, 0.35);
+}
+/* The track's "so far" fill, the brightest thing on the track. */
+.home-progress-fill {
+  background: linear-gradient(90deg, #f0522f, var(--home-signal-soft));
+  box-shadow: 0 0 14px rgba(255, 107, 74, 0.35);
+}
+
+/* A door on the pulse card: a faint top-lit surface that lifts on hover. */
+.home-tile {
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.045), rgba(255, 255, 255, 0.02));
+  border: 1px solid rgba(255, 255, 255, 0.07);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.04);
+  transition:
+    background 200ms ease-out,
+    border-color 200ms ease-out,
+    transform 200ms ease-out;
+}
+.home-tile:hover,
+.home-tile:focus-visible {
+  background: var(--home-pulse-track);
+  border-color: rgba(255, 255, 255, 0.14);
+  transform: translateY(-2px);
+}
+
+/* ---------- Entrances: one curve, staggered with an inline animation-delay ---------- */
+
+@keyframes home-enter-up {
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+@keyframes home-enter-rise {
+  from { transform: scaleY(0); }
+  to { transform: scaleY(1); }
+}
+@keyframes home-enter-sweep {
+  from { transform: scaleX(0); }
+  to { transform: scaleX(1); }
+}
+/* The page's one idle loop: today's segment on the month clock. */
+@keyframes home-breathe {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.5; }
+}
+.home-enter-up { animation: home-enter-up 400ms cubic-bezier(0.16, 1, 0.3, 1) backwards; }
+.home-enter-rise { transform-origin: bottom; animation: home-enter-rise 400ms cubic-bezier(0.16, 1, 0.3, 1) backwards; }
+.home-enter-sweep { transform-origin: left; animation: home-enter-sweep var(--home-sweep-duration, 400ms) cubic-bezier(0.16, 1, 0.3, 1) backwards; }
+.home-breathe { animation: home-breathe 2.8s ease-in-out infinite; }
+
+/* ---------- Panels, rows and the month clock: the app's own tokens ----------
+   Each --_home-* alias resolves where it is used, so it follows whichever
+   theme scope the element sits in. An app sets the public --home-* name to
+   override; otherwise the chain tries the design-system/shadcn token first,
+   then the Sales OS ink scale, then a literal. */
+:where(.home-panel, .home-panel-link, .home-panel-note, .home-row, .home-feed-row, .home-row-hover, .home-chip, .home-row-icon, .home-month-clock) {
+  --_home-ink: var(--home-ink, var(--foreground, var(--ink, #1b1b1b)));
+  --_home-ink-muted: var(--home-ink-muted, var(--muted-foreground, var(--ink-3, #6b6b6f)));
+  --_home-ink-2: var(--home-ink-secondary, var(--text-2, var(--ink-2, #6b6b6f)));
+  --_home-surface: var(--home-surface, var(--card, var(--surface, #ffffff)));
+  --_home-line: var(--home-line, var(--border, rgba(27, 27, 27, 0.08)));
+  --_home-chip-bg: var(--home-chip-bg, var(--surface-2, var(--muted, #f3f3f4)));
+  --_home-hover: var(--home-hover, var(--accent, rgba(27, 27, 27, 0.05)));
+  --_home-ring: var(--home-ring, var(--ring, rgba(27, 27, 27, 0.2)));
+  --_home-day-future: var(--home-day-future, var(--app-strong, var(--border, rgba(27, 27, 27, 0.08))));
+  --_home-hairline: var(--home-panel-border-width, 1px);
+  --_home-radius-sm: calc(var(--radius, 0.625rem) * 0.8);
+  --_home-strong: var(--home-strong-weight, 500);
+  box-sizing: border-box;
+}
+
+/* The one panel shape: a 16px heading, an optional count and qualifier, a
+   right slot, then one-line rows. */
+.home-panel {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  padding-bottom: 8px;
+  border: var(--_home-hairline) solid var(--_home-line);
+  border-radius: var(--home-panel-radius, var(--radius, 12px));
+  background: var(--_home-surface);
+  box-shadow: var(--home-panel-shadow, var(--shadow-card, none));
+  color: var(--_home-ink);
+}
+.home-panel-head {
+  display: flex;
+  min-height: 52px;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 8px 20px;
+}
+.home-panel[data-feed] > .home-panel-head {
+  margin-bottom: 4px;
+  border-bottom: var(--_home-hairline) solid var(--_home-line);
+}
+.home-panel-title {
+  display: flex;
+  min-width: 0;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 2px 8px;
+  margin: 0;
+  font-size: 16px;
+  line-height: 24px;
+  font-weight: var(--_home-strong);
+  color: var(--_home-ink);
+}
+.home-panel-title-text {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.home-panel-count {
+  display: inline-flex;
+  height: 20px;
+  min-width: 20px;
+  align-items: center;
+  justify-content: center;
+  padding: 0 6px;
+  border-radius: var(--_home-radius-sm);
+  background: var(--_home-chip-bg);
+  font-size: 11px;
+  line-height: 16px;
+  font-weight: var(--_home-strong);
+  font-variant-numeric: tabular-nums;
+  color: var(--_home-ink-muted);
+}
+.home-panel-meta {
+  font-size: 13px;
+  line-height: 20px;
+  font-weight: 400;
+  color: var(--_home-ink-muted);
+}
+.home-panel-right {
+  display: flex;
+  flex-shrink: 0;
+  align-items: center;
+  gap: 12px;
+}
+.home-panel-body {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+}
+
+/* A quiet link with a chevron, for the right slot. */
+.home-panel-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  border-radius: var(--_home-radius-sm);
+  font-size: 13px;
+  line-height: 20px;
+  font-weight: var(--_home-strong);
+  color: var(--_home-ink-muted);
+  text-decoration: none;
+  transition: color 150ms ease-out;
+}
+.home-panel-link:hover { color: var(--_home-ink); }
+.home-panel-link:focus-visible { outline: 2px solid var(--_home-ring); outline-offset: 2px; }
+.home-panel-link > svg { width: 14px; height: 14px; flex-shrink: 0; }
+
+/* A quiet state inside a panel: empty, signed out, or unavailable. */
+.home-panel-note {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 8px;
+  padding: 4px 20px 12px;
+}
+.home-panel-note > p {
+  margin: 0;
+  font-size: 13px;
+  line-height: 20px;
+  color: var(--_home-ink-muted);
+}
+.home-panel-note[data-ruled] {
+  min-height: 80px;
+  justify-content: center;
+  padding: 16px 20px;
+  border-top: var(--_home-hairline) solid var(--_home-line);
+}
+
+/* Rows. HOME_ROW: full width with a hairline above (tables: leaderboard,
+   goals). HOME_FEED_ROW: inset, no hairline (feeds: requests, inbox, tasks).
+   Add HOME_ROW_HOVER to a linked or checkable row. */
+.home-row {
+  display: flex;
+  min-height: 44px;
+  align-items: center;
+  gap: 12px;
+  padding: 0 20px;
+  border-top: var(--_home-hairline) solid var(--_home-line);
+  color: inherit;
+  text-decoration: none;
+}
+.home-feed-row {
+  display: flex;
+  min-height: 44px;
+  align-items: center;
+  gap: 12px;
+  margin: 0 8px;
+  padding: 6px 12px;
+  border-radius: var(--_home-radius-sm);
+  color: inherit;
+  text-decoration: none;
+}
+.home-row-hover { transition: background-color 150ms ease-out; }
+.home-row-hover:hover { background: var(--_home-hover); }
+.home-row-hover:focus-visible { outline: 2px solid var(--_home-ring); outline-offset: -2px; }
+
+/* One neutral chip: the label is the identity, never a hue. */
+.home-chip {
+  display: inline-flex;
+  height: 20px;
+  align-items: center;
+  padding: 0 6px;
+  border: var(--_home-hairline) solid var(--_home-line);
+  border-radius: var(--_home-radius-sm);
+  white-space: nowrap;
+  font-size: 11px;
+  line-height: 16px;
+  font-weight: var(--_home-strong);
+  letter-spacing: 0.02em;
+  color: var(--_home-ink-2);
+}
+
+/* A 28px square holding a row's icon. */
+.home-row-icon {
+  display: grid;
+  width: 28px;
+  height: 28px;
+  flex-shrink: 0;
+  place-items: center;
+  border-radius: var(--_home-radius-sm);
+  background: var(--_home-chip-bg);
+  color: var(--_home-ink-muted);
+}
+.home-row-icon > svg { width: 14px; height: 14px; }
+
+/* ---------- The month clock: "September  Day 27 of 30" and one segment a day ---------- */
+.home-month-clock {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+.home-month-label {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  font-size: 13px;
+  line-height: 20px;
+  font-variant-numeric: tabular-nums;
+  color: var(--_home-ink-muted);
+}
+.home-month-name {
+  font-weight: var(--_home-strong);
+  color: var(--_home-ink);
+}
+.home-day-strip {
+  position: relative;
+  display: flex;
+  height: 20px;
+  align-items: center;
+  gap: 2px;
+  padding: 0 2px;
+  user-select: none;
+}
+@media (max-width: 639.98px) {
+  .home-day-strip { display: none; }
+}
+/* Past days ink, today taller in full ink, days to come faint; the one under
+   the pointer turns signal. The lift itself is an inline transform. */
+.home-day {
+  display: block;
+  width: 3px;
+  height: 8px;
+  border-radius: 1px;
+  transform-origin: center;
+  background: var(--_home-ink-2);
+  transition:
+    transform 180ms cubic-bezier(0.2, 0.7, 0.2, 1),
+    background-color 180ms cubic-bezier(0.2, 0.7, 0.2, 1);
+}
+.home-day[data-day="today"] { height: 14px; background: var(--_home-ink); }
+.home-day[data-day="future"] { background: var(--_home-day-future); }
+.home-day[data-hot] { background: var(--home-signal-ink); }
+.home-day-tip {
+  pointer-events: none;
+  position: absolute;
+  bottom: calc(100% + 6px);
+  z-index: 10;
+  transform: translateX(-50%);
+  white-space: nowrap;
+  padding: 3px 7px;
+  border-radius: 6px;
+  background: var(--_home-ink);
+  color: var(--_home-surface);
+  font-size: 11px;
+  line-height: 16px;
+  font-weight: var(--_home-strong);
+  font-variant-numeric: tabular-nums;
+}
+
+/* ---------- Reduced motion: no entrances, no idle loop, no lift ---------- */
+@media (prefers-reduced-motion: reduce) {
+  .home-enter-up,
+  .home-enter-rise,
+  .home-enter-sweep,
+  .home-breathe { animation: none; }
+  .home-tile:hover,
+  .home-tile:focus-visible { transform: none; }
+  .home-day { transition: none; }
+}

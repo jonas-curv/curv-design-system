@@ -43,6 +43,28 @@ That's it — colors, dark mode, elevation and radii now match Revenue OS exactl
 
 ---
 
+## Home kit
+
+One shared set of Home page pieces for every OS: `CountText`, `MonthClock`, `HomePanel`, `PanelLink`, `HomePanelNote`, the row classes and the dark pulse surface. Full reference and tokens: [`docs/home.md`](docs/home.md).
+
+```tsx
+import { MonthClock, HomePanel, PanelLink, HOME_FEED_ROW } from "@curvgroup/design-system/home";
+```
+
+```css
+@import "@curvgroup/design-system/home.css";
+```
+
+It stands alone like the mobile entry. React is its only import, it uses no Tailwind classes, and colors come from the app's existing tokens with fallbacks. To vendor it, copy these into `vendor/curv-design-system/`:
+
+```
+dist/home.js  dist/home.d.ts  dist/home-client.js  dist/home-client.d.ts  home.css
+```
+
+Then add the `"./home"` and `"./home.css"` entries to the vendored `package.json` exports. Leave `dist/index.js` alone.
+
+---
+
 ## Staying up to date (how changes propagate)
 
 The package is **versioned**. When a component or token changes here and a new version is published, **Renovate** (configured in each OS repo) automatically opens a "bump `@curvgroup/design-system`" PR in every app. CI runs; you merge.
@@ -92,6 +114,7 @@ Layers 1–2 are machine-enforced; 3–4 keep humans and agents honest.
 
 ```
 theme.css                  shared Tailwind v4 tokens (light + dark)
+home.css                   the Home kit's pulse surface, panels and month clock (docs/home.md)
 src/                       components + the cn() helper
 site/                      the "OS Design System" showcase (npm run dev → :6006)
 eslint/                    the shared ESLint config + design-language plugin
