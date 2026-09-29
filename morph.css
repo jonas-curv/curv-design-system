@@ -1,0 +1,569 @@
+/* @curvgroup/design-system — Morph kit (morph.css).
+ *
+ * MorphStack: a one-line summary over a stack of faces that opens in place
+ * into the list it summarises. Import once in the app's global stylesheet,
+ * after Tailwind:
+ *
+ *     @import "@curvgroup/design-system/morph.css";
+ *
+ * No Tailwind classes: every rule is a plain class the component emits, and
+ * every color is a --morph-* variable set per tone. The light and row tones
+ * read the app's own tokens (--card, --popover, --foreground, ...) with
+ * fallbacks, so they follow dark mode; dark and island are fixed in both
+ * themes, like the top bar.
+ *
+ * Layered: the order statement matches Tailwind v4's, so importing this file
+ * before or after Tailwind leaves preflight under it and utilities over it.
+ * Motion: the morph itself is a Web Animations FLIP in the component; this
+ * file owns the row exit, the content fade and the reduced-motion fallback.
+ * 280ms open, 200ms close, 180ms row exit, ease-out, no bounce. */
+
+@layer theme, base, components, utilities;
+
+@layer components {
+  .morph {
+    --morph-ease: cubic-bezier(0.22, 1, 0.36, 1);
+    --morph-width: 540px;
+    --morph-pill-h: 36px;
+    --morph-pill-r: 18px;
+    --morph-panel-r: 16px;
+    --morph-head-h: 52px;
+    --morph-row-h: 56px;
+    --morph-av: 32px;
+    --morph-stack-av: 24px;
+    --morph-pad-b: 8px;
+    --morph-max-rows: 6;
+
+    position: relative;
+    display: inline-block;
+    vertical-align: middle;
+    font-size: 13px;
+    line-height: 1.25;
+    color: var(--morph-ink);
+  }
+
+  /* ---------- Tones ---------- */
+
+  .morph[data-tone="dark"],
+  .morph[data-tone="island"] {
+    --morph-ink: #ededed;
+    --morph-muted: #a1a1a6;
+    --morph-hair: rgba(255, 255, 255, 0.07);
+    --morph-hot: #ff6b66;
+    --morph-primary: #ededed;
+    --morph-primary-ink: #0b0b0c;
+    --morph-line: rgba(255, 255, 255, 0.16);
+    --morph-hover: rgba(255, 255, 255, 0.08);
+    --morph-ring: rgba(255, 255, 255, 0.55);
+    --morph-field: rgba(255, 255, 255, 0.08);
+    --morph-ok: #7ee08a;
+  }
+
+  /* A floating notice: 52px pill, bigger faces, a 470px panel. */
+  .morph[data-tone="dark"] {
+    --morph-pill-bg: #1b1b1b;
+    --morph-panel-bg: #1b1b1b;
+    --morph-pill-h: 52px;
+    --morph-pill-r: 26px;
+    --morph-panel-r: 18px;
+    --morph-stack-av: 36px;
+    --morph-width: 470px;
+    --morph-pill-shadow: 0 12px 28px -12px rgba(0, 0, 0, 0.35);
+    --morph-panel-shadow: 0 28px 56px -18px rgba(0, 0, 0, 0.4);
+  }
+
+  /* Sits in the dark top bar: a lighter capsule that opens into a deeper card. */
+  .morph[data-tone="island"] {
+    --morph-pill-bg: #2a2a2c;
+    --morph-panel-bg: #1c1c1e;
+    --morph-pill-shadow: inset 0 0 0 0.5px rgba(255, 255, 255, 0.06);
+    --morph-panel-shadow: 0 28px 56px -18px rgba(0, 0, 0, 0.45), inset 0 0 0 0.5px rgba(255, 255, 255, 0.09);
+  }
+
+  .morph[data-tone="light"],
+  .morph[data-tone="row"] {
+    --morph-ink: var(--foreground, #1b1b1b);
+    --morph-muted: var(--muted-foreground, #6b6b6f);
+    --morph-hair: var(--border, rgba(27, 27, 27, 0.08));
+    --morph-hot: var(--destructive, #d6453f);
+    --morph-primary: var(--primary, #171717);
+    --morph-primary-ink: var(--primary-foreground, #ffffff);
+    --morph-line: var(--input, rgba(27, 27, 27, 0.12));
+    --morph-hover: var(--accent, rgba(27, 27, 27, 0.05));
+    --morph-ring: var(--ring, rgba(27, 27, 27, 0.2));
+    --morph-field: var(--muted, #f3f3f4);
+    --morph-ok: var(--verdict-green, #1f7a33);
+  }
+
+  /* A card on a light page. */
+  .morph[data-tone="light"] {
+    --morph-pill-bg: var(--card, #ffffff);
+    --morph-panel-bg: var(--popover, #ffffff);
+    --morph-pill-h: 44px;
+    --morph-pill-r: 22px;
+    --morph-stack-av: 28px;
+    --morph-width: 400px;
+    --morph-head-h: 48px;
+    --morph-row-h: 48px;
+    --morph-av: 28px;
+    --morph-pill-shadow: var(
+      --shadow-card,
+      0 0 0 0.5px rgba(0, 0, 0, 0.088),
+      0 3px 6px -2px rgba(0, 0, 0, 0.02),
+      0 1px 1px rgba(0, 0, 0, 0.04)
+    );
+    --morph-panel-shadow: 0 0 0 0.5px rgba(0, 0, 0, 0.09), 0 18px 36px -14px rgba(0, 0, 0, 0.16), 0 2px 4px rgba(0, 0, 0, 0.04);
+  }
+
+  /* A row inside a list (a notifications popover): full width, opens in flow. */
+  .morph[data-tone="row"] {
+    --morph-pill-bg: transparent;
+    --morph-panel-bg: var(--surface-2, #f6f6f7);
+    --morph-stack-ring: var(--popover, #ffffff);
+    --morph-pill-h: 56px;
+    --morph-pill-r: 10px;
+    --morph-panel-r: 10px;
+    --morph-head-h: 44px;
+    --morph-row-h: 44px;
+    --morph-av: 26px;
+    --morph-stack-av: 26px;
+    --morph-pad-b: 6px;
+    --morph-pill-shadow: none;
+    --morph-panel-shadow: none;
+    display: block;
+  }
+
+  /* ---------- Collapsed line ---------- */
+
+  .morph-pill {
+    display: inline-flex;
+    align-items: center;
+    height: var(--morph-pill-h);
+    border-radius: var(--morph-pill-r);
+    background: var(--morph-pill-bg);
+    box-shadow: var(--morph-pill-shadow);
+    box-sizing: border-box;
+  }
+  .morph[data-tone="row"] .morph-pill {
+    display: flex;
+    width: 100%;
+  }
+  .morph[data-overlay]:not([data-phase="closed"]) .morph-pill {
+    visibility: hidden;
+  }
+  .morph:not([data-overlay]):not([data-phase="closed"]) .morph-pill {
+    display: none;
+  }
+
+  .morph-trigger {
+    all: unset;
+    box-sizing: border-box;
+    display: flex;
+    flex: 1 1 auto;
+    min-width: 0;
+    align-items: center;
+    gap: 10px;
+    height: 100%;
+    padding-inline: calc((var(--morph-pill-h) - var(--morph-stack-av)) / 2) 12px;
+    border-radius: inherit;
+    font-size: 13px;
+    white-space: nowrap;
+    color: var(--morph-ink);
+    cursor: pointer;
+  }
+  .morph-trigger[aria-disabled="true"] {
+    cursor: default;
+  }
+  .morph[data-tone="row"] .morph-trigger {
+    padding-inline: 16px 12px;
+    transition: background-color 150ms ease;
+  }
+  .morph[data-tone="row"] .morph-trigger:hover {
+    background: var(--morph-hover);
+  }
+  .morph-trigger:focus-visible,
+  .morph-icon-btn:focus-visible,
+  .morph-btn:focus-visible,
+  .morph-row-link:focus-visible {
+    outline: 2px solid var(--morph-ring);
+    outline-offset: 2px;
+  }
+
+  .morph-stack {
+    display: flex;
+    flex: none;
+  }
+  .morph-stack .morph-av {
+    width: var(--morph-stack-av);
+    height: var(--morph-stack-av);
+    font-size: calc(var(--morph-stack-av) * 0.375);
+    box-shadow: 0 0 0 2px var(--morph-stack-ring, var(--morph-pill-bg));
+  }
+  .morph-stack .morph-av + .morph-av {
+    margin-left: calc(var(--morph-stack-av) * -0.38);
+  }
+
+  .morph-summary {
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    font-weight: 500;
+  }
+  .morph-summary strong {
+    font-weight: 600;
+  }
+  .morph-pill-aside {
+    margin-left: auto;
+    flex: none;
+    font-size: 11px;
+    color: var(--morph-muted);
+    font-variant-numeric: tabular-nums;
+  }
+  .morph-chevron {
+    display: flex;
+    flex: none;
+    color: var(--morph-muted);
+    margin-left: -2px;
+  }
+  .morph-pill-aside + .morph-chevron {
+    margin-left: 6px;
+  }
+  .morph-cleared-icon {
+    display: flex;
+    flex: none;
+    color: var(--morph-ok);
+    padding-left: 4px;
+  }
+  .morph-pill > .morph-icon-btn {
+    margin-right: calc((var(--morph-pill-h) - 28px) / 2);
+  }
+
+  .morph-muted {
+    color: var(--morph-muted);
+  }
+  .morph-hot {
+    color: var(--morph-hot);
+  }
+
+  /* ---------- Open panel ---------- */
+
+  .morph-panel {
+    box-sizing: border-box;
+    width: min(var(--morph-width), calc(100vw - 24px));
+    overflow: hidden;
+    border-radius: var(--morph-panel-r);
+    background: var(--morph-panel-bg);
+    box-shadow: var(--morph-panel-shadow);
+    color: var(--morph-ink);
+  }
+  .morph[data-overlay] .morph-panel {
+    position: absolute;
+    top: 0;
+    z-index: 50;
+  }
+  .morph[data-overlay][data-anchor="end"] .morph-panel {
+    right: 0;
+  }
+  .morph[data-overlay][data-anchor="start"] .morph-panel {
+    left: 0;
+  }
+  .morph[data-overlay][data-anchor="center"] .morph-panel {
+    left: 50%;
+    translate: -50% 0;
+  }
+  .morph[data-tone="row"] .morph-panel {
+    width: 100%;
+  }
+
+  .morph-head {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    height: var(--morph-head-h);
+    padding: 0 10px 0 16px;
+    box-sizing: border-box;
+  }
+  .morph-title {
+    font-size: 14px;
+    font-weight: 600;
+    letter-spacing: -0.01em;
+    white-space: nowrap;
+  }
+  .morph[data-tone="row"] .morph-title {
+    font-size: 13px;
+  }
+  .morph-count {
+    font-size: 13px;
+    color: var(--morph-muted);
+    font-variant-numeric: tabular-nums;
+  }
+  .morph-head-end {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    margin-left: auto;
+  }
+  .morph-head-end a,
+  .morph-head-end .morph-link {
+    font-size: 12px;
+    font-weight: 500;
+    color: var(--morph-muted);
+    text-decoration: none;
+    padding: 0 6px;
+  }
+  .morph-head-end a:hover,
+  .morph-head-end .morph-link:hover {
+    color: var(--morph-ink);
+  }
+
+  .morph-icon-btn {
+    all: unset;
+    box-sizing: border-box;
+    display: grid;
+    place-items: center;
+    width: 28px;
+    height: 28px;
+    flex: none;
+    border-radius: 8px;
+    color: var(--morph-muted);
+    cursor: pointer;
+    transition: background-color 150ms ease, color 150ms ease;
+  }
+  .morph-icon-btn:hover {
+    background: var(--morph-hover);
+    color: var(--morph-ink);
+  }
+
+  .morph-list {
+    list-style: none;
+    margin: 0;
+    padding: 0 0 var(--morph-pad-b);
+    max-height: calc(var(--morph-row-h) * var(--morph-max-rows) + var(--morph-pad-b));
+    overflow-y: auto;
+    overscroll-behavior: contain;
+  }
+
+  .morph-row {
+    position: relative;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    height: var(--morph-row-h);
+    padding: 0 16px;
+    box-sizing: border-box;
+    overflow: hidden;
+    transition:
+      height var(--morph-exit, 180ms) var(--morph-ease),
+      opacity 120ms ease,
+      transform var(--morph-exit, 180ms) var(--morph-ease);
+  }
+  .morph-row + .morph-row::before {
+    content: "";
+    position: absolute;
+    left: calc(16px + var(--morph-av) + 12px);
+    right: 16px;
+    top: 0;
+    height: 1px;
+    background: var(--morph-hair);
+  }
+  .morph-row[data-leaving] {
+    height: 0;
+    opacity: 0;
+    transform: translateX(12px);
+    pointer-events: none;
+  }
+
+  .morph-av {
+    position: relative;
+    display: grid;
+    place-items: center;
+    flex: none;
+    width: var(--morph-av);
+    height: var(--morph-av);
+    border-radius: 50%;
+    overflow: hidden;
+    background: var(--morph-av-bg, #e5e5e6);
+    color: var(--morph-av-ink, #1b1b1b);
+    font-size: calc(var(--morph-av) * 0.375);
+    font-weight: 600;
+    letter-spacing: 0.01em;
+    transform-origin: 0 0;
+  }
+  .morph-av img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+  }
+
+  .morph-row-body {
+    display: flex;
+    flex: 1 1 auto;
+    min-width: 0;
+    align-items: center;
+    gap: 8px;
+    height: 100%;
+    white-space: nowrap;
+  }
+  .morph-row-link {
+    color: inherit;
+    text-decoration: none;
+    border-radius: 6px;
+  }
+  .morph-row-link::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+  }
+  .morph-row:has(.morph-row-link):hover {
+    background: var(--morph-hover);
+  }
+  .morph-label {
+    flex: 0 1 auto;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    font-weight: 500;
+  }
+  .morph-meta {
+    flex: 0 1 auto;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    color: var(--morph-muted);
+  }
+  .morph-aside {
+    flex: none;
+    margin-left: auto;
+    font-size: 12px;
+    font-weight: 500;
+    color: var(--morph-muted);
+    font-variant-numeric: tabular-nums;
+  }
+  .morph-aside[data-tone="hot"] {
+    color: var(--morph-hot);
+  }
+  .morph[data-tone="row"] .morph-aside {
+    font-size: 11px;
+  }
+  .morph-actions {
+    display: flex;
+    flex: none;
+    align-items: center;
+    gap: 8px;
+    margin-left: auto;
+  }
+  .morph-aside + .morph-actions {
+    margin-left: 12px;
+  }
+
+  .morph-btn {
+    all: unset;
+    box-sizing: border-box;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 64px;
+    height: 30px;
+    padding: 0 12px;
+    border-radius: 8px;
+    font-size: 12px;
+    font-weight: 500;
+    white-space: nowrap;
+    cursor: pointer;
+    transition: background-color 150ms ease, box-shadow 150ms ease, opacity 150ms ease;
+  }
+  .morph-btn[data-variant="primary"] {
+    background: var(--morph-primary);
+    color: var(--morph-primary-ink);
+  }
+  .morph-btn[data-variant="primary"]:hover {
+    opacity: 0.9;
+  }
+  .morph-btn[data-variant="secondary"] {
+    box-shadow: inset 0 0 0 1px var(--morph-line);
+    color: var(--morph-ink);
+  }
+  .morph-btn[data-variant="secondary"]:hover,
+  .morph-btn[data-variant="ghost"]:hover {
+    background: var(--morph-hover);
+  }
+  .morph-btn[data-variant="ghost"] {
+    color: var(--morph-muted);
+    min-width: 0;
+    padding: 0 8px;
+  }
+  .morph-btn:disabled {
+    opacity: 0.5;
+    cursor: default;
+  }
+  .morph-btn:active:not(:disabled) {
+    scale: 0.97;
+  }
+
+  .morph-input {
+    all: unset;
+    box-sizing: border-box;
+    width: 160px;
+    height: 30px;
+    padding: 0 10px;
+    border-radius: 8px;
+    background: var(--morph-field);
+    box-shadow: inset 0 0 0 1px var(--morph-line);
+    color: var(--morph-ink);
+    font-size: 12px;
+  }
+  .morph-input::placeholder {
+    color: var(--morph-muted);
+  }
+  .morph-input:focus-visible {
+    box-shadow: inset 0 0 0 1px var(--morph-ring);
+  }
+
+  /* ---------- Content fade: after the surface starts to grow ---------- */
+
+  .morph-panel .morph-head,
+  .morph-panel .morph-fade {
+    animation: morph-in 160ms ease both;
+    animation-delay: calc(90ms + var(--morph-i, 0) * 18ms);
+  }
+  .morph-panel .morph-row + .morph-row::before {
+    animation: morph-fade 160ms ease both;
+    animation-delay: calc(90ms + var(--morph-i, 0) * 18ms);
+  }
+  .morph[data-phase="closing"] .morph-head,
+  .morph[data-phase="closing"] .morph-fade,
+  .morph[data-phase="closing"] .morph-row::before {
+    opacity: 0;
+    transition: opacity 90ms ease;
+  }
+
+  @keyframes morph-in {
+    from {
+      opacity: 0;
+      transform: translateY(4px);
+    }
+  }
+  @keyframes morph-fade {
+    from {
+      opacity: 0;
+    }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .morph-panel .morph-head,
+    .morph-panel .morph-fade,
+    .morph-panel .morph-row + .morph-row::before {
+      animation-name: morph-fade;
+      animation-delay: 0ms;
+    }
+    .morph-row {
+      transition: opacity 150ms ease;
+    }
+    .morph-row[data-leaving] {
+      transform: none;
+    }
+    .morph-btn:active:not(:disabled) {
+      scale: none;
+    }
+  }
+}
