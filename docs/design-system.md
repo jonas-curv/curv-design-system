@@ -911,6 +911,12 @@ system and add it below — the second copy is the signal to extract, never to f
   table), `StatCard` / `StatGroup` / `BreakdownRow`, `Sparkline`, `LineChart`,
   `BarChart`, `BarBreakdown`, `ChartCard`, `ReportTable` (P&L / matrix grid),
   `KanbanBoard` / `KanbanColumn` / `KanbanCard`, `HScroll`.
+- **Kits (own entries)**: `@curvgroup/design-system/home` (Home pieces,
+  docs/home.md); `@curvgroup/design-system/morph` — `MorphStack`, a one-line
+  "Sam and 4 others are waiting" summary that opens in place into its rows with
+  inline actions (approvals waiting on you, a burst of same-type notifications,
+  access requests). Use it instead of a count that sends people to another
+  page (docs/morph.md).
 
 **Already extracted (use the package — don't fork the old app-local copies):**
 The pieces this section used to list now ship in the package — `date-range-picker`

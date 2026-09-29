@@ -1,6 +1,6 @@
 {
   "name": "@curvgroup/design-system",
-  "version": "0.2.26",
+  "version": "0.2.27",
   "private": true,
   "description": "Curv shared design system — components, theme tokens, and Claude Code skills used across all Curv OS apps.",
   "type": "module",
@@ -15,7 +15,8 @@
     "agents",
     "docs",
     "mobile.css",
-    "home.css"
+    "home.css",
+    "morph.css"
   ],
   "exports": {
     ".": {
@@ -35,17 +36,23 @@
       "import": "./dist/home.js",
       "default": "./dist/home.js"
     },
-    "./home.css": "./home.css"
+    "./home.css": "./home.css",
+    "./morph": {
+      "types": "./dist/morph.d.ts",
+      "import": "./dist/morph.js",
+      "default": "./dist/morph.js"
+    },
+    "./morph.css": "./morph.css"
   },
   "scripts": {
     "dev": "vite",
-    "build": "tsup && tsup --config tsup.home.config.ts",
+    "build": "tsup && tsup --config tsup.home.config.ts && tsup --config tsup.morph.config.ts",
     "prepare": "npm run build",
     "watch": "tsup --watch",
     "site:build": "vite build",
     "typecheck": "tsc --noEmit",
     "lint": "eslint .",
-    "test": "node --test tests/mobile.test.mjs tests/home.test.mjs"
+    "test": "node --test tests/mobile.test.mjs tests/home.test.mjs tests/morph.test.mjs"
   },
   "peerDependencies": {
     "jspdf": "*",

@@ -17,6 +17,7 @@ import {
   Trash2,
   Users,
 } from "lucide-react";
+import { MorphStack, MorphStackButton, MorphStackInput, type MorphStackItem } from "../src/morph";
 import {
   AppFrame,
   Avatar,
@@ -1064,6 +1065,123 @@ function ThemeToggleDemo() {
   return <ThemeToggle value={theme} onValueChange={setTheme} />;
 }
 
+
+/* ---------- MorphStack demos ---------- */
+
+type Waiting = { id: string; name: string; meta: string; days: number };
+const WAITING: Waiting[] = [
+  { id: "w1", name: "Sam Rivera", meta: "Time off · Aug 4–8", days: 71 },
+  { id: "w2", name: "Priya Shah", meta: "Time off · Sep 22–26", days: 12 },
+  { id: "w3", name: "Alex Kim", meta: "Time off · Oct 13–17", days: 9 },
+  { id: "w4", name: "Jordan Lee", meta: "Expense · $84.20", days: 2 },
+  { id: "w5", name: "Maya Chen", meta: "Expense · $412.00", days: 1 },
+];
+
+function MorphApprovalsDemo() {
+  const [left, setLeft] = React.useState(WAITING);
+  const [declining, setDeclining] = React.useState<string | null>(null);
+  const remove = (id: string) => {
+    setDeclining(null);
+    setLeft((l) => l.filter((w) => w.id !== id));
+  };
+  const oldest = Math.max(0, ...left.map((w) => w.days));
+  const items: MorphStackItem[] = left.map((w) => ({
+    id: w.id,
+    label: w.name,
+    meta: w.meta,
+    aside: declining === w.id ? undefined : `${w.days}d`,
+    asideTone: w.days >= 7 ? "hot" : "muted",
+    actions:
+      declining === w.id ? (
+        <>
+          <MorphStackInput placeholder="Reason" aria-label={`Reason for declining ${w.name}`} autoFocus />
+          <MorphStackButton variant="primary" onClick={() => remove(w.id)}>Send</MorphStackButton>
+          <MorphStackButton variant="ghost" aria-label="Cancel" onClick={() => setDeclining(null)}>Cancel</MorphStackButton>
+        </>
+      ) : (
+        <>
+          <MorphStackButton onClick={() => setDeclining(w.id)} aria-label={`Decline ${w.name}`}>Decline</MorphStackButton>
+          <MorphStackButton variant="primary" onClick={() => remove(w.id)} aria-label={`Approve ${w.name}`}>Approve</MorphStackButton>
+        </>
+      ),
+  }));
+  return (
+    <div className="flex w-full flex-col items-end gap-3">
+      <div className="flex h-14 w-full items-center justify-end rounded-lg bg-topbar px-3" data-morph-demo="island">
+        <MorphStack
+          tone="island"
+          anchor="end"
+          items={items}
+          summary={<><strong>{left.length} waiting</strong><span className={oldest >= 7 ? "morph-hot" : "morph-muted"}> · {oldest}d</span></>}
+          title="Approvals"
+          headerAction={<a href="#/morph-stack">View all</a>}
+          clearedLabel="All clear"
+        />
+      </div>
+      <Button variant="secondary" size="sm" onClick={() => setLeft(WAITING)}>Reset</Button>
+    </div>
+  );
+}
+
+const BURST = ["Northwind Coffee", "Harbor Fitness", "Alder Pine Co", "Summit Dental", "Kite Studio", "Mesa Brewing"];
+
+function MorphGroupDemo() {
+  const [left, setLeft] = React.useState(BURST);
+  const items: MorphStackItem[] = left.map((name, i) => ({
+    id: name,
+    label: name,
+    meta: `Deal ${18422 - i * 4}`,
+    aside: `${2 + i * 11}m`,
+    href: "#/morph-stack",
+    onOpen: () => setLeft((l) => l.filter((n) => n !== name)),
+  }));
+  return (
+    <div className="w-[360px] rounded-xl bg-popover p-2 shadow-card" data-morph-demo="row">
+      <MorphStack
+        tone="row"
+        items={items}
+        summary={<><strong>Design assigned</strong><span className="morph-muted"> · {left[0]} and {left.length - 1} more</span></>}
+        pillAside="2m"
+        title="Design assigned"
+        headerAction={<button type="button" className="morph-link" onClick={() => setLeft([])}>Mark read</button>}
+        clearedLabel="All caught up"
+      />
+      <div className="px-4 py-3 text-[13px] text-muted-foreground">RFQ completed · Deal 18388</div>
+      <div className="px-4 pb-2 text-[13px] text-muted-foreground">Refund decision · Order 51207</div>
+      <div className="px-2 pb-1"><Button variant="ghost" size="sm" onClick={() => setLeft(BURST)}>Reset</Button></div>
+    </div>
+  );
+}
+
+function MorphAccessDemo() {
+  const people = ["Anna Lindqvist", "Diego Ramos", "Tessa Grant"];
+  const [left, setLeft] = React.useState(people);
+  const items: MorphStackItem[] = left.map((name) => ({
+    id: name,
+    label: name,
+    actions: (
+      <>
+        <MorphStackButton onClick={() => setLeft((l) => l.filter((n) => n !== name))}>Reject</MorphStackButton>
+        <MorphStackButton variant="primary" onClick={() => setLeft((l) => l.filter((n) => n !== name))}>Approve</MorphStackButton>
+      </>
+    ),
+  }));
+  return (
+    <div className="flex w-full flex-col items-center gap-3" data-morph-demo="dark">
+      <MorphStack
+        tone="dark"
+        anchor="center"
+        items={items}
+        summary={<><strong>{left[0]?.split(" ")[0]}</strong><span className="morph-muted">{left.length > 1 ? ` and ${left.length - 1} others requested access` : " requested access"}</span></>}
+        title="Access requests"
+        onDismiss={() => setLeft([])}
+        clearedLabel="All handled"
+      />
+      <Button variant="secondary" size="sm" onClick={() => setLeft(people)}>Reset</Button>
+    </div>
+  );
+}
+
 export const COMPONENTS: Entry[] = [
   {
     slug: "app-frame",
@@ -1961,6 +2079,30 @@ const [open, setOpen] = useState(false);
   footer={<><DialogClose>Cancel</DialogClose><Button variant="destructive" onClick={remove}>Delete</Button></>}
 />`,
     demos: [{ canvas: "center", render: () => <DialogDemo /> }],
+  },
+  {
+    slug: "morph-stack",
+    name: "Morph Stack",
+    group: "Overlays & feedback",
+    isNew: true,
+    summary:
+      "A one-line summary over a stack of faces that opens in place into the list it summarises, with actions on each row. For approvals waiting on you, a burst of same-type notifications, access requests.",
+    usage: `import { MorphStack, MorphStackButton } from "@curvgroup/design-system/morph";
+// globals.css: @import "@curvgroup/design-system/morph.css";
+
+<MorphStack
+  tone="island"
+  items={rows.map((r) => ({ id: r.id, label: r.name, meta: r.meta, aside: r.age, asideTone: r.days >= 7 ? "hot" : "muted",
+    actions: <MorphStackButton variant="primary" onClick={() => approve(r)}>Approve</MorphStackButton> }))}
+  summary={<><strong>{rows.length} waiting</strong><span className="morph-hot"> · {oldest}d</span></>}
+  title="Approvals"
+  clearedLabel="All clear"
+/>`,
+    demos: [
+      { title: "Island in the top bar", description: "Approve removes the row; Decline asks for a reason in the row.", canvas: "center", render: () => <MorphApprovalsDemo /> },
+      { title: "A burst in the notifications list", description: "Opens in flow and pushes the list down. Opening a row marks it read.", canvas: "center", render: () => <MorphGroupDemo /> },
+      { title: "Floating notice", canvas: "center", render: () => <MorphAccessDemo /> },
+    ],
   },
   {
     slug: "confirm-dialog",

@@ -65,6 +65,22 @@ Then add the `"./home"` and `"./home.css"` entries to the vendored `package.json
 
 ---
 
+## Morph kit
+
+`MorphStack`: a one-line summary over a stack of faces that opens in place into the list it summarises, with row actions. Full reference: [`docs/morph.md`](docs/morph.md).
+
+```tsx
+import { MorphStack, MorphStackButton } from "@curvgroup/design-system/morph";
+```
+
+```css
+@import "@curvgroup/design-system/morph.css";
+```
+
+It stands alone like the home and mobile entries. To vendor it, copy `dist/morph.js  dist/morph.d.ts  morph.css` into `vendor/curv-design-system/` and add the `"./morph"` and `"./morph.css"` exports. Leave `dist/index.js` alone.
+
+---
+
 ## Staying up to date (how changes propagate)
 
 The package is **versioned**. When a component or token changes here and a new version is published, **Renovate** (configured in each OS repo) automatically opens a "bump `@curvgroup/design-system`" PR in every app. CI runs; you merge.
@@ -115,6 +131,7 @@ Layers 1–2 are machine-enforced; 3–4 keep humans and agents honest.
 ```
 theme.css                  shared Tailwind v4 tokens (light + dark)
 home.css                   the Home kit's pulse surface, panels and month clock (docs/home.md)
+morph.css                  the Morph kit: MorphStack tones, rows and motion (docs/morph.md)
 src/                       components + the cn() helper
 site/                      the "OS Design System" showcase (npm run dev → :6006)
 eslint/                    the shared ESLint config + design-language plugin
