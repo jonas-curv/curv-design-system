@@ -144,9 +144,13 @@
     box-shadow: var(--morph-pill-shadow);
     box-sizing: border-box;
   }
+  .morph-pill {
+    max-width: calc(100vw - 24px);
+  }
   .morph[data-tone="row"] .morph-pill {
     display: flex;
     width: 100%;
+    max-width: none;
   }
   .morph[data-overlay]:not([data-phase="closed"]) .morph-pill {
     visibility: hidden;
@@ -546,6 +550,25 @@
   @keyframes morph-fade {
     from {
       opacity: 0;
+    }
+  }
+
+  /* Phones: a row with actions puts them on a second line, so the name
+     keeps its room. */
+  @media (max-width: 480px) {
+    .morph-row:has(.morph-actions):not([data-leaving]) {
+      height: calc(var(--morph-row-h) + 28px);
+    }
+    .morph-row-body:has(.morph-actions) {
+      flex-wrap: wrap;
+      align-content: center;
+      row-gap: 8px;
+    }
+    .morph-row-body:has(.morph-actions) .morph-actions {
+      flex-basis: 100%;
+      min-width: 0;
+      margin-left: 0;
+      justify-content: flex-end;
     }
   }
 

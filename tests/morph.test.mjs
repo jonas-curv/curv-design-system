@@ -86,4 +86,6 @@ test('css: layered under utilities, every tone defined, reduced motion drops mov
  assert.match(css, /\.morph-row\[data-leaving\] \{/);
  assert.match(css, /@media \(prefers-reduced-motion: reduce\)/);
  assert.doesNotMatch(css, /cubic-bezier\([^)]*1\.[1-9]/);  // no overshoot curves
+ assert.match(css, /\.morph-pill \{\s*max-width: calc\(100vw - 24px\);/);   // the line never runs off a phone
+ assert.match(css, /@media \(max-width: 480px\)[\s\S]*?\.morph-actions \{\s*flex-basis: 100%;/); // actions wrap on phones
 });

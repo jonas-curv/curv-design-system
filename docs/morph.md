@@ -25,6 +25,8 @@ import { MorphStack, MorphStackButton, MorphStackInput, type MorphStackItem } fr
 - `open` / `defaultOpen` / `onOpenChange`, `onDismiss` (adds × to the line and the header), `clearedLabel` (shown when the list empties; without it the component renders nothing), `maxVisibleRows` (default 6, then the list scrolls), and `linkAs` (e.g. `next/link`).
 - `MorphStackButton` (`variant: primary | secondary | ghost`) and `MorphStackInput` (e.g. a decline reason) match the tone.
 
+Width: the open panel is `--morph-width` (540px island, 470px dark, 400px light, full width for row), capped at the viewport minus 24px; set it on the component's `style` when rows carry wide controls. The collapsed line never exceeds the viewport, and on phones (≤480px) a row's actions drop to a second line.
+
 Remove an item from `items` to act on it; the row animates out. Removing the last one closes the panel and shows `clearedLabel`.
 
 ## Motion
