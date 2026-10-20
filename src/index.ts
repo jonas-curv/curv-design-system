@@ -83,6 +83,7 @@ export {
   type DataTableProps,
   type DataTableColumn,
   type DataTableTab,
+  type DataTableGroup,
 } from "./components/data-table/data-table";
 export { TableLink, type TableLinkProps } from "./components/data-table/table-link";
 export { toCsv, downloadCsv, downloadPdf, type CellValue } from "./components/data-table/export";
