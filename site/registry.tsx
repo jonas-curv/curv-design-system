@@ -28,6 +28,7 @@ import {
   Checkbox,
   DataTable,
   type DataTableColumn,
+  type DataTableGroup,
   Dialog,
   DialogClose,
   Field,
@@ -928,6 +929,138 @@ function DealsTableDemo() {
   );
 }
 
+type PoLine = {
+  id: string;
+  /** Purchase order the line belongs to; null = not on a PO yet. */
+  po: string | null;
+  supplier: string | null;
+  item: string;
+  qty: number;
+  unit: number;
+  due: string;
+  status: "Late" | "On track" | "Awaiting art" | "Delivered";
+};
+
+// A fixed "today" so the late counts in the sample never drift.
+const PO_TODAY = "2026-10-20";
+const NO_PO = "Not on a PO";
+const shortDate = new Intl.DateTimeFormat("en-US", { month: "short", day: "numeric", timeZone: "UTC" });
+const dueLabel = (iso: string) => shortDate.format(new Date(`${iso}T00:00:00Z`));
+
+const PO_LINES: PoLine[] = [
+  { id: "l1", po: "PO-1042", supplier: "Hanzhou Pack", item: "Mailer box 12 x 9 x 3", qty: 8000, unit: 0.62, due: "2026-10-14", status: "Late" },
+  { id: "l2", po: "PO-1042", supplier: "Hanzhou Pack", item: "Mailer box 9 x 6 x 3", qty: 12000, unit: 0.48, due: "2026-10-14", status: "Late" },
+  { id: "l3", po: "PO-1042", supplier: "Hanzhou Pack", item: "Tissue insert, printed", qty: 20000, unit: 0.09, due: "2026-10-28", status: "On track" },
+  { id: "l4", po: "PO-1042", supplier: "Hanzhou Pack", item: "Care card, 4 x 6", qty: 20000, unit: 0.04, due: "2026-10-28", status: "Awaiting art" },
+  { id: "l5", po: "PO-1047", supplier: "Lumen Cartons", item: "Retail carton, 6-up", qty: 5000, unit: 1.35, due: "2026-11-04", status: "On track" },
+  { id: "l6", po: "PO-1047", supplier: "Lumen Cartons", item: "Shipper carton, 24-up", qty: 1200, unit: 2.1, due: "2026-11-04", status: "On track" },
+  { id: "l7", po: "PO-1047", supplier: "Lumen Cartons", item: "Divider set", qty: 2400, unit: 0.31, due: "2026-11-11", status: "Awaiting art" },
+  { id: "l8", po: "PO-1051", supplier: "Northwind Labels", item: "Front label, matte", qty: 30000, unit: 0.07, due: "2026-10-09", status: "Delivered" },
+  { id: "l9", po: "PO-1051", supplier: "Northwind Labels", item: "Back label, FDA panel", qty: 30000, unit: 0.07, due: "2026-10-09", status: "Delivered" },
+  { id: "l10", po: "PO-1051", supplier: "Northwind Labels", item: "Safety seal", qty: 30000, unit: 0.02, due: "2026-10-23", status: "On track" },
+  { id: "l11", po: "PO-1055", supplier: "Hanzhou Pack", item: "Display tray", qty: 600, unit: 3.4, due: "2026-11-18", status: "Awaiting art" },
+  { id: "l12", po: "PO-1055", supplier: "Hanzhou Pack", item: "Pallet wrap, branded", qty: 150, unit: 6.8, due: "2026-11-18", status: "On track" },
+  { id: "l13", po: null, supplier: null, item: "Gift sleeve, holiday", qty: 4000, unit: 0.22, due: "2026-12-02", status: "Awaiting art" },
+  { id: "l14", po: null, supplier: null, item: "Sample pouch", qty: 2500, unit: 0.15, due: "2026-11-25", status: "Awaiting art" },
+  { id: "l15", po: null, supplier: null, item: "Counter display, 12-up", qty: 300, unit: 4.9, due: "2026-12-09", status: "Awaiting art" },
+];
+
+const PO_STATUS_VARIANT = { Late: "red", "On track": "green", "Awaiting art": "amber", Delivered: "neutral" } as const;
+
+// The due cell's own tones, shared with the group header: red once an open line is past due.
+const isLate = (r: PoLine) => r.status !== "Delivered" && r.due < PO_TODAY;
+const DueDate = ({ iso, late }: { iso: string; late: boolean }) => (
+  <span className={cn("tabular-nums", late && "text-verdict-red")}>{dueLabel(iso)}</span>
+);
+
+const PO_COLUMNS: DataTableColumn<PoLine>[] = [
+  { key: "item", header: "Item", width: 240, sticky: true },
+  { key: "po", header: "PO", width: 100, render: (r) => r.po ?? <span className="text-muted-foreground/50">—</span>, value: (r) => r.po },
+  { key: "qty", header: "Qty", width: 100, align: "right", render: (r) => r.qty.toLocaleString("en-US"), value: (r) => r.qty },
+  { key: "unit", header: "Unit cost", width: 110, align: "right", render: (r) => `$${r.unit.toFixed(2)}`, value: (r) => r.unit },
+  { key: "due", header: "Due", width: 110, render: (r) => <DueDate iso={r.due} late={isLate(r)} />, value: (r) => r.due },
+  { key: "status", header: "Status", width: 140, render: (r) => <Badge variant={PO_STATUS_VARIANT[r.status]}>{r.status}</Badge>, value: (r) => r.status },
+  { key: "supplier", header: "Supplier", minWidth: 160, className: "text-muted-foreground", render: (r) => r.supplier ?? <span className="text-muted-foreground/50">—</span>, value: (r) => r.supplier },
+];
+// By PO the header already says which PO, so the column goes.
+const PO_COLUMNS_GROUPED = PO_COLUMNS.filter((c) => c.key !== "po");
+
+// Module scope keeps `groupBy` stable: a new function each render regroups every render.
+const byPo = (r: PoLine) => r.po;
+
+/**
+ * One line per PO: the id, what it is, ONE count (muted), and the one thing to
+ * act on: the next open due date, in the due cell's tones. Parts are spaced, not
+ * dotted; the real spaces keep screen readers from running them together. Only
+ * the name truncates.
+ */
+function poHeader(group: DataTableGroup<PoLine>) {
+  const n = group.rows.length;
+  const open = group.rows.filter((r) => r.status !== "Delivered");
+  const next = open.length ? open.reduce((a, b) => (a.due <= b.due ? a : b)) : null;
+  return (
+    <>
+      <span className="shrink-0 font-medium text-foreground">{group.key ?? NO_PO}</span>{" "}
+      {group.key !== null && (
+        <>
+          <span className="truncate text-muted-foreground">{group.rows[0].supplier}</span>{" "}
+        </>
+      )}
+      <span className="shrink-0 tabular-nums text-muted-foreground">
+        {n} {n === 1 ? "line" : "lines"}
+      </span>
+      {next && (
+        <>
+          {" "}
+          <span className="shrink-0">
+            <span className="text-muted-foreground">Due</span> <DueDate iso={next.due} late={isLate(next)} />
+          </span>
+        </>
+      )}
+    </>
+  );
+}
+
+function PoTableDemo() {
+  // A view toggle, not a filter: the same rows, the same count, laid out two ways.
+  const [view, setView] = React.useState("po");
+  return (
+    <DataTable
+      columns={view === "po" ? PO_COLUMNS_GROUPED : PO_COLUMNS}
+      rows={PO_LINES}
+      getRowId={(r) => r.id}
+      initialSort={{ key: "due", order: "asc" }}
+      searchable
+      searchPlaceholder="Search item or supplier"
+      searchKeys={["item", "supplier"]}
+      tabs={[
+        { key: "all", label: "All lines" },
+        { key: "late", label: "Late", filter: isLate },
+      ]}
+      summary={
+        <SegmentedControl
+          aria-label="Layout"
+          value={view}
+          onValueChange={setView}
+          items={[
+            { value: "list", label: "List" },
+            { value: "po", label: "By PO" },
+          ]}
+        />
+      }
+      groupBy={view === "po" ? byPo : undefined}
+      renderGroupHeader={poHeader}
+      defaultCollapsedGroups={[null]}
+      ungroupedLabel={NO_PO}
+      exportFilename="po-lines"
+      pdfTitle="PO lines"
+      pdfSubtitle="Curv OS — sample export"
+      unit="lines"
+      maxHeight={440}
+    />
+  );
+}
+
 /* ---------- form-control demos (need local state) ---------- */
 
 function TextFieldDemo() {
@@ -1343,7 +1476,7 @@ export const COMPONENTS: Entry[] = [
     group: "Data display",
     isNew: true,
     summary:
-      "The one table every OS uses. Search, Linear-style filters, view tabs, a summary slot, and CSV/PDF export — each optional. Virtualized rows; column-config driven.",
+      "The one table every OS uses. Search, Linear-style filters, view tabs, a summary slot, row grouping, and CSV/PDF export — each optional. Virtualized rows; column-config driven.",
     usage: `import { DataTable } from "@curvgroup/design-system";
 
 const columns = [
@@ -1360,7 +1493,24 @@ const columns = [
   searchable
   exportFilename="deals"
   initialSort={{ key: "revenue", order: "desc" }}
-/>`,
+/>
+
+// Group rows under a parent record (opt-in). Null goes in one trailing group.
+// Define groupBy once, outside render: a new function each render regroups each time.
+const byPo = (line) => line.po;
+
+<DataTable
+  columns={columns}
+  rows={lines}
+  groupBy={byPo}
+  renderGroupHeader={(group) => <PoSummary group={group} />}
+  defaultCollapsedGroups={[null]}
+  ungroupedLabel="Not on a PO"
+/>
+
+// Own the collapse state (to keep it across an unmount, or to act on open groups only):
+//   collapsedGroups={collapsed} onCollapsedGroupsChange={setCollapsed}
+// With a search box of your own (searchable={false}): searchActive={query.trim() !== ""}`,
     demos: [
       {
         title: "Deals",
@@ -1368,6 +1518,13 @@ const columns = [
           "Everything on: search + Filter (Linear-style chips) + view tabs + summary + Export. Sort by header; scroll is virtualized. Any of these is optional per table.",
         canvas: "surface",
         render: () => <DealsTableDemo />,
+      },
+      {
+        title: "Grouped by purchase order",
+        description:
+          "Opt-in grouping with groupBy: a header row per PO (the id, the supplier, one muted line count, and the next open due date in the due cell's tones) with its lines underneath. Search, tabs and sort run first, so sorting by due date orders the POs by their earliest line. Click a header to collapse it; lines not on a PO sit in a trailing group, collapsed to start, and a search shows its matches there too. The List / By PO switch is a view toggle, not a filter, and the PO column shows in List and goes in By PO, where the header says it.",
+        canvas: "surface",
+        render: () => <PoTableDemo />,
       },
     ],
   },

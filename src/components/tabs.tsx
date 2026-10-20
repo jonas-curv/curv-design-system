@@ -19,6 +19,27 @@ import { cn } from "../lib/cn";
  * one tab's padding (`-ml-3`) while the bar's border stays full-width. Pass
  * `bar={false}` to drop the bar chrome when embedding in a card header.
  *
+ * `pb-px` and `-mb-px` on the list are a BUG FIX, not spacing, and both halves
+ * are load-bearing. `overflow-x-auto` makes the list a scroll container on BOTH
+ * axes — CSS computes `overflow-y` to `auto` whenever `overflow-x` is not
+ * `visible` — and each tab's `after:-bottom-px` underline is an absolutely
+ * positioned descendant, so it left one pixel of scrollable content below the
+ * content box (clientHeight 44, scrollHeight 45). Browsers drawing classic
+ * rather than overlay scrollbars answered that with a stub of a VERTICAL
+ * scrollbar down the side of the tab bar.
+ *
+ *   `pb-px`  one pixel of padding INSIDE the scroll box, so the underline fits
+ *            in the content box and the overflow is gone rather than clipped
+ *            (45/45). Horizontal scrolling still appears on demand.
+ *   `-mb-px` one pixel of margin OUTSIDE it, so the bar stays 44px of content
+ *            and the marker keeps OVERLAPPING the bar's hairline instead of
+ *            stacking on top of it. Without this the padding pushes the rule
+ *            down: 2px of foreground with a border under it, and a 1px taller
+ *            bar on every hub.
+ *
+ * `overflow-y-clip` was the alternative to the pair and is worse: it keeps the
+ * overflow and clips the underline to half its height.
+ *
  * <Tabs
  *   aria-label="Views"
  *   value={view}
@@ -59,7 +80,7 @@ export function Tabs({
       onValueChange={onValueChange ? (v) => onValueChange(String(v)) : undefined}
       className={cn(bar && "border-b border-border bg-card", className)}
     >
-      <T.List aria-label={ariaLabel} className="-ml-3 flex min-w-0 items-center overflow-x-auto">
+      <T.List aria-label={ariaLabel} className="-ml-3 -mb-px flex min-w-0 items-center overflow-x-auto pb-px">
         {items.map((it) => (
           <T.Tab
             key={it.value}

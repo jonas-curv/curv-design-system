@@ -596,6 +596,59 @@ meaning is "progress".
   axes or fill, and **no red/green** — trend-at-a-glance, not a verdict
   (direction lives in the delta column). One identical stroke for every row.
 
+### Grouping — a list people scan by a parent record
+
+`DataTable` takes an opt-in `groupBy` (and `renderGroupHeader`): one header row
+per parent record, its rows underneath. Without `groupBy` nothing changes.
+
+- **When to group.** The list is scanned by a parent — PO lines by purchase
+  order, issues by project — and people ask "what is on this PO?" before "which
+  line?". If nobody reads the parent, a sort or a filter does the job; don't
+  group a flat catalog.
+- **A header is four things, in this order:** the parent's id (`font-medium`),
+  what it is (supplier, project), ONE count (muted), and the one thing to act on
+  — for example the next due date, in the due cell's own tones (red only when
+  it is late; never a red id). One line, no more. The default header (the
+  group's label and its row count) is right until a parent has a summary worth
+  reading; the count is the default header's alone, so a custom `renderGroupHeader`
+  shows only what it renders. Links and badges are fine inside it.
+- **Space the parts, don't dot them.** A gap between parts, and a real space in
+  the text between them (`{" "}`): flex drops it from the layout, but screen
+  readers would otherwise run "PO-1042" into "4 lines". Numbers (counts, money,
+  dates) are `tabular-nums` and never truncate (`shrink-0`); only the name
+  truncates. A header caps at the table's visible width, so it can't run off the
+  right edge on a narrow screen.
+- **Hide the grouped-by column.** While grouped, the header says it, so drop the
+  PO column from `columns` and bring it back in the list view.
+- **Collapse the catch-all.** Rows with no parent (`groupBy` returns `null`, `""`
+  or `undefined`) sit in one trailing group. Pass `defaultCollapsedGroups={[null]}`
+  so the unfiled rows don't push the real groups down the page. It seeds the
+  table at mount only. When your own header names the catch-all ("Not on a PO"),
+  set `ungroupedLabel` (or `getGroupLabel`) to the same words: they name the toggle
+  for screen readers, and the default "Other" would not match what people see.
+- **Grouping is a view toggle, not a filter.** Offer it as a `SegmentedControl`
+  (`List` / `By PO`) in the toolbar's right cluster (the `summary` slot, before
+  Export), and drive `groupBy` from it. It never drops a row from the list:
+  search, filters and tabs run first, sort orders rows *within* each group,
+  groups order by their first appearance (so sorting by due date orders POs by
+  their earliest line; pass `compareGroups` to override), the footer still
+  counts rows, and export stays the flat list. Collapse hides a group's rows;
+  search shows them: while a query is active every match shows, collapsed group
+  or not, the toggles rest (a mid-search collapse would hide a match), and the
+  saved collapse comes back when it clears.
+- **Your own search box.** With `searchable={false}`, pass
+  `searchActive={query.trim() !== ""}` so your matches show in collapsed groups
+  the same way.
+- **Collapse state is the table's own** and survives sorting, filtering and
+  switching the view back and forth. To keep it across an unmount (an empty state
+  that swaps the table out), or to act on the open groups only (select-all that
+  skips collapsed ones), own it: pass `collapsedGroups` and
+  `onCollapsedGroupsChange`. While a search is active nothing is collapsed, so
+  "every visible row" is every match.
+- **The band hovers with `bg-secondary`**, not `bg-accent`: the band is already
+  muted and `accent` is translucent, so it washes out.
+- **Phones stay flat.** `mobileLayout="cards"` ignores grouping.
+
 ### Pagination & virtualization — match the tool to the data
 
 The **UX is the same for every data table**: scroll to browse + a row-count at

@@ -52,6 +52,8 @@ function IconSort({ dir }: { dir: "asc" | "desc" | null }) {
 
 import { MobileRows, type MobilePriority } from "./mobile-rows";
 export type { MobilePriority } from "./mobile-rows";
+import { collapsedFor, groupItems, toggled, type DataTableGroup } from "./grouping";
+export type { DataTableGroup } from "./grouping";
 
 /* ---------- types ---------- */
 
@@ -149,6 +151,71 @@ export interface DataTableProps<Row> {
   loading?: boolean;
   /** Noun for the bottom count ("deals", "customers"). */
   unit?: string;
+
+  /**
+   * Group rows under header rows — for a list people scan by a parent record
+   * (one header per PO, its lines underneath). Search, filters, tabs and sort
+   * run first, then this partitions the sorted rows, so a column sort orders
+   * rows *within* each group. Rows returning `null` (or `""`/`undefined`, which
+   * count as `null`) go in one trailing group. Opt-in: without it the table is
+   * the flat list, unchanged. The footer still counts rows, export stays flat,
+   * and `mobileLayout="cards"` ignores grouping (the phone card list is flat).
+   * Pass a stable function (module scope or `useCallback`): a new one each
+   * render regroups the whole list each render.
+   */
+  groupBy?: (row: Row) => string | null | undefined;
+  /**
+   * Header row content for a group, rendered beside the toggle. Default: the
+   * group label and the row count — the count is part of the default header
+   * only, so a custom header shows its own. Links and badges are fine here; a
+   * click anywhere else on the header toggles the group.
+   */
+  renderGroupHeader?: (group: DataTableGroup<Row>) => React.ReactNode;
+  /**
+   * Group order. Default: the order each group first appears in the sorted rows
+   * (sort by due date and POs order by their earliest line). The `null` group
+   * always comes last and never reaches the comparator.
+   */
+  compareGroups?: (a: DataTableGroup<Row>, b: DataTableGroup<Row>) => number;
+  /**
+   * Groups collapsed on first render (uncontrolled): read at mount only, so
+   * changing it later does nothing. `null` is the ungrouped group. Collapse
+   * hides a group's rows; an active search shows its matches regardless (the
+   * saved collapse comes back when the search clears). Ignored when
+   * `collapsedGroups` is passed.
+   */
+  defaultCollapsedGroups?: readonly (string | null)[];
+  /**
+   * Controlled collapse: the collapsed group keys. Passing it hands the state to
+   * you: a header toggle calls `onCollapsedGroupsChange` with the next keys and
+   * the table keeps none of its own. Use it to keep collapse across an unmount,
+   * or to act on the open groups only (select-all). Pass state, not a fresh array
+   * each render. Toggles made while a search shows its matches are not reported:
+   * they last until the search clears, when your keys come back as they were.
+   */
+  collapsedGroups?: readonly (string | null)[];
+  /** The next collapsed keys after a header toggle. Only called when `collapsedGroups` is passed. */
+  onCollapsedGroupsChange?: (keys: (string | null)[]) => void;
+  /**
+   * `true` while a search of your own is filtering `rows` (`searchable={false}`
+   * plus your own box): search matches then show in collapsed groups, as with the
+   * built-in search. The built-in search box already counts.
+   */
+  searchActive?: boolean;
+  /**
+   * Label for the `null` group in the default header. Default "Other". Set it
+   * (or `getGroupLabel`) whenever your own header names the catch-all, so the
+   * toggle's accessible name says the same thing.
+   */
+  ungroupedLabel?: string;
+  /**
+   * A group's name: the default header's text, and the toggle button's
+   * accessible name (with a custom `renderGroupHeader`, the button's only name).
+   * Default: the key, or `ungroupedLabel` for the `null` group.
+   */
+  getGroupLabel?: (group: DataTableGroup<Row>) => string;
+  /** Header row height. Default: `rowHeight`. */
+  groupHeaderHeight?: number;
   className?: string;
 }
 
@@ -202,6 +269,17 @@ function track<Row>(col: DataTableColumn<Row>, align: "left" | "right"): string 
 // across renders), varied so rows don't look like a printed grid.
 const SKELETON_WIDTHS = ["62%", "45%", "70%", "38%", "55%", "48%"];
 
+// Grouped mode. A header's React/virtual key starts with NUL, which no row id
+// plausibly contains, so a header can never collide with a row.
+const GROUP_KEY = "\u0000group:";
+const UNGROUPED_KEY = "\u0000ungrouped";
+// A click on these inside a header keeps its own behaviour and doesn't toggle
+// the group (the data-row guard, plus controls a header might hold).
+const GROUP_HEADER_SKIP =
+  "a,button,input,select,textarea,label,summary,[role=button],[role=checkbox],[role=switch],[role=link]";
+// One shared empty set: "no search-time toggles", comparable by identity.
+const NO_GROUPS: ReadonlySet<string | null> = new Set();
+
 /* ---------- component ---------- */
 
 export function DataTable<Row>({
@@ -230,6 +308,16 @@ export function DataTable<Row>({
   emptyLabel = "No results.",
   loading = false,
   unit = "rows",
+  groupBy,
+  renderGroupHeader,
+  compareGroups,
+  defaultCollapsedGroups,
+  collapsedGroups,
+  onCollapsedGroupsChange,
+  searchActive = false,
+  ungroupedLabel = "Other",
+  getGroupLabel,
+  groupHeaderHeight = rowHeight,
   className,
 }: DataTableProps<Row>) {
   const [query, setQuery] = React.useState("");
@@ -238,6 +326,21 @@ export function DataTable<Row>({
   );
   const [filterValues, setFilterValues] = React.useState<FilterValues>({});
   const [activeTab, setActiveTab] = React.useState(defaultTab ?? tabs?.[0]?.key ?? "");
+  // Keyed by group key, so a group's state survives re-sorts, re-filters and
+  // even the group leaving the list for a while.
+  const [collapsed, setCollapsed] = React.useState<ReadonlySet<string | null>>(
+    () => new Set(defaultCollapsedGroups),
+  );
+  // Controlled: the consumer's keys are the saved set and `collapsed` goes unused.
+  const controlledSet = React.useMemo(
+    () => (collapsedGroups ? new Set(collapsedGroups) : undefined),
+    [collapsedGroups],
+  );
+  // While a search is active every match shows, collapsed or not: the saved set
+  // is set aside and the toggles rest until it ends. A collapse made mid-search
+  // would hide a match the consumer cannot see, and its select-all with it.
+  const searching = query.trim() !== "" || searchActive;
+  const groupId = React.useId();
 
   // Resolved align per column: the consumer's `align` always wins. Otherwise only
   // a PLAIN numeric column — a number value with NO custom `render` — auto-aligns
@@ -343,11 +446,42 @@ export function DataTable<Row>({
     });
   }, [tabbed, sort, colByKey]);
 
+  // 5) group — header + row items over the sorted rows. Null without `groupBy`,
+  // so the flat table never builds this list and renders straight from `sorted`.
+  const shownCollapsed = collapsedFor(searching, controlledSet ?? collapsed, NO_GROUPS);
+  const listItems = React.useMemo(
+    () => (groupBy ? groupItems(sorted, groupBy, shownCollapsed, compareGroups) : null),
+    [sorted, groupBy, shownCollapsed, compareGroups],
+  );
+  const count = listItems ? listItems.length : sorted.length;
+
+  // The virtualizer rebuilds its measurements only when `count` or `getItemKey`
+  // changes. A re-sort can move headers without changing the count, so the key
+  // function must change with the list or stale offsets would stick. Only passed
+  // when grouped; the flat table keeps the default index key. The two heights
+  // aren't read here, but they size the offsets: listing them rebuilds those
+  // when a height changes (`estimateSize` alone wouldn't). `getRowId` is read
+  // through a ref instead: an inline lambda is new every render and would
+  // rebuild every offset each time. (The row's React key below calls it direct.)
+  const getRowIdRef = React.useRef(getRowId);
+  getRowIdRef.current = getRowId;
+  const getItemKey = React.useCallback(
+    (i: number): string | number => {
+      const item = listItems?.[i];
+      if (!item) return i;
+      if (item.kind === "group") return item.group.key === null ? UNGROUPED_KEY : GROUP_KEY + item.group.key;
+      const rowId = getRowIdRef.current;
+      return rowId ? rowId(item.row, item.index) : item.index;
+    },
+    [listItems, rowHeight, groupHeaderHeight],
+  );
+
   const parentRef = React.useRef<HTMLDivElement>(null);
   const virt = useVirtualizer({
-    count: sorted.length,
+    count,
     getScrollElement: () => parentRef.current,
-    estimateSize: () => rowHeight,
+    estimateSize: (i) => (listItems?.[i]?.kind === "group" ? groupHeaderHeight : rowHeight),
+    getItemKey: listItems ? getItemKey : undefined,
     overscan: 12,
   });
   const items = virt.getVirtualItems();
@@ -363,7 +497,16 @@ export function DataTable<Row>({
       right: el.scrollLeft < el.scrollWidth - el.clientWidth - 1,
     });
   }, []);
-  React.useEffect(updateEdges, [updateEdges, grid, minWidth, loading, sorted.length]);
+  React.useEffect(updateEdges, [updateEdges, grid, minWidth, loading, count]);
+
+  const toggleGroup = React.useCallback(
+    (key: string | null) => {
+      if (searching) return;
+      if (controlledSet) onCollapsedGroupsChange?.([...toggled(controlledSet, key)]);
+      else setCollapsed((prev) => toggled(prev, key));
+    },
+    [searching, controlledSet, onCollapsedGroupsChange],
+  );
 
   const toggleSort = (key: string) =>
     setSort((prev) => {
@@ -462,7 +605,9 @@ export function DataTable<Row>({
 
       {mobileLayout === "cards" && <MobileRows columns={columns} rows={sorted} getRowId={getRowId} getRowHref={getRowHref} getRowLabel={getRowLabel} onRowClick={onRowClick} loading={loading} emptyLabel={emptyLabel} sort={sort} onSort={toggleSort} resetKey={JSON.stringify([query, sort, filterValues, activeTab])} />}
       <div className={cn("relative", mobileLayout === "cards" && "hidden md:block")}>
-      <div ref={parentRef} onScroll={updateEdges} aria-busy={loading} className="overflow-auto" style={{ maxHeight }}>
+      {/* Grouped, the scroll area is a size container: a group header's sticky
+          content caps at its visible width (see below). Left off when flat. */}
+      <div ref={parentRef} onScroll={updateEdges} aria-busy={loading} className="overflow-auto" style={{ maxHeight, containerType: groupBy ? "inline-size" : undefined }}>
         <div style={minWidth ? { minWidth } : undefined}>
           {/* header */}
           <div
@@ -526,11 +671,76 @@ export function DataTable<Row>({
           ) : (
             <div style={{ height: virt.getTotalSize(), position: "relative" }}>
               {items.map((vi) => {
-                const row = sorted[vi.index];
+                const item = listItems?.[vi.index];
+                if (item?.kind === "group") {
+                  const { group } = item;
+                  const label = getGroupLabel ? getGroupLabel(group) : (group.key ?? ungroupedLabel);
+                  const labelId = `${groupId}-${vi.index}`;
+                  const contentId = `${labelId}-content`;
+                  return (
+                    <div
+                      key={vi.key}
+                      // Anywhere on the band toggles, except controls inside it and
+                      // a drag-selection that ends here (that still fires a click).
+                      onClick={(e) => {
+                        if (window.getSelection()?.toString() || (e.target as HTMLElement).closest(GROUP_HEADER_SKIP)) return;
+                        toggleGroup(group.key);
+                      }}
+                      className={cn(
+                        "absolute left-0 top-0 grid w-full min-w-min border-b border-border bg-muted text-[13px] transition-colors",
+                        !searching && "cursor-pointer hover:bg-secondary",
+                      )}
+                      style={{ height: groupHeaderHeight, transform: `translateY(${vi.start}px)`, gridTemplateColumns: grid }}
+                    >
+                      <div className="min-w-0" style={{ gridColumn: "1 / -1" }}>
+                        {/* `sticky left-0` keeps the label in view while the grid scrolls
+                            sideways. It clips itself (overflow-hidden) — never an ancestor,
+                            or that ancestor would become the sticky scroll container. Capped
+                            at the scroll area's visible width (100cqw), not the grid's:
+                            `max-w-full` would let a long header run off the right edge.
+                            `pr-8` clears the 32px right-edge fade, so the end of a
+                            capped header (often the due date) never sits under it. */}
+                        <div className="sticky left-0 flex h-full w-max items-center gap-1 overflow-hidden pl-3 pr-8" style={{ maxWidth: "100cqw" }}>
+                          <button
+                            type="button"
+                            onClick={() => toggleGroup(group.key)}
+                            disabled={searching}
+                            aria-expanded={!group.collapsed}
+                            // The default header's visible label names the button (one
+                            // reading, not two); a custom header has none to point at, so
+                            // `getGroupLabel` names it and the custom content describes it.
+                            aria-labelledby={renderGroupHeader ? undefined : labelId}
+                            aria-label={renderGroupHeader ? label : undefined}
+                            aria-describedby={renderGroupHeader ? contentId : undefined}
+                            className="-ml-1.5 grid size-6 shrink-0 place-items-center rounded-md text-muted-foreground transition-colors hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50"
+                          >
+                            <IconChevronDown className={cn("motion-safe:transition-transform motion-safe:duration-150 motion-safe:ease-[cubic-bezier(0.23,1,0.32,1)]", group.collapsed && "-rotate-90")} />
+                          </button>
+                          <div id={renderGroupHeader ? contentId : undefined} className="flex min-w-0 items-center gap-2 whitespace-nowrap">
+                            {renderGroupHeader ? (
+                              renderGroupHeader(group)
+                            ) : (
+                              <>
+                                <span id={labelId} className="font-medium text-foreground">{label}</span>
+                                {/* A real space: flex drops it from the layout, but text
+                                    readers would run "PO-1" and "3" together without it. */}
+                                {" "}
+                                <span className="tabular-nums text-muted-foreground">{group.rows.length.toLocaleString()}</span>
+                              </>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  );
+                }
+                const row = item ? item.row : sorted[vi.index];
+                // Grouped, vi.index counts headers too; getRowId gets the sorted-list index, as flat.
+                const rowIndex = item ? item.index : vi.index;
                 const href = getRowHref?.(row);
                 return (
                   <div
-                    key={getRowId ? getRowId(row, vi.index) : vi.key}
+                    key={getRowId ? getRowId(row, rowIndex) : vi.key}
                     onClick={onRowClick ? (e) => { if (!(e.target as HTMLElement).closest("a,button,input,select,textarea,[role=button]")) onRowClick(row); } : undefined}
                     className={cn(
                       "group absolute left-0 top-0 grid w-full min-w-min w-full items-center border-b border-border text-[13px] hover:bg-accent/30",
