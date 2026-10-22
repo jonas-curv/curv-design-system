@@ -2,14 +2,14 @@
 
 import * as React from "react";
 import { MobileSheet } from "../mobile-command";
-import { CheckIcon, formatCount } from "./shared";
+import { CheckIcon, formatCountValue, hasCount } from "./shared";
 
 export interface MobileMoveOption {
   id: string;
   /** What the row says: "Move to Review". */
   label: string;
-  /** How many records the target already holds. */
-  count?: number;
+  /** How many records the target already holds. A number gets thousands separators; a string ("12+") is shown as given. */
+  count?: number | string;
   /** Shown, dimmed and not tappable. */
   disabled?: boolean;
   /** Where the record is now: shown with a check, not tappable. A list that leaves the current stage out needs no such row. */
@@ -44,7 +44,7 @@ export function MobileMoveSheet({ open, onOpenChange, title, options, onChoose, 
               <span>{option.label}</span>
               {option.current
                 ? <span className="curv-mobile-board-move-check"><CheckIcon /></span>
-                : option.count != null && <span className="curv-mobile-board-chip-count">{formatCount(option.count)}</span>}
+                : hasCount(option.count) && <span className="curv-mobile-board-chip-count">{formatCountValue(option.count)}</span>}
             </button>
           </li>
         ))}

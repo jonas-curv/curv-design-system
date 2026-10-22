@@ -4,7 +4,8 @@ import * as React from "react";
 import { cn } from "../../../lib/cn";
 import { idPart } from "../mobile-nav/id-part";
 import { MobileMoveSheet } from "./move-sheet";
-import { ContentLink, DotsIcon, formatCount, prefersReducedMotion, useIsomorphicLayoutEffect, type MobileContentRenderLink } from "./shared";
+import { mobileAvatarColor } from "./avatar";
+import { ContentLink, DotsIcon, formatCountValue, hasNode, prefersReducedMotion, useIsomorphicLayoutEffect, type MobileContentRenderLink } from "./shared";
 
 export interface MobileStageCard {
   id: string;
@@ -13,8 +14,10 @@ export interface MobileStageCard {
   href: string;
   /** Only when the record has a photo. */
   cover?: { src: string; alt?: string };
-  /** `label` names the owner for screen readers; `color` is any CSS color. */
-  avatar?: { initials: string; color?: string; label: string };
+  /** `label` is the owner's name for screen readers, and may say more than the name ("Owner Justin Shook"). `color` is any CSS color;
+   *  without it the avatar takes `mobileAvatarColor(name ?? label)`, one of the desktop avatar's eight hues at a lightness where the
+   *  white initials pass 4.5:1. Pass the bare `name` ("Justin Shook") so the colour matches the same person's desktop avatar. */
+  avatar?: { initials: string; color?: string; label: string; name?: string };
   date?: { label: string; late?: boolean };
   /** Only when the record is not on track. */
   badge?: { label: string; tone: "critical" | "warning" };
@@ -24,8 +27,9 @@ export interface MobileStageColumn {
   label: string;
   /** Used on the chip when the full label is long. */
   shortLabel?: string;
-  /** The true count for the stage. It can exceed `cards.length` when the read is capped. */
-  count: number;
+  /** The true count for the stage. It can exceed `cards.length` when the read is capped. A number gets thousands separators; a string
+   *  is shown as given, for a floor when the stage is not fully loaded ("12+"). */
+  count: number | string;
   cards: MobileStageCard[];
 }
 export interface MobileStageBoardProps {
@@ -40,6 +44,9 @@ export interface MobileStageBoardProps {
   moveLabel?: (columnLabel: string) => string;
   /** Shown in a column with no cards. */
   emptyLabel?: string;
+  /** Something at the end of the stage chips, outside their scroller: it does not scroll with them. A board puts its round Filter
+   *  button here (`MobileToolbarButton`) or an editor its "New project". It is 44px tall to match the chips. */
+  chipsTrailing?: React.ReactNode;
   renderLink?: MobileContentRenderLink;
   className?: string;
 }
@@ -86,7 +93,7 @@ const REFOCUS_WINDOW_MS = 8000;
  * columns snap, and a card moves by long-press and drag or by its "Move to…" button. The
  * button is the whole feature for keyboard and screen-reader users; the gesture is a shortcut.
  */
-export function MobileStageBoard({ label, columns, activeColumnId, onActiveColumnChange, onMove, moveLabel = defaultMoveLabel, emptyLabel, renderLink, className }: MobileStageBoardProps) {
+export function MobileStageBoard({ label, columns, activeColumnId, onActiveColumnChange, onMove, moveLabel = defaultMoveLabel, emptyLabel, chipsTrailing, renderLink, className }: MobileStageBoardProps) {
   const uid = React.useId();
   const root = React.useRef<HTMLElement>(null);
   const scroller = React.useRef<HTMLDivElement>(null);
@@ -343,26 +350,33 @@ export function MobileStageBoard({ label, columns, activeColumnId, onActiveColum
   const sourceOf = (id: string) => columns.find(column => column.id === id);
   const movingCard = moving ? sourceOf(moving.from)?.cards.find(card => card.id === moving.cardId) : undefined;
 
+  const chipRow = (
+    <div ref={chips} className="curv-mobile-board-chips">
+      {columns.map(column => {
+        const active = column.id === current;
+        return (
+          <button
+            key={column.id}
+            type="button"
+            className="curv-mobile-chip curv-mobile-board-chip"
+            aria-pressed={active}
+            aria-label={column.shortLabel ? `${column.label}, ${formatCountValue(column.count)}` : undefined}
+            onClick={() => chooseColumn(column.id)}
+          >
+            <span>{column.shortLabel ?? column.label}</span>
+            <span className="curv-mobile-board-chip-count">{formatCountValue(column.count)}</span>
+          </button>
+        );
+      })}
+    </div>
+  );
+
   return (
     <section ref={root} className={cn("curv-mobile-board", className)} aria-label={label}>
-      <div ref={chips} className="curv-mobile-board-chips">
-        {columns.map(column => {
-          const active = column.id === current;
-          return (
-            <button
-              key={column.id}
-              type="button"
-              className="curv-mobile-chip curv-mobile-board-chip"
-              aria-pressed={active}
-              aria-label={column.shortLabel ? `${column.label}, ${formatCount(column.count)}` : undefined}
-              onClick={() => chooseColumn(column.id)}
-            >
-              <span>{column.shortLabel ?? column.label}</span>
-              <span className="curv-mobile-board-chip-count">{formatCount(column.count)}</span>
-            </button>
-          );
-        })}
-      </div>
+      {/* Without a slot the markup is what it always was: the chip scroller alone. */}
+      {hasNode(chipsTrailing)
+        ? <div className="curv-mobile-chips-row">{chipRow}<div className="curv-mobile-chips-trailing">{chipsTrailing}</div></div>
+        : chipRow}
       <div ref={scroller} className="curv-mobile-board-columns" onScroll={onScroll} onPointerDown={takeOver} onWheel={takeOver}>
         {columns.map((column, index) => {
           const headingId = `${uid}-${idPart(column.id)}`;
@@ -379,7 +393,7 @@ export function MobileStageBoard({ label, columns, activeColumnId, onActiveColum
               <div className="curv-mobile-board-column-inner">
                 <h3 id={headingId} className="curv-mobile-board-column-head">
                   <span>{column.label}</span>
-                  <span className="curv-mobile-board-column-count">{formatCount(column.count)}</span>
+                  <span className="curv-mobile-board-column-count">{formatCountValue(column.count)}</span>
                 </h3>
                 <ul className="curv-mobile-board-cards" role="list">
                   {column.cards.map(card => {
@@ -391,7 +405,7 @@ export function MobileStageBoard({ label, columns, activeColumnId, onActiveColum
                           <span className="curv-mobile-board-card-title">{card.title}</span>
                           {(card.avatar || card.date || card.badge) && (
                             <span className="curv-mobile-board-card-meta">
-                              {card.avatar && <span className="curv-mobile-board-avatar" role="img" aria-label={card.avatar.label} style={card.avatar.color ? { background: card.avatar.color } : undefined}>{card.avatar.initials}</span>}
+                              {card.avatar && <span className="curv-mobile-board-avatar" role="img" aria-label={card.avatar.label} style={{ background: card.avatar.color || mobileAvatarColor(card.avatar.name ?? card.avatar.label) }}>{card.avatar.initials}</span>}
                               {card.date && (
                                 <span className="curv-mobile-board-date" data-late={card.date.late ? "true" : undefined}>
                                   {card.date.late && <span className="curv-mobile-content-vh">Late: </span>}

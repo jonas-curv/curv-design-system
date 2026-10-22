@@ -1,17 +1,10 @@
 "use client";
 
 import * as React from "react";
-import { cn } from "../../../lib/cn";
+import { mobileButtonClassName, type MobileButtonStyle } from "./button-class";
 
-export type MobileButtonVariant = "primary" | "secondary" | "plain";
+export { mobileButtonClassName, type MobileButtonStyle, type MobileButtonVariant } from "./button-class";
 
-/** What styles a phone button, whether it is a `<button>` or a link the app draws as one. */
-export interface MobileButtonStyle {
-  /** primary: the dark fill of the tab bar's action. secondary: a quiet grey fill. plain: text only. Default "primary". */
-  variant?: MobileButtonVariant;
-  /** Full width of its container, for a sheet footer or the end of a form. */
-  block?: boolean;
-}
 export interface MobileButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElement>, MobileButtonStyle {
   /** The action is in flight. The label keeps its width and goes quiet under a spinner, the button says it is busy
    *  (`aria-busy`), screen readers hear `pendingLabel`, and taps and Enter do nothing (`onClick` is not called and a
@@ -19,15 +12,6 @@ export interface MobileButtonProps extends React.ButtonHTMLAttributes<HTMLButton
   pending?: boolean;
   /** What a screen reader is told when `pending` starts. Default "Working…". Pass the app's own words ("Sending…", "Arbeider…"). */
   pendingLabel?: string;
-}
-
-/**
- * The class names of a phone button, for the one place an app has to draw something else as a button (a router link, say):
- * `<Link className={mobileButtonClassName({ variant: "secondary", block: true })}>`. A link has no disabled or busy state of
- * its own, so use `MobileButton` for anything that submits.
- */
-export function mobileButtonClassName({ variant = "primary", block, className }: MobileButtonStyle & { className?: string } = {}): string {
-  return cn("curv-mobile-button", `curv-mobile-button-${variant}`, block && "curv-mobile-button-block", className);
 }
 
 /**

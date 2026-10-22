@@ -105,3 +105,9 @@ export type { MobilePriority } from "./components/data-table/data-table";
 export { MobileHeader, MobileHeaderTitle, MobilePage, MobileSection, MobileMetricCard, MobileSupportingMetrics, MobileList, MobileRecordRow, MobileDetailSection, MobileNotice, MobileSheet, MobileMoreMenu, MobileSearchSurface, type MobileHeaderProps, type MobileRecordRowProps, type MobileSheetProps } from "./components/shell/mobile-command";
 
 export { useMobileViewportStyle } from "./components/shell/mobile-command";
+
+// Pure helpers of the phone layer, for server components. The "@curvgroup/design-system/mobile" entry is a client module ("use client"),
+// so a function imported from it cannot be called in a server component (Next gives it as a client reference). These two are plain
+// functions with no React, in files with no directive: import them from here when a server component needs them.
+export { mobileButtonClassName, type MobileButtonStyle, type MobileButtonVariant } from "./components/shell/mobile-content/button-class";
+export { mobileAvatarColor } from "./components/shell/mobile-content/avatar";

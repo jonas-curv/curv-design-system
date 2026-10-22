@@ -2,7 +2,7 @@
 
 import * as React from "react";
 import { cn } from "../../../lib/cn";
-import { BoxIcon, imageHasFailed, prefersReducedMotion } from "./shared";
+import { BoxIcon, imageHasFailed, prefersReducedMotion, type MobileGutter } from "./shared";
 
 export interface MobileGalleryImage {
   src: string;
@@ -15,12 +15,14 @@ export interface MobileGalleryProps {
   /** The first photo loads at once (it is what the page is about). Default true. Pass false when the gallery sits in a branch
    *  that is hidden on desktop, so the first photo is lazy like the rest and a desktop visitor never fetches it. */
   eagerFirst?: boolean;
+  /** Side gutters of the gallery. `none` for a parent that already pads its content. Default: 16px. */
+  gutter?: MobileGutter;
   className?: string;
 }
 
 /** A swipeable photo strip with a pager pill and a row of thumbnails that jump to each photo.
  *  A photo that cannot load (hotlink blocked, deleted, offline) keeps its slide and shows a neutral placeholder. */
-export function MobileGallery({ images, label, eagerFirst = true, className }: MobileGalleryProps) {
+export function MobileGallery({ images, label, eagerFirst = true, gutter, className }: MobileGalleryProps) {
   const total = images.length;
   const [current, setCurrent] = React.useState(0);
   const strip = React.useRef<HTMLDivElement>(null);
@@ -86,7 +88,7 @@ export function MobileGallery({ images, label, eagerFirst = true, className }: M
   };
 
   return (
-    <div ref={root} className={cn("curv-mobile-gallery", className)}>
+    <div ref={root} className={cn("curv-mobile-gallery", className)} data-gutter={gutter}>
       <div className="curv-mobile-gallery-frame">
         <div ref={strip} className="curv-mobile-gallery-strip" role="group" aria-label={label} tabIndex={0} onScroll={onScroll} onPointerDown={takeOver} onWheel={takeOver}>
           {images.map((image, index) => (

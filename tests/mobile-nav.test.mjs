@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import React from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
-import { MobileTopBar, MobileSurface, MobileTabBar, MobileMenuBody, MobileViewToggle } from '../dist/mobile.js';
+import { MobileTopBar, MobileTopBarTextAction, MobileSurface, MobileTabBar, MobileMenuBody, MobileViewToggle } from '../dist/mobile.js';
 
 const h = React.createElement;
 const render = (component, props) => renderToStaticMarkup(h(component, props));
@@ -423,4 +423,27 @@ test('top bar: plain titles and switcher titles start at the same x, the 16px co
   // Both lines are 44px, so the text sits at the same height on every page.
   assert.match(rule('.curv-mobile-topbar-title-text'), /line-height: 44px/);
   assert.match(rule('.curv-mobile-topbar-switch'), /min-height: 44px/);
+});
+
+// ── 0.3.3: a text action for the black bar ──────────────────────────────────
+
+test('top bar: a text action is a plain button in the trailing slot, not a link or a pill', () => {
+  const html = render(MobileTopBar, { title: 'Inbox', trailing: h(MobileTopBarTextAction, null, 'Mark all read') });
+  assert.match(html, /<div class="curv-mobile-topbar-trailing"><button type="button" class="curv-mobile-topbar-action">Mark all read<\/button><\/div>/);
+  assert.match(render(MobileTopBarTextAction, { children: 'Done', className: 'mine', disabled: true, 'aria-label': 'Mark all as read', type: 'submit' }), /^<button disabled="" aria-label="Mark all as read" type="submit" class="curv-mobile-topbar-action mine">Done<\/button>$/);
+});
+
+test('stylesheet: the top bar\'s text action is 44px, 17px, white on the bar, and its text ends on the 16px gutter', () => {
+  const action = rule('.curv-mobile-topbar-action');
+  assert.match(action, /min-height: 44px/);
+  assert.match(action, /min-width: 44px/);
+  assert.match(action, /font-size: 17px/);
+  assert.match(action, /color: inherit/);                                    // the bar's own ink, white on #1b1b1b
+  assert.match(action, /white-space: nowrap/);
+  // The row pads 12px at the right; 4px more is the 16px gutter every title and trailing icon uses. The 12px at the left is hit area.
+  assert.match(action, /padding: 0 4px 0 12px/);
+  assert.match(rule('.curv-mobile-topbar-row'), /padding: 0 max\(12px, env\(safe-area-inset-right\)\) 0/);
+  assert.match(rule('.curv-mobile-topbar-action:disabled'), /opacity: 0\.5/);
+  // It is inside the bar, so the bar's focus ring and zero-specificity button reset already cover it.
+  assert.match(section, /\.curv-mobile-topbar :is\(a, button\):focus-visible \{ outline: 2px solid currentColor;/);
 });
