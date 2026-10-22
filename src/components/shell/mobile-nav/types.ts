@@ -15,7 +15,8 @@ export interface MobileNavLinkProps {
   "aria-current"?: "page";
   "aria-label"?: string;
   "aria-describedby"?: string;
-  /** Closes the surface the link sits in (menu, switcher). Always call it from custom handlers too. */
+  /** Closes the surface the link sits in (menu, switcher). Always call it from custom handlers too. (The title switcher also closes on the
+   *  tap itself, before this runs, so an adapter that drops it still closes the list when the person taps a page.) */
   onClick?: React.MouseEventHandler<HTMLElement>;
   [attribute: `data-${string}`]: string | undefined;
 }

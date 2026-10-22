@@ -36,5 +36,8 @@ Things that are easy to get wrong:
 - Avatars: pass the bare `name` beside the screen-reader `label` of a stage card avatar; the colour is `mobileAvatarColor(name)` (the desktop hues, dark enough for white initials at 4.5:1); stage cards use it by default; a header text action ("Mark all read") is `MobileTopBarTextAction`.
 - Buttons and form submits on a phone are `MobileButton` (a link styled as one: `mobileButtonClassName`), never the desktop `Button`.
 - Saved-view chips and board stage chips are one 44px chip (grey, chosen = dark with white text). A hero KPI with no series sets `selectable: false`.
+- One 16px gutter for everything drawn on the page (titles, chips, notices, cards, rows and their headings, the Home panel's text); never pad to 12, 20 or 24 to "line up". Warnings and empty states (`MobileNotice`) are 15px, small print 13px.
+- Charts scrub by pressing or dragging on the plot; the value and period are drawn in it. Do not add a slider or a readout under a `MobileChart`. A line with a gap in it draws a gap; do not fill nulls with zeros. A period with `value: null` says its `display` (or a dash) when picked.
+- The title switcher closes on the tap and marks the tapped page current; do not build your own close handling around it. The search field in the bar has no native clear button; its close circle is the clear.
 - Desktop-only areas stay in the menu, dimmed and not tappable.
 - A move that changes a record's status asks for confirmation.

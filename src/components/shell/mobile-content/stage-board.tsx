@@ -182,13 +182,17 @@ export function MobileStageBoard({ label, columns, activeColumnId, onActiveColum
     if (sync.current.target !== activeColumnId) goTo(activeColumnId, "smooth");
   }, [activeColumnId]);
 
-  // The active chip stays on screen, without moving the page.
-  React.useEffect(() => {
+  // The active chip stays on screen, without moving the page. Placing it when the board first appears is instant: a chip that
+  // slides into view a moment after the page loads reads as a jump. Later changes (a tap, a swipe) are smooth.
+  const chipsPlaced = React.useRef(false);
+  useIsomorphicLayoutEffect(() => {
+    const smooth = chipsPlaced.current && !prefersReducedMotion();
+    chipsPlaced.current = true;
     const row = chips.current;
     const chip = row?.querySelector<HTMLElement>("[aria-pressed='true']");
     if (!row || !chip) return;
     const outside = chip.offsetLeft < row.scrollLeft + 8 || chip.offsetLeft + chip.offsetWidth > row.scrollLeft + row.clientWidth - 8;
-    if (outside) row.scrollTo({ left: Math.max(0, chip.offsetLeft - (row.clientWidth - chip.offsetWidth) / 2), behavior: prefersReducedMotion() ? "auto" : "smooth" });
+    if (outside) row.scrollTo({ left: Math.max(0, chip.offsetLeft - (row.clientWidth - chip.offsetWidth) / 2), behavior: smooth ? "smooth" : "auto" });
   }, [current]);
 
   // After a move made in the sheet the card sits in another column, so its "Move to…" button is a new element and

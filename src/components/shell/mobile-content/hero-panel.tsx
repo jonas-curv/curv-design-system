@@ -42,7 +42,7 @@ export function MobileHeroPanel({ kpis, activeKpiId, onKpiChange, chart, actions
     const chip = scroller?.querySelector<HTMLElement>("[data-active='true']")?.closest<HTMLElement>(".curv-mobile-hero-kpi");
     if (!scroller || !chip) return;
     const visible = chip.offsetLeft >= scroller.scrollLeft && chip.offsetLeft + chip.offsetWidth <= scroller.scrollLeft + scroller.clientWidth;
-    if (!visible) scroller.scrollTo({ left: Math.max(0, chip.offsetLeft - 12), behavior: first.current || prefersReducedMotion() ? "auto" : "smooth" });
+    if (!visible) scroller.scrollTo({ left: Math.max(0, chip.offsetLeft - 4), behavior: first.current || prefersReducedMotion() ? "auto" : "smooth" });
     first.current = false;
   }, [activeKpiId]);
 

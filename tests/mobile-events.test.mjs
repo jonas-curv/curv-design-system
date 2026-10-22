@@ -87,9 +87,10 @@ test('chart: scrubbing a long series and then showing a shorter one reads the sh
   const input = view.container.querySelector('input[type="range"]');
   const setValue = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value').set;
   await act(async () => { setValue.call(input, '4'); input.dispatchEvent(new Event('input', { bubbles: true })); });
-  assert.match(view.container.querySelector('.curv-mobile-chart-readout').textContent, /D4/);
+  assert.match(view.container.querySelector('input[type="range"]').getAttribute('aria-valuetext'), /D4/);
   await view.render(chart(short));
-  assert.match(view.container.querySelector('.curv-mobile-chart-readout').textContent, /D1/);
+  assert.match(view.container.querySelector('input[type="range"]').getAttribute('aria-valuetext'), /D1/);
+  assert.equal(view.container.querySelector('.curv-mobile-chart-period'), null, 'the period that was being read is gone with its series');
 });
 
 // ── Stage board ─────────────────────────────────────────────────────────────
@@ -1113,4 +1114,463 @@ test('move sheet: a count can be a number with separators or a floor shown as gi
   assert.match(sheetRow('Move to A').textContent, /1,284/);
   assert.match(sheetRow('Move to B').textContent, /12\+/);
   assert.ok(sheetRow('Move to C').querySelector('.curv-mobile-board-chip-count') === null, 'an empty string draws nothing');
+});
+
+// ── 0.3.4: scrubbing on the plot ────────────────────────────────────────────
+
+const scrubPoints = Array.from({ length: 7 }, (_, i) => ({ label: `D${i + 1}`, value: [10, 14, 9, 20, 17, 12, 15][i] }));
+/** happy-dom has no layout: give the plot a 260px-wide box, so one pixel is one unit of the chart's viewBox. */
+const plotOf = container => {
+  const svg = container.querySelector('svg[role="img"]');
+  svg.getBoundingClientRect = () => ({ left: 0, top: 0, right: 260, bottom: 108, width: 260, height: 108, x: 0, y: 0 });
+  return svg;
+};
+const lineAt = index => 6 + index * (248 / 6);                        // seven points, drawn 6 in from each side
+const barAt = (index, count) => 6 + (248 / count) * (index + 0.5);   // a bar sits in the middle of its band
+const period = container => container.querySelector('.curv-mobile-chart-period')?.textContent ?? null;
+const labelsOf = container => [...container.querySelectorAll('.curv-mobile-chart-label')].map(label => label.textContent);
+const guideOf = container => container.querySelector('svg > line[stroke-opacity="0.3"]:not(.curv-mobile-chart-leader)');
+const rangeOf = container => container.querySelector('input[type="range"]');
+
+test('chart: a finger that moves sideways on the plot scrubs it, snapping to the period under it, and the pick stays when the finger lifts', async () => {
+  const view = await mount(h(mobile.MobileChart, { points: scrubPoints, variant: 'line', label: 'Orders' }));
+  const svg = plotOf(view.container);
+  assert.equal(period(view.container), null);
+  await pointer(svg, 'pointerdown', { clientX: lineAt(1), clientY: 50 });
+  assert.equal(period(view.container), null, 'a finger that has not moved picks nothing: it may be about to scroll');
+  await pointer(svg, 'pointermove', { clientX: lineAt(1) + 3, clientY: 51 });
+  assert.equal(period(view.container), null, 'and a wobble inside the slop is still not a drag');
+  await pointer(svg, 'pointermove', { clientX: lineAt(2) + 5, clientY: 52 });
+  assert.equal(period(view.container), 'D3');
+  await pointer(svg, 'pointermove', { clientX: lineAt(4) - 5, clientY: 52 });
+  assert.equal(period(view.container), 'D5');
+  assert.equal(labelsOf(view.container).filter(text => text === '17').length, 1, 'its value is drawn in the plot, once');
+  await pointer(svg, 'pointerup', { clientX: lineAt(4) - 5, clientY: 52 });
+  assert.equal(period(view.container), 'D5', 'lifting the finger leaves it picked, so it can be read');
+  assert.ok(guideOf(view.container), 'with its guide');
+});
+
+test('chart: dragging snaps exactly as the hidden range input does, to the nearest period, and clamps at both ends', async () => {
+  for (const variant of ['line', 'bars']) {
+    const view = await mount(h(mobile.MobileChart, { points: scrubPoints, variant, scrub: true, label: 'Orders' }));
+    const svg = plotOf(view.container);
+    const where = index => (variant === 'line' ? lineAt(index) : barAt(index, 7));
+    const gap = variant === 'line' ? 248 / 6 : 248 / 7;
+    await pointer(svg, 'pointerdown', { clientX: where(0), clientY: 50, pointerType: 'mouse', button: 0 });
+    for (let index = 0; index < 7; index += 1) {
+      for (const [offset, expected] of [[-0.49, index], [0.49, index], [0.51, Math.min(6, index + 1)], [-0.51, Math.max(0, index - 1)]]) {
+        await pointer(svg, 'pointermove', { clientX: where(index) + offset * gap, clientY: 50, pointerType: 'mouse' });
+        assert.equal(period(view.container), `D${expected + 1}`, `${variant}: ${offset} of a step from ${index}`);
+        // The same period through the range input.
+        const input = rangeOf(view.container);
+        assert.equal(input.getAttribute('aria-valuetext').split(':')[0], `D${expected + 1}`);
+        assert.equal(input.value, String(expected));
+      }
+    }
+    await pointer(svg, 'pointermove', { clientX: -80, clientY: 50, pointerType: 'mouse' });
+    assert.equal(period(view.container), 'D1', `${variant}: past the left edge is the first period`);
+    await pointer(svg, 'pointermove', { clientX: 900, clientY: 50, pointerType: 'mouse' });
+    assert.equal(period(view.container), 'D7', `${variant}: past the right edge is the last period`);
+    await pointer(svg, 'pointerup', { clientX: 900, clientY: 50, pointerType: 'mouse' });
+  }
+});
+
+test('chart: a touch that moves up or down is the page scrolling and picks nothing; a tap picks, and a tap on the pick clears it', async () => {
+  const view = await mount(h(mobile.MobileChart, { points: scrubPoints, variant: 'line', label: 'Orders' }));
+  const svg = plotOf(view.container);
+  // Mostly vertical: the browser scrolls and cancels the pointer. Nothing was picked on the way.
+  await pointer(svg, 'pointerdown', { clientX: lineAt(3), clientY: 60 });
+  await pointer(svg, 'pointermove', { clientX: lineAt(3) + 2, clientY: 85 });
+  await pointer(svg, 'pointermove', { clientX: lineAt(5), clientY: 110 });
+  await pointer(svg, 'pointercancel', { clientX: lineAt(5), clientY: 110 });
+  assert.equal(period(view.container), null);
+  // A tap picks the period under it.
+  await pointer(svg, 'pointerdown', { clientX: lineAt(2) + 4, clientY: 60 });
+  await pointer(svg, 'pointerup', { clientX: lineAt(2) + 4, clientY: 60 });
+  assert.equal(period(view.container), 'D3');
+  // Another one moves it; one on the pick puts the chart back to rest.
+  await pointer(svg, 'pointerdown', { clientX: lineAt(5), clientY: 60 });
+  await pointer(svg, 'pointerup', { clientX: lineAt(5), clientY: 60 });
+  assert.equal(period(view.container), 'D6');
+  await pointer(svg, 'pointerdown', { clientX: lineAt(5) - 4, clientY: 60 });
+  await pointer(svg, 'pointerup', { clientX: lineAt(5) - 4, clientY: 60 });
+  assert.equal(period(view.container), null);
+  assert.equal(guideOf(view.container), null);
+  // A drag that the browser cancels keeps what it had picked by then.
+  await pointer(svg, 'pointerdown', { clientX: lineAt(1), clientY: 60 });
+  await pointer(svg, 'pointermove', { clientX: lineAt(3), clientY: 61 });
+  await pointer(svg, 'pointercancel', { clientX: lineAt(3), clientY: 61 });
+  assert.equal(period(view.container), 'D4');
+});
+
+test('chart: a mouse picks on press and follows while it is down; hover and the right button do nothing', async () => {
+  const view = await mount(h(mobile.MobileChart, { points: scrubPoints, variant: 'line', label: 'Orders' }));
+  const svg = plotOf(view.container);
+  const mouse = (type, clientX, init = {}) => pointer(svg, type, { clientX, clientY: 50, pointerType: 'mouse', ...init });
+  await mouse('pointermove', lineAt(3));
+  assert.equal(period(view.container), null, 'hover is not scrubbing');
+  await mouse('pointerdown', lineAt(2), { button: 2 });
+  assert.equal(period(view.container), null, 'neither is the right button');
+  await mouse('pointerdown', lineAt(2), { button: 0 });
+  assert.equal(period(view.container), 'D3', 'a press picks at once');
+  await mouse('pointermove', lineAt(5));
+  assert.equal(period(view.container), 'D6');
+  await mouse('pointerup', lineAt(5));
+  await mouse('pointermove', lineAt(0));
+  assert.equal(period(view.container), 'D6', 'released: moving the mouse changes nothing');
+  await mouse('pointerdown', lineAt(5), { button: 0 });
+  await mouse('pointerup', lineAt(5));
+  assert.equal(period(view.container), null, 'a click on the pick clears it');
+});
+
+test('chart: a pointer that is not the primary one, or arrives after the first has gone, is ignored', async () => {
+  const view = await mount(h(mobile.MobileChart, { points: scrubPoints, variant: 'line', label: 'Orders' }));
+  const svg = plotOf(view.container);
+  await pointer(svg, 'pointerdown', { clientX: lineAt(2), clientY: 50, pointerType: 'mouse', button: 0, isPrimary: false });
+  assert.equal(period(view.container), null);
+  await pointer(svg, 'pointerdown', { clientX: lineAt(2), clientY: 50, pointerType: 'mouse', button: 0, pointerId: 7 });
+  await pointer(svg, 'pointermove', { clientX: lineAt(4), clientY: 50, pointerType: 'mouse', pointerId: 8 });
+  assert.equal(period(view.container), 'D3', 'another pointer id does not drag it');
+  await pointer(svg, 'pointerup', { clientX: lineAt(4), clientY: 50, pointerType: 'mouse', pointerId: 8 });
+  await pointer(svg, 'pointermove', { clientX: lineAt(5), clientY: 50, pointerType: 'mouse', pointerId: 7 });
+  assert.equal(period(view.container), 'D6', 'the first one is still being tracked');
+});
+
+test('chart: the period is written under the guide and the value in the plot, once, never in a row under it; a line says its value above its dot', async () => {
+  const weeks = [90, 120, 100, 150, 140, 160, 190, 80, 90, 110, 100, 130].map((value, index) => ({ label: `W${index + 1}`, value: value * 1000, display: `$${value}K` }));
+  const bars = await mount(h(mobile.MobileChart, { points: weeks, variant: 'bars', scrub: true, label: 'Revenue by week' }));
+  await pointer(plotOf(bars.container), 'pointerdown', { clientX: barAt(5, 12), clientY: 50, pointerType: 'mouse', button: 0 });
+  assert.equal(period(bars.container), 'W6');
+  assert.equal(labelsOf(bars.container).filter(text => text === '$160K').length, 1, 'the bar says its value, in the plot');
+  assert.equal(bars.container.textContent.split('$160K').length - 1, 1, 'and nowhere else on the page');
+  assert.equal(bars.container.querySelector('.curv-mobile-chart-readout'), null);
+  assert.equal(bars.container.querySelector('[aria-live]'), null);
+
+  const line = await mount(h(mobile.MobileChart, { points: scrubPoints, variant: 'line', label: 'Orders' }));
+  const svg = plotOf(line.container);
+  assert.deepEqual(labelsOf(line.container), ['15'], 'at rest: the latest value, beside its dot');
+  await pointer(svg, 'pointerdown', { clientX: lineAt(3), clientY: 50, pointerType: 'mouse', button: 0 });
+  assert.equal(period(line.container), 'D4');
+  assert.deepEqual(labelsOf(line.container).sort(), ['15', '20']);
+  const value = [...line.container.querySelectorAll('.curv-mobile-chart-label')].find(label => label.textContent === '20');
+  const dot = [...line.container.querySelectorAll('circle.curv-mobile-chart-dot')].find(circle => Math.abs(Number(circle.getAttribute('cx')) - lineAt(3)) < 0.1);
+  assert.ok(Number(value.getAttribute('y')) + 3 <= Number(dot.getAttribute('cy')) - 4, 'above the dot');
+  assert.ok(Number(guideOf(line.container).getAttribute('y1')) >= Number(value.getAttribute('y')) + 3 - 0.01, 'the guide starts under that text, not through it');
+});
+
+test('chart: the period being read takes the place of the axis label it would touch', async () => {
+  const view = await mount(h(mobile.MobileChart, { points: scrubPoints, variant: 'line', label: 'Orders' }));
+  const svg = plotOf(view.container);
+  const axis = () => [...view.container.querySelectorAll('.curv-mobile-chart-axis')].map(text => text.textContent);
+  assert.deepEqual(axis(), ['D1', 'D7']);
+  await pointer(svg, 'pointerdown', { clientX: lineAt(3), clientY: 50, pointerType: 'mouse', button: 0 });
+  assert.deepEqual(axis(), ['D1', 'D7'], 'in the middle both ends stay');
+  await pointer(svg, 'pointermove', { clientX: lineAt(0), clientY: 50, pointerType: 'mouse' });
+  assert.deepEqual(axis(), ['D7'], 'on the first period it is the first label');
+  await pointer(svg, 'pointermove', { clientX: lineAt(6), clientY: 50, pointerType: 'mouse' });
+  assert.deepEqual(axis(), ['D1'], 'on the last it is the last');
+  assert.equal(period(view.container), 'D7');
+  // A long period ("Oct 22 so far") reaches further than the label it replaces, and takes the other end's too when it touches it.
+  const long = await mount(h(mobile.MobileChart, { points: scrubPoints.map((point, index) => ({ ...point, label: `Week of Oct ${index + 1}` })), variant: 'line', label: 'Orders' }));
+  const wide = plotOf(long.container);
+  await pointer(wide, 'pointerdown', { clientX: lineAt(1), clientY: 50, pointerType: 'mouse', button: 0 });
+  const ends = [...long.container.querySelectorAll('.curv-mobile-chart-axis')].map(text => text.textContent);
+  assert.ok(!ends.includes('Week of Oct 1'), 'the first label is under the period that was picked next to it');
+  assert.ok(ends.includes('Week of Oct 7'), 'the other end is clear of it');
+});
+
+test('chart: values drawn in the plot never overprint each other while a period is picked: the latest steps aside for the pick', async () => {
+  // Wide values, so neighbours near the end would collide.
+  const wide = scrubPoints.map(point => ({ ...point, display: `$${point.value * 1000 + 345}` }));
+  const view = await mount(h(mobile.MobileChart, { points: wide, variant: 'line', label: 'Orders' }));
+  const svg = plotOf(view.container);
+  const boxes = () => [...view.container.querySelectorAll('.curv-mobile-chart-label')].map(text => {
+    const width = text.textContent.length * 11 * 0.58;
+    const x = Number(text.getAttribute('x'));
+    const anchor = text.getAttribute('text-anchor');
+    const y = Number(text.getAttribute('y'));
+    return { text: text.textContent, left: anchor === 'start' ? x : anchor === 'end' ? x - width : x - width / 2, width, top: y - 9, bottom: y + 3 };
+  });
+  let stepped = 0;
+  await pointer(svg, 'pointerdown', { clientX: lineAt(0), clientY: 50, pointerType: 'mouse', button: 0 });
+  for (let index = 0; index < 7; index += 1) {
+    await pointer(svg, 'pointermove', { clientX: lineAt(index), clientY: 50, pointerType: 'mouse' });
+    const all = boxes();
+    for (let a = 0; a < all.length; a += 1) for (let b = a + 1; b < all.length; b += 1) {
+      const apart = all[a].left + all[a].width <= all[b].left || all[b].left + all[b].width <= all[a].left || all[a].bottom <= all[b].top || all[b].bottom <= all[a].top;
+      assert.ok(apart, `picking D${index + 1}: ${all[a].text} and ${all[b].text} do not touch`);
+    }
+    if (index !== 6) assert.ok(all.some(box => box.text === wide[index].display), `picking D${index + 1}: its value is drawn`);
+    if (index !== 6 && !all.some(box => box.text === wide[6].display)) stepped += 1;
+  }
+  assert.ok(stepped > 0, 'next to the latest point its value gives way to the one being read');
+});
+
+test('chart: the hidden range input is the keyboard\'s: it takes focus, arrows pick, Escape clears it first and only then goes on to close what the chart is in', async () => {
+  const closed = [];
+  const onKey = event => { if (event.key === 'Escape') closed.push('escape'); };
+  document.addEventListener('keydown', onKey);
+  try {
+    const view = await mount(h(mobile.MobileChart, { points: scrubPoints, variant: 'line', label: 'Orders' }));
+    const input = rangeOf(view.container);
+    assert.equal(input.hidden, false);
+    assert.notEqual(input.getAttribute('tabindex'), '-1', 'in the tab order');
+    await act(async () => { input.focus(); });
+    is(document.activeElement, input);
+    await setNativeValue(input, '2');
+    assert.equal(period(view.container), 'D3');
+    assert.equal(input.getAttribute('aria-valuetext'), 'D3: 9');
+    await key(input, 'Escape');
+    assert.equal(period(view.container), null, 'cleared');
+    assert.equal(input.getAttribute('aria-valuetext'), 'D7: 15', 'back to the latest');
+    assert.deepEqual(closed, [], 'that Escape was the chart\'s');
+    await key(input, 'Escape');
+    assert.deepEqual(closed, ['escape'], 'with nothing picked, Escape goes on to whatever is around the chart');
+  } finally { document.removeEventListener('keydown', onKey); }
+});
+
+test('chart: only a chart that scrubs listens to the plot', async () => {
+  const still = await mount(h(mobile.MobileChart, { points: scrubPoints, variant: 'bars', label: 'Orders' }));
+  const svg = plotOf(still.container);
+  assert.equal(svg.getAttribute('data-scrub'), null);
+  await pointer(svg, 'pointerdown', { clientX: barAt(2, 7), clientY: 50, pointerType: 'mouse', button: 0 });
+  assert.equal(period(still.container), null);
+  const future = await mount(h(mobile.MobileChart, { points: scrubPoints, variant: 'line', futureSlots: 20, scrub: true, label: 'Orders' }));
+  const plot = plotOf(future.container);
+  await pointer(plot, 'pointerdown', { clientX: 250, clientY: 50, pointerType: 'mouse', button: 0 });
+  assert.equal(period(future.container), 'D7', 'the empty slots after the last period pick the last period, not a period that is not there');
+});
+
+// ── 0.3.4: the title switcher closes on the tap ─────────────────────────────
+
+test('top bar: the page list closes on the tap and the tapped page is current at once, even when the app\'s link swallows onClick and the route is slow', async () => {
+  const taps = [];
+  // What a client-side route that has not landed looks like: the app's link handles the click itself and never calls ours.
+  const renderLink = (item, props) => h('a', { href: props.href, className: props.className, 'aria-current': props['aria-current'], onClick: event => { event.preventDefault(); taps.push(item.id); } }, props.children);
+  const three = [{ id: 'home', label: 'Home', href: '/development', active: true }, { id: 'board', label: 'Board', href: '/development/board' }, { id: 'sku', label: 'SKUs', href: '/development/skus' }];
+  const bar = switcher => h(mobile.MobileTopBar, { title: 'Development', switcher, renderLink });
+  const view = await mount(bar(three));
+  const trigger = view.container.querySelector('.curv-mobile-topbar-switch');
+  const list = view.container.querySelector('.curv-mobile-topbar-pages');
+  const isOpen = () => trigger.getAttribute('aria-expanded') === 'true' && !list.hidden;
+  const rows = () => [...list.querySelectorAll('li')];
+  const current = () => rows().filter(row => row.querySelector('a').getAttribute('aria-current') === 'page').map(row => row.dataset.page);
+  const checked = () => rows().filter(row => row.querySelector('svg')).map(row => row.dataset.page);
+  const pending = () => rows().filter(row => row.dataset.pending === 'true').map(row => row.dataset.page);
+
+  assert.deepEqual(current(), ['home']);
+  await click(trigger);
+  assert.equal(isOpen(), true);
+  await click(list.querySelector('a[href="/development/board"]'));
+  assert.deepEqual(taps, ['board'], 'the app\'s own handler still ran');
+  assert.equal(isOpen(), false, 'closed on the tap');
+  assert.deepEqual(current(), ['board'], 'the tapped page is current, and the old one is not');
+  assert.deepEqual(checked(), ['board']);
+  assert.deepEqual(pending(), ['board']);
+
+  // Opened again before the route lands, it still shows where the person is going.
+  await click(trigger);
+  assert.equal(isOpen(), true);
+  assert.deepEqual(current(), ['board']);
+
+  // The route catches up: the app's own active page takes over, nothing is pending.
+  await view.render(bar(three.map(page => ({ ...page, active: page.id === 'board' }))));
+  assert.deepEqual(current(), ['board']);
+  assert.deepEqual(pending(), []);
+
+  // A click that opens somewhere else (command, control, shift, alt, or not the main button) closes the list but moves nothing.
+  for (const init of [{ metaKey: true }, { ctrlKey: true }, { shiftKey: true }, { altKey: true }, { button: 1 }]) {
+    if (!isOpen()) await click(trigger);
+    await click(list.querySelector('a[href="/development/skus"]'), init);
+    assert.equal(isOpen(), false, `closed on ${JSON.stringify(init)}`);
+    assert.deepEqual(current(), ['board'], `still on the page it is on after ${JSON.stringify(init)}`);
+    assert.deepEqual(pending(), []);
+  }
+
+  // The page it is already on: closes, marks nothing.
+  await click(trigger);
+  await click(list.querySelector('a[href="/development/board"]'));
+  assert.equal(isOpen(), false);
+  assert.deepEqual(pending(), []);
+  assert.deepEqual(current(), ['board']);
+});
+
+test('top bar: a link that forwards our onClick closes the list once, and a title without pages has no list to close', async () => {
+  const view = await mount(h(mobile.MobileTopBar, { title: 'Development', switcher: pages }));
+  const trigger = view.container.querySelector('.curv-mobile-topbar-switch');
+  await click(trigger);
+  await click(view.container.querySelector('.curv-mobile-topbar-pages a[href="/development/board"]'));
+  assert.equal(trigger.getAttribute('aria-expanded'), 'false');
+  const plain = await mount(h(mobile.MobileTopBar, { title: 'Inbox' }));
+  assert.equal(plain.container.querySelector('.curv-mobile-topbar-pages'), null);
+});
+
+// ── 0.3.4: the board's stage chip is placed instantly the first time ────────
+
+test('board: the active stage chip is placed instantly when the board first appears, and slides smoothly on later changes', async () => {
+  const calls = [];
+  const original = Object.getOwnPropertyDescriptor(Element.prototype, 'scrollTo');
+  Element.prototype.scrollTo = function scrollTo(options) { calls.push({ el: this, options }); };
+  try {
+    const view = await mount(h(mobile.MobileStageBoard, { label: 'Board', columns: boardColumns(before), activeColumnId: 'doing' }));
+    const chipRow = () => view.container.querySelector('.curv-mobile-board-chips');
+    const chipScrolls = () => calls.filter(call => call.el === chipRow()).map(call => call.options.behavior);
+    assert.deepEqual(chipScrolls(), ['auto'], 'the first placement is instant: a chip that slides in after the page loads reads as a jump');
+    await click(view.container.querySelector('.curv-mobile-board-chip[aria-label^="In production"]'));   // already active: nothing to move
+    await click(view.container.querySelectorAll('.curv-mobile-board-chip')[2]);
+    assert.equal(chipScrolls().at(-1), 'smooth', 'a later change slides');
+    assert.ok(chipScrolls().slice(1).every(behavior => behavior === 'smooth'));
+    // Remounting is a first appearance again.
+    await view.render(null);
+    calls.length = 0;
+    const again = await mount(h(mobile.MobileStageBoard, { label: 'Board', columns: boardColumns(before), activeColumnId: 'done' }));
+    assert.deepEqual(calls.filter(call => call.el === again.container.querySelector('.curv-mobile-board-chips')).map(call => call.options.behavior), ['auto']);
+  } finally {
+    if (original) Object.defineProperty(Element.prototype, 'scrollTo', original); else delete Element.prototype.scrollTo;
+  }
+});
+
+// ── 0.3.4 audit: a period with no value, the comparison label, the period label ─
+
+const gapPoints = [{ label: 'Wk 1', value: 40 }, { label: 'Wk 2', value: 55 }, { label: 'Wk 3', value: null }, { label: 'Wk 4', value: 30 }, { label: 'Wk 5', value: null, display: 'Not priced' }, { label: 'Wk 6', value: 60 }];
+const pickByKeyboard = async (container, index) => setNativeValue(rangeOf(container), String(index));
+const dotsOf = container => [...container.querySelectorAll('circle.curv-mobile-chart-dot')];
+
+test('chart: picking a period with no value says so in the plot, with the app\'s words or a dash, on bars and on lines, from the plot or the keyboard', async () => {
+  for (const variant of ['bars', 'line']) {
+    const view = await mount(h(mobile.MobileChart, { points: gapPoints, variant, scrub: true, label: 'Spend' }));
+    const svg = plotOf(view.container);
+    const where = index => (variant === 'line' ? 6 + index * (248 / 5) : barAt(index, 6));
+    const dotsAtRest = dotsOf(view.container).length;
+    await pointer(svg, 'pointerdown', { clientX: where(2), clientY: 50, pointerType: 'mouse', button: 0 });
+    assert.equal(period(view.container), 'Wk 3', variant);
+    assert.ok(labelsOf(view.container).includes('—'), `${variant}: a dash for a period nothing is known for, not nothing`);
+    assert.ok(guideOf(view.container), `${variant}: with its guide, so the period can be seen`);
+    assert.equal(dotsOf(view.container).length, dotsAtRest, `${variant}: no dot for a value that is not there`);
+    // The app's own words for it, from the keyboard this time.
+    await pickByKeyboard(view.container, 4);
+    assert.equal(period(view.container), 'Wk 5');
+    assert.ok(labelsOf(view.container).includes('Not priced'), `${variant}: the display the app gave`);
+    assert.equal(rangeOf(view.container).getAttribute('aria-valuetext'), 'Wk 5: Not priced');
+    // Nothing is said twice.
+    assert.equal(view.container.textContent.split('Not priced').length - 1, 1, `${variant}: once`);
+  }
+});
+
+test('chart: a bar chart dims the other bars for the bar being read, and for a period with no bar it dims nothing', async () => {
+  const view = await mount(h(mobile.MobileChart, { points: gapPoints, variant: 'bars', scrub: true, label: 'Spend' }));
+  const fades = () => [...view.container.querySelectorAll('rect')].map(rect => rect.getAttribute('fill-opacity'));
+  assert.deepEqual([...new Set(fades())], ['1'], 'at rest every bar is full');
+  await pickByKeyboard(view.container, 1);
+  assert.deepEqual(fades(), ['0.35', '1', '0.35', '0.35'], 'the bar being read stands out from the others');
+  await pickByKeyboard(view.container, 2);
+  assert.deepEqual([...new Set(fades())], ['1'], 'a period with no bar is not a bar to stand out from the rest: nothing is dimmed into a broken look');
+  await pickByKeyboard(view.container, 3);
+  assert.deepEqual(fades(), ['0.35', '0.35', '1', '0.35']);
+});
+
+test('chart: the dash or the words for a period with no value sit clear of every bar and every other label', async () => {
+  const wide = [{ label: 'W1', value: 90 }, { label: 'W2', value: 120 }, { label: 'W3', value: null, display: 'Not priced yet' }, { label: 'W4', value: 150 }, { label: 'W5', value: 100 }];
+  const view = await mount(h(mobile.MobileChart, { points: wide, variant: 'bars', scrub: true, label: 'Spend' }));
+  await pickByKeyboard(view.container, 2);
+  const text = [...view.container.querySelectorAll('.curv-mobile-chart-label')].find(label => label.textContent === 'Not priced yet');
+  assert.ok(text, 'drawn');
+  const width = text.textContent.length * 11 * 0.58;
+  const left = Number(text.getAttribute('x')) - (text.getAttribute('text-anchor') === 'middle' ? width / 2 : 0);
+  const baseline = Number(text.getAttribute('y'));
+  for (const rect of view.container.querySelectorAll('rect')) {
+    const x = Number(rect.getAttribute('x'));
+    if (x + Number(rect.getAttribute('width')) > left && x < left + width) assert.ok(baseline < Number(rect.getAttribute('y')), 'above every bar it spans, never across one');
+  }
+  assert.ok(baseline <= 88 - 6 + 0.01, 'and above the baseline');
+});
+
+test('chart: a line puts the words for a period with no value in the middle of the plot, where its dot would be, clear of the line around it', async () => {
+  const view = await mount(h(mobile.MobileChart, { points: gapPoints, variant: 'line', scrub: true, label: 'Spend' }));
+  await pickByKeyboard(view.container, 4);
+  const text = [...view.container.querySelectorAll('.curv-mobile-chart-label')].find(label => label.textContent === 'Not priced');
+  const baseline = Number(text.getAttribute('y'));
+  assert.ok(baseline > 20 && baseline < 88, `inside the plot: ${baseline}`);
+  assert.ok(Math.abs(baseline - (20 + 34)) <= 10, `about the middle of it: ${baseline}`);
+  assert.ok(Number(guideOf(view.container).getAttribute('y1')) >= baseline + 3 - 0.01, 'the guide starts under the words');
+});
+
+test('chart: a value that would have to step over the comparison line\'s label takes its place for as long as the period is read, and nothing overprints', async () => {
+  // The comparison line is at the top of the plot, its label on the left; the values next to it are near the top too.
+  const points = [100, 99, 98, 60, 40, 97].map((value, index) => ({ label: `D${index + 1}`, value }));
+  const view = await mount(h(mobile.MobileChart, { points, variant: 'line', scrub: true, label: 'Orders', referenceLine: { value: 100, label: 'Last month avg' } }));
+  const refLabel = () => view.container.querySelector('.curv-mobile-chart-ref-label');
+  assert.ok(refLabel(), 'at rest the comparison is named');
+  const refBox = () => { const text = refLabel(); const width = text.textContent.length * 10 * 0.58; const x = Number(text.getAttribute('x')); const y = Number(text.getAttribute('y')); return { left: x, right: x + width, top: y - 9, bottom: y + 3 }; };
+  let hidden = 0;
+  for (let index = 0; index < points.length; index += 1) {
+    await pickByKeyboard(view.container, index);
+    if (!refLabel()) hidden += 1;
+    assert.ok(view.container.querySelector('line.curv-mobile-chart-ref'), 'the line itself stays');
+    for (const label of view.container.querySelectorAll('.curv-mobile-chart-label')) {
+      const width = label.textContent.length * 11 * 0.58;
+      const x = Number(label.getAttribute('x'));
+      const anchor = label.getAttribute('text-anchor');
+      const box = { left: anchor === 'start' ? x : anchor === 'end' ? x - width : x - width / 2 };
+      box.right = box.left + width; box.top = Number(label.getAttribute('y')) - 9; box.bottom = Number(label.getAttribute('y')) + 3;
+      assert.ok(box.top >= 0, `D${index + 1}: the value stays in the plot (${box.top})`);
+      if (refLabel()) {
+        const ref = refBox();
+        assert.ok(box.right <= ref.left || ref.right <= box.left || box.bottom <= ref.top || ref.bottom <= box.top, `D${index + 1}: ${label.textContent} does not print over ${refLabel().textContent}`);
+      }
+    }
+  }
+  assert.ok(hidden > 0, 'next to the line, the label stepped aside');
+  assert.ok(hidden < points.length, 'but only where it had to');
+  await pickByKeyboard(view.container, 4);
+  assert.ok(refLabel(), 'a period that is nowhere near it leaves it');
+});
+
+test('chart: the period being read stays inside the plot, starts or ends where the axis label it replaces does, and keeps clear of the other one', async () => {
+  const points = Array.from({ length: 7 }, (_, index) => ({ label: `Week of Oct ${index + 1}`, value: 10 + index, partial: index === 6 }));
+  const view = await mount(h(mobile.MobileChart, { points, variant: 'line', label: 'Orders' }));
+  const wide = (text, bold) => text.length * 10 * (bold ? 0.65 : 0.58);
+  const anchoredAt = [];
+  for (let index = 0; index < 7; index += 1) {
+    await pickByKeyboard(view.container, index);
+    const element = view.container.querySelector('.curv-mobile-chart-period');
+    const text = element.textContent;
+    const x = Number(element.getAttribute('x'));
+    const anchor = element.getAttribute('text-anchor');
+    const left = anchor === 'start' ? x : anchor === 'end' ? x - wide(text, true) : x - wide(text, true) / 2;
+    const right = left + wide(text, true);
+    assert.ok(left >= 6 - 0.01 && right <= 254 + 0.01, `${text}: ${left.toFixed(1)} to ${right.toFixed(1)} is inside the plot, 6 from each edge as the axis labels are`);
+    for (const axis of view.container.querySelectorAll('.curv-mobile-chart-axis')) {
+      const ax = Number(axis.getAttribute('x'));
+      const from = axis.getAttribute('text-anchor') === 'end' ? ax - wide(axis.textContent) : ax;
+      assert.ok(right <= from - 6 || left >= from + wide(axis.textContent) + 6, `${text} keeps 6px from ${axis.textContent}`);
+    }
+    anchoredAt.push([anchor, x]);
+  }
+  assert.deepEqual(anchoredAt[0], ['start', 6], 'on the first period it starts where the first axis label does');
+  assert.deepEqual(anchoredAt[6], ['end', 254], 'on the last it ends where the last one does');
+});
+
+test('top bar: when the tap changes nothing (the page it is on, or a click that opens somewhere else) focus goes back to the title, not to the document', async () => {
+  const renderLink = (item, props) => h('a', { href: props.href, className: props.className, 'aria-current': props['aria-current'], onClick: event => event.preventDefault() }, props.children);
+  const view = await mount(h(mobile.MobileTopBar, { title: 'Development', switcher: pages, renderLink }));
+  const trigger = view.container.querySelector('.curv-mobile-topbar-switch');
+  const list = view.container.querySelector('.curv-mobile-topbar-pages');
+  const tap = async (href, init) => {
+    await click(trigger);
+    const link = list.querySelector(`a[href="${href}"]`);
+    await act(async () => { link.focus(); });
+    is(document.activeElement, link);
+    await click(link, init);
+    assert.equal(trigger.getAttribute('aria-expanded'), 'false');
+  };
+  await tap('/development');                                   // the page it is on
+  is(document.activeElement, trigger, 'the current page');
+  await tap('/development/board', { metaKey: true });          // opens in a new tab
+  is(document.activeElement, trigger, 'a modified click');
+  await tap('/development/board', { button: 1 });
+  is(document.activeElement, trigger, 'the middle button');
+  // A tap that goes somewhere leaves focus to the page that replaces this one.
+  await tap('/development/board');
+  assert.ok(document.activeElement !== trigger, 'a navigation is not given focus back');
 });

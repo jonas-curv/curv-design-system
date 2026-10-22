@@ -23,7 +23,7 @@ export interface MobileListSectionProps {
    *  for a section that is the main block of its screen. The trailing note stays 14px. */
   headingSize?: "section" | "title";
   /** Sets `--curv-mobile-gutter` for what is inside (a key-value list or a chart card in the section). `none` for a parent that
-   *  already pads its content. The heading keeps its own 20px inset either way. */
+   *  already pads its content. The heading keeps its own 16px inset either way. */
   gutter?: MobileGutter;
   children: React.ReactNode;
   className?: string;
