@@ -263,3 +263,490 @@
 .curv-mobile-chart-readout { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; font-size: 13px; font-variant-numeric: tabular-nums; }
 .curv-mobile-chart-readout strong { font-weight: 600; }
 .curv-mobile-chart-empty { padding: 20px 0; font-size: 13px; color: var(--muted-foreground, #6b7280); }
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   Phone navigation chrome: MobileTopBar, MobileSurface, MobileTabBar,
+   MobileMenu, MobileViewToggle (docs/mobile.md rules 4, 5, 6 and 11).
+   Appended section: nothing above this line is restyled. Colours are
+   --curv-mobile-* tokens with hex fallbacks, so an OS can retune them; the
+   fallbacks are the approved values. Components are rendered by phone layers
+   only; `curv-mobile-only` hides the bars at and above their breakpoint.
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+/* Focus never lands under a fixed bar: the browser keeps a scrolled-to control clear of the top bar and the tab bar. */
+@media (max-width: 767px) {
+  html:has(.curv-mobile-tabbar[data-breakpoint="md"]:not([hidden])) { scroll-padding-bottom: calc(110px + env(safe-area-inset-bottom)); }
+  html:has(.curv-mobile-topbar[data-breakpoint="md"]) { scroll-padding-top: calc(76px + env(safe-area-inset-top)); }
+}
+@media (max-width: 1023px) {
+  html:has(.curv-mobile-tabbar[data-breakpoint="lg"]:not([hidden])) { scroll-padding-bottom: calc(110px + env(safe-area-inset-bottom)); }
+  html:has(.curv-mobile-topbar[data-breakpoint="lg"]) { scroll-padding-top: calc(76px + env(safe-area-inset-top)); }
+}
+
+/* Zero-specificity resets, so every class below wins without an arms race. */
+:where(.curv-mobile-topbar, .curv-mobile-surface, .curv-mobile-tabbar, .curv-mobile-menu, .curv-mobile-viewtoggle),
+:where(.curv-mobile-topbar, .curv-mobile-surface, .curv-mobile-tabbar, .curv-mobile-menu, .curv-mobile-viewtoggle) :where(*) { box-sizing: border-box; }
+:where(.curv-mobile-topbar, .curv-mobile-tabbar, .curv-mobile-menu, .curv-mobile-viewtoggle) { font-family: inherit; font-feature-settings: 'tnum'; }
+:where(.curv-mobile-topbar, .curv-mobile-tabbar, .curv-mobile-menu, .curv-mobile-viewtoggle) :where(a, button) { margin: 0; font: inherit; text-decoration: none; -webkit-tap-highlight-color: transparent; touch-action: manipulation; cursor: pointer; }
+:where(.curv-mobile-topbar, .curv-mobile-tabbar, .curv-mobile-menu, .curv-mobile-viewtoggle) :where(button) { appearance: none; border: 0; background: transparent; color: inherit; }
+:where(.curv-mobile-topbar, .curv-mobile-menu) :where(ul) { list-style: none; margin: 0; padding: 0; }
+.curv-mobile-nav-sr { position: absolute; width: 1px; height: 1px; margin: -1px; padding: 0; overflow: hidden; clip-path: inset(50%); white-space: nowrap; border: 0; }
+
+/* ── MobileTopBar ──────────────────────────────────────────────────────────
+   Fixed black bar: 58px of title row plus an 18px lip, 76px in all, under the
+   safe area. The lip is where the content sheet's two rounded corners live: the
+   bar paints black into the corners outside the sheet's arc, so the corners stay
+   put while the page scrolls under the bar (the same trick AppFrame uses for the
+   desktop cradle). The bar ignores pointer events everywhere except its row, so
+   the lip never blocks a tap on the sheet. */
+.curv-mobile-topbar { --curv-bar: var(--curv-mobile-topbar, #1b1b1b); position: fixed; z-index: 40; top: 0; left: 0; right: 0; height: calc(76px + env(safe-area-inset-top)); padding-top: env(safe-area-inset-top); pointer-events: none; color: var(--curv-mobile-topbar-ink, #ffffff);
+  background:
+    radial-gradient(circle at 100% 100%, transparent 17.5px, var(--curv-bar) 18px) left bottom / 18px 18px no-repeat,
+    radial-gradient(circle at 0 100%, transparent 17.5px, var(--curv-bar) 18px) right bottom / 18px 18px no-repeat,
+    linear-gradient(var(--curv-bar), var(--curv-bar)) left top / 100% calc(100% - 18px) no-repeat; }
+.curv-mobile-topbar-spacer { height: calc(58px + env(safe-area-inset-top)); }
+/* Controls are 44px and sit on the row's floor, 14px below its top: nothing interactive in the top 12px. */
+.curv-mobile-topbar-row { pointer-events: auto; display: flex; align-items: flex-end; gap: 4px; height: 58px; padding: 0 max(12px, env(safe-area-inset-right)) 0 max(12px, env(safe-area-inset-left)); }
+.curv-mobile-topbar-title { flex: 1 1 auto; min-width: 0; margin: 0; font-size: 24px; line-height: 1.15; font-weight: 600; letter-spacing: -.01em; }
+.curv-mobile-topbar-title-text { display: block; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.curv-mobile-topbar-title > .curv-mobile-topbar-title-text { line-height: 44px; }
+.curv-mobile-topbar-switch { display: inline-flex; align-items: center; gap: 6px; max-width: 100%; min-height: 44px; padding: 0 10px 0 4px; border-radius: 22px; letter-spacing: inherit; text-align: left; }
+.curv-mobile-topbar-chevron { flex: none; opacity: .72; }
+.curv-mobile-topbar-back { flex: none; display: grid; place-items: center; width: 44px; height: 44px; margin-left: -6px; border-radius: 22px; color: inherit; }
+.curv-mobile-topbar-trailing { flex: none; display: flex; align-items: center; margin-left: auto; }
+.curv-mobile-topbar :is(a, button):focus-visible { outline: 2px solid currentColor; outline-offset: -3px; }
+/* The page list: a dark panel under the title, links all the way down. */
+.curv-mobile-topbar-scrim { pointer-events: auto; position: fixed; z-index: -1; inset: calc(58px + env(safe-area-inset-top)) 0 0 0; background: rgba(0, 0, 0, .4); }
+.curv-mobile-topbar-pages { pointer-events: auto; position: absolute; z-index: 1; top: calc(58px + env(safe-area-inset-top) + 4px); left: max(12px, env(safe-area-inset-left)); right: max(12px, env(safe-area-inset-right)); max-width: 420px; padding: 6px; border: 1px solid rgba(255, 255, 255, .1); border-radius: 20px; background: var(--curv-bar); box-shadow: 0 18px 40px rgba(0, 0, 0, .35); }
+.curv-mobile-topbar-pages[hidden] { display: none; }
+.curv-mobile-topbar-page { display: flex; align-items: center; justify-content: space-between; gap: 12px; min-height: 52px; padding: 0 16px 0 18px; border-radius: 14px; font-size: 18px; font-weight: 500; color: var(--curv-mobile-topbar-ink, #ffffff); }
+.curv-mobile-topbar-page[aria-current="page"] { background: rgba(255, 255, 255, .1); font-weight: 600; }
+.curv-mobile-topbar-page svg { flex: none; }
+
+/* ── MobileSurface ─────────────────────────────────────────────────────────
+   The sheet. Its own 18px corners are what the bar's lip is cut to match. The
+   bottom padding keeps the last row clear of the tab bar. */
+.curv-mobile-surface { --curv-surface: var(--curv-mobile-ground, var(--curv-mobile-surface-grouped, #f4f4f5)); position: relative; min-height: calc(100dvh - 58px - env(safe-area-inset-top)); padding-bottom: calc(110px + env(safe-area-inset-bottom)); border-radius: 18px 18px 0 0; background: var(--curv-surface); color: var(--curv-mobile-ink, #1b1b1b); }
+.curv-mobile-surface[data-tone="plain"] { --curv-surface: var(--curv-mobile-surface, var(--curv-mobile-surface-plain, #ffffff)); }
+
+/* ── MobileViewToggle ──────────────────────────────────────────────────── */
+.curv-mobile-viewtoggle { flex: none; display: inline-flex; padding: 3px; border-radius: 24px; background: rgba(255, 255, 255, .12); }
+.curv-mobile-viewtoggle-option { position: relative; display: grid; place-items: center; width: 44px; height: 40px; padding: 0; border-radius: 20px; color: #d8d8da; }
+/* The visible pill is 40px; the touch target grows to the container's 46px. */
+.curv-mobile-viewtoggle-option::before { content: ""; position: absolute; inset: -3px 0; }
+.curv-mobile-viewtoggle-option svg { display: block; width: 22px; height: 22px; }
+.curv-mobile-viewtoggle-option:is([aria-pressed="true"], [aria-current="page"]) { background: #ffffff; color: #1b1b1b; }
+.curv-mobile-viewtoggle-option:focus-visible { outline: 2px solid #ffffff; outline-offset: 2px; }
+.curv-mobile-viewtoggle[data-tone="light"] { background: rgba(0, 0, 0, .06); }
+.curv-mobile-viewtoggle[data-tone="light"] .curv-mobile-viewtoggle-option { color: #3a3a3d; }
+.curv-mobile-viewtoggle[data-tone="light"] .curv-mobile-viewtoggle-option:is([aria-pressed="true"], [aria-current="page"]) { background: #1b1b1b; color: #ffffff; }
+.curv-mobile-viewtoggle[data-tone="light"] .curv-mobile-viewtoggle-option:focus-visible { outline-color: #111113; }
+
+/* ── MobileTabBar ──────────────────────────────────────────────────────────
+   24px above the bottom safe area with 12px gutters. The bar itself never takes
+   a tap (pointer-events: none); the circles and the pill do. A bar that holds a
+   text field rides above the keyboard; a bar of destinations hides behind it. */
+.curv-mobile-tabbar { position: fixed; z-index: 40; left: 0; right: 0; bottom: calc(24px + env(safe-area-inset-bottom)); padding: 0 max(12px, env(safe-area-inset-right)) 0 max(12px, env(safe-area-inset-left)); pointer-events: none; }
+.curv-mobile-tabbar[data-lifted] { bottom: calc(var(--curv-mobile-keyboard-inset, 0px) + 12px); }
+.curv-mobile-tabbar[hidden] { display: none !important; }
+.curv-mobile-tabbar .curv-mobile-connection { pointer-events: auto; left: max(12px, env(safe-area-inset-left)); right: max(12px, env(safe-area-inset-right)); }
+.curv-mobile-tabbar-row { display: flex; align-items: flex-end; gap: 8px; }
+.curv-mobile-tabbar-row > * { pointer-events: auto; }
+
+/* Glass. Solid first; the lens is an upgrade for browsers that can blur. */
+.curv-mobile-tabbar-glass { background: var(--curv-mobile-glass-solid, #fafafb); border: 1px solid var(--curv-mobile-glass-edge, #e1e1e4); box-shadow: 0 12px 36px rgba(17, 17, 26, .18), 0 2px 6px rgba(17, 17, 26, .08); }
+@supports ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
+  .curv-mobile-tabbar-glass {
+    background: var(--curv-mobile-glass, rgba(250, 250, 251, .62));
+    -webkit-backdrop-filter: blur(24px) saturate(190%);
+    backdrop-filter: blur(24px) saturate(190%);
+    border-color: rgba(255, 255, 255, .75);
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, .9), inset 0 -1px 0 rgba(0, 0, 0, .04), 0 12px 36px rgba(17, 17, 26, .18), 0 2px 6px rgba(17, 17, 26, .08);
+  }
+}
+@media (prefers-reduced-transparency: reduce), (prefers-contrast: more), (forced-colors: active) {
+  .curv-mobile-tabbar-glass { background: var(--curv-mobile-glass-solid, #fafafb); -webkit-backdrop-filter: none; backdrop-filter: none; box-shadow: none; border-color: var(--curv-mobile-glass-edge, #c4c4ca); }
+}
+
+.curv-mobile-tabbar-circle { flex: none; display: grid; place-items: center; width: 62px; height: 62px; padding: 0; border-radius: 50%; color: var(--curv-mobile-tabbar-ink-active, #111113); }
+.curv-mobile-tabbar-circle svg { display: block; width: 24px; height: 24px; }
+.curv-mobile-tabbar-pill { flex: 1 1 0; min-width: 0; height: 62px; padding: 0 5px; border-radius: 31px; display: flex; align-items: center; }
+.curv-mobile-tabbar-item { position: relative; flex: 1 1 0; min-width: 0; height: 52px; padding: 0; border-radius: 26px; display: grid; place-items: center; color: var(--curv-mobile-tabbar-ink, #3a3a3d); }
+.curv-mobile-tabbar-icon { display: grid; place-items: center; }
+.curv-mobile-tabbar-item svg { display: block; width: 24px; height: 24px; }
+.curv-mobile-tabbar-item:is([aria-current="page"], [aria-expanded="true"]) { background: rgba(0, 0, 0, .08); color: var(--curv-mobile-tabbar-ink-active, #111113); }
+.curv-mobile-tabbar-item:is([aria-current="page"], [aria-expanded="true"]) svg { stroke-width: 2.3; }
+.curv-mobile-tabbar-badge { position: absolute; top: 4px; left: 54%; min-width: 17px; height: 17px; padding: 0 5px; border-radius: 9px; background: var(--curv-mobile-critical, var(--curv-critical, #b5352f)); color: #ffffff; font-size: 10px; line-height: 17px; font-weight: 600; text-align: center; font-variant-numeric: tabular-nums; pointer-events: none; }
+.curv-mobile-tabbar :is(a, button):focus-visible { outline: 2px solid currentColor; outline-offset: -3px; }
+
+/* Scrolled down: only the current destination and Search remain. */
+.curv-mobile-tabbar[data-collapsed] .curv-mobile-tabbar-circle { width: 48px; height: 48px; }
+.curv-mobile-tabbar[data-collapsed] .curv-mobile-tabbar-circle svg { width: 22px; height: 22px; }
+.curv-mobile-tabbar[data-collapsed] .curv-mobile-tabbar-pill { flex: 0 0 auto; height: 48px; padding: 0 4px; border-radius: 24px; }
+.curv-mobile-tabbar[data-collapsed] .curv-mobile-tabbar-item:not([data-compact]) { display: none; }
+.curv-mobile-tabbar[data-collapsed] .curv-mobile-tabbar-item[data-compact] { flex: 0 0 auto; display: flex; align-items: center; gap: 8px; height: 40px; padding: 0 16px 0 12px; border-radius: 20px; background: transparent; color: var(--curv-mobile-tabbar-ink-active, #111113); }
+.curv-mobile-tabbar[data-collapsed] .curv-mobile-tabbar-item[data-compact] svg { width: 22px; height: 22px; }
+.curv-mobile-tabbar[data-collapsed] .curv-mobile-tabbar-badge { top: 1px; left: 28px; }
+.curv-mobile-tabbar-label { font-size: 15px; line-height: 1; font-weight: 600; letter-spacing: -.005em; white-space: nowrap; }
+
+/* Record mode: the pill holds the page's one action. The classes are for the app's own controls. */
+.curv-mobile-tabbar-action { display: flex; align-items: center; gap: 6px; flex: 1; min-width: 0; height: 52px; }
+.curv-mobile-tabbar-field { flex: 1; min-width: 0; height: 52px; padding: 0 12px 0 16px; border: 0; border-radius: 26px; background: transparent; color: var(--curv-mobile-tabbar-ink-active, #111113); font-size: 16px; }
+.curv-mobile-tabbar-field:focus-visible { outline: 2px solid currentColor; outline-offset: -3px; }
+.curv-mobile-tabbar-field::placeholder { color: #55555a; opacity: 1; }
+.curv-mobile-tabbar-action-button { flex: none; display: grid; place-items: center; width: 44px; height: 44px; padding: 0; border-radius: 50%; background: rgba(0, 0, 0, .08); color: var(--curv-mobile-tabbar-ink-active, #111113); }
+.curv-mobile-tabbar-action-button svg { display: block; width: 22px; height: 22px; }
+.curv-mobile-tabbar-primary { flex: 1; min-width: 0; height: 52px; padding: 0 20px; border-radius: 26px; background: #111113; color: #ffffff; font-size: 16px; font-weight: 600; letter-spacing: -.005em; }
+
+/* Search mode: the pill is the field. */
+.curv-mobile-tabbar-search { gap: 10px; padding: 0 18px; color: var(--curv-mobile-tabbar-ink-active, #111113); }
+.curv-mobile-tabbar-search > svg { flex: none; width: 22px; height: 22px; color: var(--curv-mobile-tabbar-ink, #3a3a3d); }
+.curv-mobile-tabbar-search input { flex: 1; min-width: 0; height: 52px; padding: 0; border: 0; outline: none; background: transparent; color: inherit; font: inherit; font-size: 17px; }
+.curv-mobile-tabbar-search input::placeholder { color: #55555a; opacity: 1; }
+.curv-mobile-tabbar-search:focus-within { outline: 2px solid var(--curv-mobile-tabbar-ink-active, #111113); outline-offset: -3px; }
+
+/* The disclosure chevron turns with or without motion; only the turning itself is animated. */
+.curv-mobile-topbar[data-open] .curv-mobile-topbar-chevron { transform: rotate(180deg); }
+/* Motion is a small courtesy, not a requirement: with reduced motion the bar simply swaps. */
+@media (prefers-reduced-motion: no-preference) {
+  .curv-mobile-tabbar-pill { transition: height .22s cubic-bezier(.2, .8, .2, 1), border-radius .22s cubic-bezier(.2, .8, .2, 1); }
+  .curv-mobile-tabbar-circle { transition: width .22s cubic-bezier(.2, .8, .2, 1), height .22s cubic-bezier(.2, .8, .2, 1), transform .12s ease-out; }
+  .curv-mobile-tabbar-item, .curv-mobile-tabbar-action-button, .curv-mobile-tabbar-primary, .curv-mobile-viewtoggle-option, .curv-mobile-topbar-back, .curv-mobile-topbar-switch { transition: transform .12s ease-out, background-color .15s ease-out; }
+  .curv-mobile-tabbar :is(a, button):active, .curv-mobile-viewtoggle-option:active, .curv-mobile-topbar :is(a, button):active { transform: scale(.97); }
+  .curv-mobile-topbar-chevron { transition: transform .2s ease-out; }
+}
+
+/* ── MobileMenu ────────────────────────────────────────────────────────── */
+.curv-mobile-menu { position: fixed; z-index: 50; inset: 0; display: flex; flex-direction: column; background: var(--curv-mobile-menu, #0b0b0c); color: var(--curv-mobile-menu-ink, #f2f2f2); outline: none; }
+.curv-mobile-menu-scroll { flex: 1 1 auto; min-height: 0; overflow-y: auto; overscroll-behavior: contain; padding: calc(16px + env(safe-area-inset-top)) max(12px, env(safe-area-inset-right)) 24px max(12px, env(safe-area-inset-left)); }
+.curv-mobile-menu-list { display: flex; flex-direction: column; gap: 4px; }
+.curv-mobile-menu-row { display: flex; align-items: center; gap: 18px; width: 100%; min-height: 52px; padding: 0 16px 0 22px; border-radius: 26px; color: inherit; font-size: 20px; line-height: 1.2; font-weight: 500; text-align: left; }
+.curv-mobile-menu-icon { flex: none; display: grid; place-items: center; width: 24px; height: 24px; }
+.curv-mobile-menu-icon svg { display: block; width: 24px; height: 24px; }
+.curv-mobile-menu-label { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.curv-mobile-menu-chevron { flex: none; opacity: .6; }
+.curv-mobile-menu-badge { flex: none; min-width: 24px; height: 24px; padding: 0 8px; border-radius: 12px; background: var(--curv-mobile-critical, var(--curv-critical, #b5352f)); color: #ffffff; font-size: 13px; line-height: 24px; font-weight: 600; text-align: center; font-variant-numeric: tabular-nums; }
+.curv-mobile-menu-row[aria-expanded="true"] { background: #2a2a2d; }
+.curv-mobile-menu-row[aria-current="page"] { background: #1d1d20; }
+.curv-mobile-menu-children { display: flex; flex-direction: column; gap: 2px; margin: 4px 0 8px; }
+.curv-mobile-menu-children[hidden] { display: none; }
+.curv-mobile-menu-child { display: flex; align-items: center; min-height: 48px; padding: 0 16px 0 64px; border-radius: 24px; color: #d8d8da; font-size: 19px; line-height: 1.2; font-weight: 500; }
+.curv-mobile-menu-child[aria-current="page"] { background: #1d1d20; color: #ffffff; }
+/* Desktop-only areas: listed so people know they exist, never a link, never focusable. */
+.curv-mobile-menu :is(.curv-mobile-menu-row, .curv-mobile-menu-child)[aria-disabled="true"] { color: #5a5a5f; cursor: default; }
+.curv-mobile-menu-footer { position: relative; flex: none; display: flex; align-items: center; justify-content: center; gap: 12px; padding: 12px max(16px, env(safe-area-inset-right)) calc(24px + env(safe-area-inset-bottom)) max(16px, env(safe-area-inset-left)); background: var(--curv-mobile-menu, #0b0b0c); }
+.curv-mobile-menu-footer::before { content: ""; position: absolute; left: 0; right: 0; bottom: 100%; height: 24px; background: linear-gradient(to top, var(--curv-mobile-menu, #0b0b0c), rgba(11, 11, 12, 0)); pointer-events: none; }
+.curv-mobile-menu-account { flex: 1 1 auto; min-width: 0; max-width: 320px; height: 62px; display: flex; align-items: center; gap: 12px; padding: 0 16px 0 10px; border-radius: 31px; background: #232326; color: inherit; font-size: 18px; font-weight: 500; text-align: left; }
+.curv-mobile-menu-avatar { flex: none; display: grid; place-items: center; width: 42px; height: 42px; border-radius: 50%; background: var(--curv-mobile-menu-avatar, #4a4a50); color: #ffffff; font-size: 15px; line-height: 1; font-weight: 600; letter-spacing: .01em; }
+.curv-mobile-menu-account-label { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.curv-mobile-menu-close { flex: none; display: grid; place-items: center; width: 62px; height: 62px; padding: 0; border-radius: 50%; background: #232326; color: inherit; }
+.curv-mobile-menu-close svg { display: block; width: 24px; height: 24px; }
+.curv-mobile-menu :is(a, button):focus-visible { outline: 2px solid #ffffff; outline-offset: -3px; }
+@media (prefers-reduced-motion: no-preference) {
+  .curv-mobile-menu :is(a, button):active { transform: scale(.98); }
+}
+
+/* Forced colours drop backgrounds, so state needs a mark that is not colour. */
+@media (forced-colors: active) {
+  .curv-mobile-topbar { background: Canvas; border-bottom: 1px solid CanvasText; }
+  .curv-mobile-topbar-page[aria-current="page"], .curv-mobile-menu-row[aria-current="page"], .curv-mobile-menu-child[aria-current="page"], .curv-mobile-menu-row[aria-expanded="true"],
+  .curv-mobile-tabbar-item:is([aria-current="page"], [aria-expanded="true"]), .curv-mobile-viewtoggle-option:is([aria-pressed="true"], [aria-current="page"]) { outline: 2px solid Highlight; outline-offset: -3px; }
+  .curv-mobile-tabbar-badge, .curv-mobile-menu-badge { border: 1px solid CanvasText; }
+}
+/* ═══ end phone navigation chrome ═══════════════════════════════════════ */
+
+/* Content components (docs/mobile.md rules 7-11).
+
+   Colours are custom properties with hex fallbacks, scoped under --curv-mobile-*. The values below are the
+   Shopify-neutral phone palette, deliberately independent of the desktop theme tokens so a phone screen
+   reads the same in every OS (including under the dark theme: these surfaces stay light and carry their own
+   ink). Override a property on :root to re-tune one colour everywhere. Both sections of this file share these
+   names. The older names still work where they used to apply: --curv-critical behind every critical colour, and
+   --curv-mobile-surface-plain / --curv-mobile-surface-grouped behind the two MobileSurface tones.
+
+     --curv-mobile-surface   #ffffff   list, card and row ground; the plain MobileSurface
+     --curv-mobile-ground    #f4f4f5   the sheet behind cards and boards; the grouped MobileSurface
+     --curv-mobile-ink       #1b1b1b   primary text on those surfaces
+     --curv-mobile-ink-2     #3a3a3d   labels
+     --curv-mobile-ink-3     #6b6b6f   meta, sub-lines (5.3:1 on white)
+     --curv-mobile-fill      #efeff1   search field, active chip, round buttons
+     --curv-mobile-hairline  #e3e3e6   row separators
+     --curv-mobile-accent    #1764c0   focus, unread dot, primary action
+     --curv-mobile-critical  #b5352f   problems written in text, and the badge ground (white on it is 5.97:1)
+
+   Rounded blocks (key-value list, gallery) take their side gutters from --curv-mobile-gutter (16px). Set it
+   to 0 on a parent that already pads its content. */
+
+/* ── Shared ──────────────────────────────────────────────────────────────── */
+.curv-mobile-content-vh { position: absolute; width: 1px; height: 1px; margin: -1px; padding: 0; overflow: hidden; clip-path: inset(50%); white-space: nowrap; border: 0; }
+
+/* ── Flat list ───────────────────────────────────────────────────────────── */
+.curv-mobile-flat-list { background: var(--curv-mobile-surface, #fff); color: var(--curv-mobile-ink, #1b1b1b); font-family: inherit; }
+.curv-mobile-flat-section { color: var(--curv-mobile-ink, #1b1b1b); font-family: inherit; }
+.curv-mobile-flat-section-head { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; padding: 16px 20px 6px; }
+.curv-mobile-flat-section-head h2 { margin: 0; font-size: 14px; line-height: 1.3; font-weight: 500; color: var(--curv-mobile-ink-3, #6b6b6f); }
+.curv-mobile-flat-section-trailing { font-size: 14px; line-height: 1.3; color: var(--curv-mobile-ink-3, #6b6b6f); font-variant-numeric: tabular-nums; }
+
+.curv-mobile-flat-row { position: relative; box-sizing: border-box; display: flex; align-items: center; gap: 14px; min-height: 64px; padding: 14px 16px 14px 20px; background: var(--curv-mobile-surface, #fff); color: var(--curv-mobile-ink, #1b1b1b); font-family: inherit; }
+/* The hairline starts under the text: 82px = 20 padding + 48 thumbnail + 14 gap. The last row of a list has none. */
+.curv-mobile-flat-row::after { content: ""; position: absolute; left: 20px; right: 0; bottom: 0; height: 0.5px; background: var(--curv-mobile-hairline, #e3e3e6); pointer-events: none; }
+.curv-mobile-flat-row[data-thumb]::after { left: 82px; }
+.curv-mobile-flat-item:last-child .curv-mobile-flat-row::after { display: none; }
+
+.curv-mobile-flat-unread { position: absolute; left: 6px; top: 50%; width: 7px; height: 7px; margin-top: -3.5px; border-radius: 50%; background: var(--curv-mobile-accent, #1764c0); }
+
+/* The row link is stretched over the whole row, so a trailing time is part of the target and a trailing button sits above it. */
+.curv-mobile-flat-target { flex: 1; min-width: 0; display: flex; align-items: center; gap: 14px; margin: 0; padding: 0; border: 0; background: none; font: inherit; color: inherit; text-align: left; text-decoration: none; -webkit-tap-highlight-color: transparent; }
+.curv-mobile-flat-link { cursor: pointer; }
+.curv-mobile-flat-link::after { content: ""; position: absolute; inset: 0; }
+.curv-mobile-flat-link:focus-visible { outline: none; }
+.curv-mobile-flat-link:focus-visible::after { outline: 2px solid var(--curv-mobile-accent, #1764c0); outline-offset: -2px; }
+.curv-mobile-flat-link:active::after { background: rgb(0 0 0 / 0.045); }
+@media (hover: hover) { .curv-mobile-flat-link:hover::after { background: rgb(0 0 0 / 0.03); } .curv-mobile-flat-link:active::after { background: rgb(0 0 0 / 0.06); } }
+
+.curv-mobile-flat-thumb { position: relative; flex: none; display: grid; place-items: center; width: 48px; height: 48px; border-radius: 10px; overflow: hidden; background: var(--curv-mobile-thumb, #f4f4f5); color: var(--curv-mobile-thumb-icon, #8a8a90); }
+.curv-mobile-flat-thumb::after { content: ""; position: absolute; inset: 0; border-radius: inherit; box-shadow: inset 0 0 0 1px rgb(0 0 0 / 0.08); pointer-events: none; }
+.curv-mobile-flat-thumb > img { display: block; width: 100%; height: 100%; object-fit: cover; }
+
+.curv-mobile-flat-text { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+.curv-mobile-flat-title { display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; line-clamp: 2; overflow: hidden; overflow-wrap: anywhere; font-size: 17px; line-height: 1.25; font-weight: 600; letter-spacing: -0.01em; color: var(--curv-mobile-ink, #1b1b1b); }
+.curv-mobile-flat-meta { display: block; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; font-size: 15px; line-height: 1.3; color: var(--curv-mobile-ink-3, #6b6b6f); font-variant-numeric: tabular-nums; }
+.curv-mobile-flat-exception { color: var(--curv-mobile-critical, var(--curv-critical, #b5352f)); font-weight: 500; }
+
+.curv-mobile-flat-trailing { position: relative; z-index: 1; flex: none; display: flex; align-items: center; gap: 8px; font-size: 13px; line-height: 1.3; color: var(--curv-mobile-ink-3, #6b6b6f); font-variant-numeric: tabular-nums; white-space: nowrap; pointer-events: none; }
+.curv-mobile-flat-trailing :is(a, button, input, select, textarea, [role="button"]) { pointer-events: auto; }
+
+.curv-mobile-flat-pill { flex: none; display: inline-flex; align-items: center; height: 26px; padding: 0 11px; border-radius: 13px; font-size: 13px; line-height: 1; font-weight: 500; white-space: nowrap; }
+.curv-mobile-flat-pill-positive { background: var(--curv-mobile-positive-bg, #d9f5df); color: var(--curv-mobile-positive-fg, #1f6b30); }
+.curv-mobile-flat-pill-critical { background: var(--curv-mobile-critical-bg, #fde4e2); color: var(--curv-mobile-critical-fg, #a9302a); }
+/* Amber is the board's warning badge, same two tokens: "At risk" reads the same in a list and on a card. */
+.curv-mobile-flat-pill-warning { background: var(--curv-mobile-board-warning-bg, #fdf1dc); color: var(--curv-mobile-board-warning-fg, #8a4e00); }
+.curv-mobile-flat-pill-info { background: var(--curv-mobile-info-bg, #e3eefd); color: var(--curv-mobile-info-fg, #1d4f91); }
+.curv-mobile-flat-pill-special { background: var(--curv-mobile-special-bg, #eee8fb); color: var(--curv-mobile-special-fg, #5b3db0); }
+.curv-mobile-flat-pill-neutral { background: var(--curv-mobile-neutral-bg, #efeff1); color: var(--curv-mobile-neutral-fg, #3a3a3d); }
+
+/* ── Toolbar and view chips ──────────────────────────────────────────────── */
+.curv-mobile-toolbar { box-sizing: border-box; display: flex; align-items: center; gap: 10px; padding: 12px 16px; background: var(--curv-mobile-surface, #fff); color: var(--curv-mobile-ink, #1b1b1b); font-family: inherit; }
+.curv-mobile-toolbar-search { flex: 1; min-width: 0; box-sizing: border-box; display: flex; align-items: center; gap: 10px; height: 48px; padding: 0 16px; border-radius: 24px; background: var(--curv-mobile-fill, #efeff1); color: var(--curv-mobile-ink-3, #6b6b6f); }
+.curv-mobile-toolbar-search:focus-within { outline: 2px solid var(--curv-mobile-accent, #1764c0); outline-offset: 2px; }
+.curv-mobile-toolbar-search > svg { flex: none; }
+.curv-mobile-toolbar-search input { flex: 1; min-width: 0; height: 100%; margin: 0; padding: 0; border: 0; border-radius: 0; background: transparent; outline: none; box-shadow: none; font: inherit; font-size: 17px; color: var(--curv-mobile-ink, #1b1b1b); }
+.curv-mobile-toolbar-search input::placeholder { color: var(--curv-mobile-ink-3, #6b6b6f); opacity: 1; }
+.curv-mobile-toolbar-button { position: relative; flex: none; display: grid; place-items: center; width: 48px; height: 48px; padding: 0; border: 0; border-radius: 50%; background: var(--curv-mobile-fill, #efeff1); color: var(--curv-mobile-ink, #1b1b1b); cursor: pointer; -webkit-tap-highlight-color: transparent; }
+.curv-mobile-toolbar-button:focus-visible { outline: 2px solid var(--curv-mobile-accent, #1764c0); outline-offset: 2px; }
+.curv-mobile-toolbar-badge { position: absolute; top: -2px; right: -2px; box-sizing: border-box; min-width: 20px; height: 20px; padding: 0 5px; display: grid; place-items: center; border-radius: 10px; background: var(--curv-mobile-accent, #1764c0); color: #fff; font-size: 12px; line-height: 1; font-weight: 600; font-variant-numeric: tabular-nums; box-shadow: 0 0 0 2px var(--curv-mobile-surface, #fff); }
+
+.curv-mobile-view-chips { position: relative; box-sizing: border-box; display: flex; align-items: center; gap: 8px; padding: 2px 16px; overflow-x: auto; overflow-y: hidden; overscroll-behavior-x: contain; scrollbar-width: none; -webkit-overflow-scrolling: touch; background: var(--curv-mobile-surface, #fff); color: var(--curv-mobile-ink, #1b1b1b); font-family: inherit; }
+.curv-mobile-view-chips::-webkit-scrollbar { display: none; }
+.curv-mobile-view-chip { position: relative; flex: none; display: inline-flex; align-items: center; box-sizing: border-box; height: 40px; padding: 0 14px; border: 0; border-radius: 20px; background: transparent; font: inherit; font-size: 15px; line-height: 1; color: var(--curv-mobile-ink-2, #3a3a3d); text-decoration: none; white-space: nowrap; cursor: pointer; -webkit-tap-highlight-color: transparent; }
+/* The chip is 40px; its hit area is the 44px the row allows. */
+.curv-mobile-view-chip::before { content: ""; position: absolute; inset: -2px; }
+.curv-mobile-view-chip-body { display: inline-flex; align-items: baseline; gap: 6px; }
+.curv-mobile-view-chip-count { font-size: 13px; color: var(--curv-mobile-ink-3, #6b6b6f); font-variant-numeric: tabular-nums; }
+.curv-mobile-view-chip:is([aria-pressed="true"], [aria-current], :has(> [data-active="true"])) { background: var(--curv-mobile-fill, #efeff1); font-weight: 500; color: var(--curv-mobile-ink, #1b1b1b); }
+.curv-mobile-view-chip:focus-visible { outline: 2px solid var(--curv-mobile-accent, #1764c0); outline-offset: 1px; }
+
+/* ── Swipe row ───────────────────────────────────────────────────────────── */
+.curv-mobile-swipe { position: relative; overflow: hidden; background: var(--curv-mobile-surface, #fff); color: var(--curv-mobile-ink, #1b1b1b); }
+.curv-mobile-swipe-surface { position: relative; z-index: 1; background: var(--curv-mobile-surface, #fff); color: var(--curv-mobile-ink, #1b1b1b); touch-action: pan-y; transition: transform 260ms cubic-bezier(0.23, 1, 0.32, 1); }
+.curv-mobile-swipe[data-open="true"] .curv-mobile-swipe-surface { transform: translate3d(calc(var(--curv-swipe-width) * -1), 0, 0); }
+.curv-mobile-swipe[data-dragging="true"] .curv-mobile-swipe-surface { transition: none; user-select: none; -webkit-user-select: none; }
+.curv-mobile-swipe-surface img { -webkit-user-drag: none; }
+/* Hidden until opened so the buttons are not in the tab order or the accessibility tree behind the row. */
+.curv-mobile-swipe-actions { position: absolute; z-index: 0; top: 0; right: 0; bottom: 0; width: var(--curv-swipe-width); display: flex; visibility: hidden; transition: visibility 0s linear 260ms; }
+.curv-mobile-swipe:is([data-open="true"], [data-dragging="true"]) .curv-mobile-swipe-actions { visibility: visible; transition-delay: 0s; }
+.curv-mobile-swipe-action { flex: 0 0 72px; width: 72px; box-sizing: border-box; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px; padding: 0 4px; border: 0; border-radius: 0; color: #fff; font: inherit; font-size: 12px; line-height: 1.2; font-weight: 600; cursor: pointer; -webkit-tap-highlight-color: transparent; }
+.curv-mobile-swipe-action-primary { background: var(--curv-mobile-accent, #1764c0); }
+.curv-mobile-swipe-action-positive { background: var(--curv-mobile-positive-solid, #1f7a33); }
+.curv-mobile-swipe-action-neutral { background: var(--curv-mobile-ink-3, #6b6b6f); }
+.curv-mobile-swipe-action:active { filter: brightness(0.92); }
+.curv-mobile-swipe-action:focus-visible { outline: 2px solid #fff; outline-offset: -4px; }
+.curv-mobile-swipe-action-icon { display: grid; place-items: center; width: 22px; height: 22px; }
+.curv-mobile-swipe-action-icon > svg { width: 22px; height: 22px; }
+/* The keyboard route to the same actions: invisible (but present) until focused. */
+.curv-mobile-swipe-trigger { position: absolute; z-index: 3; right: 10px; top: 50%; width: 44px; height: 44px; margin-top: -22px; display: grid; place-items: center; padding: 0; border: 0; border-radius: 22px; background: var(--curv-mobile-ink, #1b1b1b); color: #fff; opacity: 0; pointer-events: none; cursor: pointer; }
+.curv-mobile-swipe-trigger:focus-visible { opacity: 1; pointer-events: auto; outline: none; box-shadow: 0 0 0 2px #fff, 0 0 0 4px var(--curv-mobile-accent, #1764c0); }
+
+/* ── Activity cards ──────────────────────────────────────────────────────── */
+.curv-mobile-activity { color: var(--curv-mobile-ink, #1b1b1b); font-family: inherit; }
+.curv-mobile-activity-title { margin: 0; padding: 16px 20px 8px; font-size: 20px; line-height: 1.25; font-weight: 600; letter-spacing: -0.02em; }
+.curv-mobile-activity-rail { display: flex; gap: 12px; margin: 0; padding: 4px 16px 16px; list-style: none; overflow-x: auto; overflow-y: hidden; scroll-snap-type: x proximity; scroll-padding-inline: 16px; overscroll-behavior-x: contain; scrollbar-width: none; -webkit-overflow-scrolling: touch; }
+.curv-mobile-activity-rail::-webkit-scrollbar { display: none; }
+.curv-mobile-activity-item { flex: none; display: flex; width: 150px; scroll-snap-align: start; }
+.curv-mobile-activity-card { box-sizing: border-box; width: 100%; min-height: 96px; display: flex; flex-direction: column; justify-content: space-between; gap: 12px; padding: 14px 16px; border-radius: 18px; background: var(--curv-mobile-surface, #fff); box-shadow: 0 0 0 0.5px rgb(0 0 0 / 0.08), 0 2px 8px rgb(0 0 0 / 0.05); color: var(--curv-mobile-ink, #1b1b1b); text-decoration: none; -webkit-tap-highlight-color: transparent; }
+.curv-mobile-activity-card:focus-visible { outline: 2px solid var(--curv-mobile-accent, #1764c0); outline-offset: 2px; }
+.curv-mobile-activity-label { font-size: 15px; line-height: 1.3; color: var(--curv-mobile-ink-2, #3a3a3d); }
+.curv-mobile-activity-foot { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.curv-mobile-activity-value { font-size: 24px; line-height: 1.15; font-weight: 600; letter-spacing: -0.02em; font-variant-numeric: tabular-nums; }
+.curv-mobile-activity-value[data-tone="critical"] { color: var(--curv-mobile-critical, var(--curv-critical, #b5352f)); }
+.curv-mobile-activity-icon { flex: none; display: grid; place-items: center; width: 20px; height: 20px; color: var(--curv-mobile-ink-3, #6b6b6f); }
+.curv-mobile-activity-icon > svg { width: 20px; height: 20px; }
+
+/* ── Hero panel ──────────────────────────────────────────────────────────── */
+.curv-mobile-hero { box-sizing: border-box; padding: 6px 12px 20px; border-radius: 0 0 18px 18px; background: var(--curv-mobile-hero-bg, var(--curv-mobile-topbar, #1b1b1b)); color: var(--curv-mobile-hero-ink, #f2f2f2); font-family: inherit; }
+.curv-mobile-hero-kpis { position: relative; display: flex; gap: 6px; margin: 0 -12px; padding: 4px 12px; overflow-x: auto; overflow-y: hidden; scroll-snap-type: x proximity; scroll-padding-inline: 12px; overscroll-behavior-x: contain; scrollbar-width: none; -webkit-overflow-scrolling: touch; }
+.curv-mobile-hero-kpis::-webkit-scrollbar { display: none; }
+.curv-mobile-hero-kpi { flex: none; display: flex; align-items: flex-start; box-sizing: border-box; min-width: 112px; min-height: 68px; padding: 10px 14px 11px; border: 0; border-radius: 16px; background: transparent; color: inherit; font: inherit; text-align: left; text-decoration: none; scroll-snap-align: start; cursor: pointer; -webkit-tap-highlight-color: transparent; }
+.curv-mobile-hero-kpi:not(a, button) { cursor: default; }
+.curv-mobile-hero-kpi:is([aria-pressed="true"], [aria-current], :has(> [data-active="true"])) { background: var(--curv-mobile-hero-chip, #232326); box-shadow: inset 0 0 0 1px var(--curv-mobile-hero-line, #3a3a3d); }
+.curv-mobile-hero-kpi:focus-visible { outline: 2px solid var(--curv-mobile-hero-focus, #6aa9f0); outline-offset: -2px; }
+.curv-mobile-hero-kpi-body { display: flex; flex-direction: column; gap: 2px; text-align: left; }
+.curv-mobile-hero-kpi-label { font-size: 14px; line-height: 1.3; color: var(--curv-mobile-hero-label, #b4b4b9); white-space: nowrap; }
+.curv-mobile-hero-kpi-value { font-size: 22px; line-height: 1.2; font-weight: 600; letter-spacing: -0.02em; color: #fff; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.curv-mobile-hero-kpi-delta { font-size: 13px; line-height: 1.3; font-weight: 500; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.curv-mobile-hero-kpi-delta[data-tone="positive"] { color: var(--curv-mobile-hero-positive, #7fd18b); }
+.curv-mobile-hero-kpi-delta[data-tone="critical"] { color: var(--curv-mobile-hero-critical, #f28b82); }
+.curv-mobile-hero-chart { margin-top: 8px; }
+.curv-mobile-hero-actions { display: flex; gap: 10px; margin-top: 16px; }
+.curv-mobile-hero-actions > * { flex: 1 1 0; min-width: 0; }
+.curv-mobile-hero-action { box-sizing: border-box; display: inline-flex; align-items: center; justify-content: center; gap: 8px; height: 44px; padding: 0 18px; border: 1px solid var(--curv-mobile-hero-line, #3a3a3d); border-radius: 22px; background: var(--curv-mobile-hero-button, #1e1e20); color: var(--curv-mobile-hero-ink, #f2f2f2); font: inherit; font-size: 15px; line-height: 1; font-weight: 500; text-decoration: none; white-space: nowrap; cursor: pointer; -webkit-tap-highlight-color: transparent; }
+.curv-mobile-hero-action:active { background: var(--curv-mobile-hero-chip, #232326); }
+.curv-mobile-hero-action:focus-visible { outline: 2px solid var(--curv-mobile-hero-focus, #6aa9f0); outline-offset: 2px; }
+.curv-mobile-hero-action-icon { display: grid; place-items: center; width: 20px; height: 20px; }
+.curv-mobile-hero-action-icon > svg { width: 20px; height: 20px; }
+
+/* MobileChart on the dark panel. Additive: only figures with tone="dark" are touched. */
+.curv-mobile-chart-dark { color: var(--curv-mobile-hero-ink, #f2f2f2); }
+.curv-mobile-chart-dark .curv-mobile-chart-grid { stroke: var(--curv-mobile-chart-grid, #2c2c2f); stroke-opacity: 1; }
+.curv-mobile-chart-dark .curv-mobile-chart-axis, .curv-mobile-chart-dark .curv-mobile-chart-ref-label { fill: var(--curv-mobile-chart-axis, #8a8a90); fill-opacity: 1; }
+.curv-mobile-chart-dark .curv-mobile-chart-line { stroke: var(--curv-mobile-chart-line, #3ba7f0); stroke-width: 2.5; }
+.curv-mobile-chart-line-partial { stroke-opacity: 0.8; }
+.curv-mobile-chart-dark rect { fill: var(--curv-mobile-chart-line, #3ba7f0); }
+.curv-mobile-chart-dark rect[stroke-dasharray] { stroke: var(--curv-mobile-chart-line, #3ba7f0); }
+.curv-mobile-chart-dark .curv-mobile-chart-area-top, .curv-mobile-chart-dark .curv-mobile-chart-area-bottom { stop-color: var(--curv-mobile-chart-line, #3ba7f0); }
+.curv-mobile-chart-dark .curv-mobile-chart-area-top { stop-opacity: 0.14; }
+.curv-mobile-chart-dark .curv-mobile-chart-area-bottom { stop-opacity: 0; }
+.curv-mobile-chart-dark .curv-mobile-chart-ref { stroke: var(--curv-mobile-hero-label, #b4b4b9); stroke-opacity: 0.7; }
+.curv-mobile-chart-dark .curv-mobile-chart-dot { fill: var(--curv-mobile-chart-line, #3ba7f0); stroke: var(--curv-mobile-hero-bg, var(--curv-mobile-topbar, #1b1b1b)); }
+.curv-mobile-chart-dark .curv-mobile-chart-dot-partial { fill: var(--curv-mobile-hero-bg, var(--curv-mobile-topbar, #1b1b1b)); stroke: var(--curv-mobile-chart-line, #3ba7f0); }
+.curv-mobile-chart-dark .curv-mobile-chart-label { fill: var(--curv-mobile-hero-ink, #f2f2f2); }
+.curv-mobile-chart-dark .curv-mobile-chart-delta, .curv-mobile-chart-dark figcaption, .curv-mobile-chart-dark .curv-mobile-chart-empty { color: var(--curv-mobile-hero-label, #b4b4b9); }
+.curv-mobile-chart-dark .curv-mobile-chart-delta[data-tone="up"] { color: var(--curv-mobile-hero-positive, #7fd18b); }
+.curv-mobile-chart-dark .curv-mobile-chart-delta[data-tone="down"] { color: var(--curv-mobile-hero-critical, #f28b82); }
+.curv-mobile-chart-dark .curv-mobile-chart-scrub::-webkit-slider-runnable-track { background: var(--curv-mobile-hero-line, #3a3a3d); }
+.curv-mobile-chart-dark .curv-mobile-chart-scrub::-moz-range-track { background: var(--curv-mobile-hero-line, #3a3a3d); }
+.curv-mobile-chart-dark .curv-mobile-chart-scrub::-webkit-slider-thumb { background: var(--curv-mobile-hero-bg, var(--curv-mobile-topbar, #1b1b1b)); border-color: var(--curv-mobile-chart-line, #3ba7f0); }
+.curv-mobile-chart-dark .curv-mobile-chart-scrub::-moz-range-thumb { background: var(--curv-mobile-hero-bg, var(--curv-mobile-topbar, #1b1b1b)); border-color: var(--curv-mobile-chart-line, #3ba7f0); }
+.curv-mobile-chart-dark .curv-mobile-chart-scrub:focus-visible { outline-color: var(--curv-mobile-hero-focus, #6aa9f0); }
+
+/* ── Stage board ─────────────────────────────────────────────────────────── */
+.curv-mobile-board { color: var(--curv-mobile-ink, #1b1b1b); font-family: inherit; }
+.curv-mobile-board-chips { position: relative; box-sizing: border-box; display: flex; gap: 8px; padding: 8px 16px; overflow-x: auto; overflow-y: hidden; overscroll-behavior-x: contain; scrollbar-width: none; -webkit-overflow-scrolling: touch; }
+.curv-mobile-board-chips::-webkit-scrollbar { display: none; }
+.curv-mobile-board-chip { position: relative; flex: none; box-sizing: border-box; display: inline-flex; align-items: center; gap: 6px; height: 36px; padding: 0 14px; border: 0; border-radius: 18px; background: var(--curv-mobile-surface, #fff); box-shadow: 0 0 0 0.5px rgb(0 0 0 / 0.08); color: var(--curv-mobile-chip, #5f5f64); font: inherit; font-size: 14px; line-height: 1; font-weight: 500; white-space: nowrap; cursor: pointer; -webkit-tap-highlight-color: transparent; }
+.curv-mobile-board-chip::before { content: ""; position: absolute; inset: -4px -2px; }
+.curv-mobile-board-chip-count { opacity: 0.9; font-variant-numeric: tabular-nums; }
+.curv-mobile-board-chip[aria-pressed="true"] { background: var(--curv-mobile-ink, #1b1b1b); box-shadow: none; color: #fff; }
+.curv-mobile-board-chip:focus-visible { outline: 2px solid var(--curv-mobile-accent, #1764c0); outline-offset: 2px; }
+
+/* A column is the board's width minus 66px (16 gutter + 50 peek), so the next one shows 50px. A flex item's percentage
+   resolves against the content box, which already excludes the 16px gutter, so only the peek is subtracted here.
+   The trailing spacer lets the last column reach the left edge instead of stopping flush right. */
+.curv-mobile-board-columns { --curv-board-gutter: 16px; --curv-board-peek: 50px; position: relative; box-sizing: border-box; display: flex; align-items: flex-start; padding: 12px 0 32px var(--curv-board-gutter); overflow-x: auto; overflow-y: hidden; scroll-snap-type: x mandatory; scroll-padding-inline: var(--curv-board-gutter); overscroll-behavior-x: contain; scrollbar-width: none; -webkit-overflow-scrolling: touch; }
+.curv-mobile-board-columns::-webkit-scrollbar { display: none; }
+.curv-mobile-board-columns::after { content: ""; flex: 0 0 var(--curv-board-peek); }
+.curv-mobile-board-column { flex: 0 0 calc(100% - var(--curv-board-peek)); box-sizing: border-box; min-width: 0; padding-right: 12px; scroll-snap-align: start; scroll-snap-stop: always; }
+.curv-mobile-board-column-inner { border-radius: 14px; }
+.curv-mobile-board-column[data-drop-target="true"] .curv-mobile-board-column-inner { background: rgb(23 100 192 / 0.08); outline: 2px dashed rgb(23 100 192 / 0.55); outline-offset: 4px; }
+.curv-mobile-board-column-head { display: flex; align-items: baseline; gap: 8px; margin: 0; padding: 2px 2px 10px; font-size: 17px; line-height: 1.3; font-weight: 600; letter-spacing: -0.01em; }
+.curv-mobile-board-column-count { font-size: 15px; font-weight: 500; color: var(--curv-mobile-ink-3, #6b6b6f); font-variant-numeric: tabular-nums; }
+.curv-mobile-board-cards { display: flex; flex-direction: column; gap: 10px; min-height: 88px; margin: 0; padding: 0; list-style: none; }
+.curv-mobile-board-empty { margin: 0; padding: 24px 8px; text-align: center; font-size: 14px; line-height: 1.4; color: var(--curv-mobile-ink-3, #6b6b6f); }
+
+.curv-mobile-board-item { min-width: 0; }
+.curv-mobile-board-card { position: relative; overflow: hidden; border-radius: 14px; background: var(--curv-mobile-surface, #fff); color: var(--curv-mobile-ink, #1b1b1b); box-shadow: 0 0 0 0.5px rgb(0 0 0 / 0.08), 0 1px 2px rgb(0 0 0 / 0.04); transition: translate 220ms cubic-bezier(0.23, 1, 0.32, 1), rotate 160ms ease-out, scale 160ms ease-out, box-shadow 160ms ease-out; }
+.curv-mobile-board-card[data-movable] { -webkit-touch-callout: none; -webkit-user-select: none; user-select: none; }
+/* Lifted: it tilts and floats. The translate is set by the drag itself, so it is the one property without a transition here. */
+.curv-mobile-board-card[data-lifted="true"] { z-index: 20; rotate: -3deg; scale: 1.03; box-shadow: 0 0 0 0.5px rgb(0 0 0 / 0.1), 0 24px 48px rgb(0 0 0 / 0.28); transition-property: rotate, scale, box-shadow; }
+.curv-mobile-board-card-link { display: block; color: inherit; text-decoration: none; -webkit-tap-highlight-color: transparent; -webkit-touch-callout: none; }
+.curv-mobile-board-card-link:focus-visible { outline: 2px solid var(--curv-mobile-accent, #1764c0); outline-offset: -2px; border-radius: 14px; }
+.curv-mobile-board-cover { display: block; width: 100%; height: 110px; object-fit: cover; background: var(--curv-mobile-thumb, #f4f4f5); }
+.curv-mobile-board-card-body { display: block; padding: 10px 12px 12px; }
+.curv-mobile-board-card[data-movable] .curv-mobile-board-card-body { min-height: 48px; padding-right: 40px; }
+.curv-mobile-board-card-title { display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 3; line-clamp: 3; overflow: hidden; overflow-wrap: anywhere; font-size: 15px; line-height: 1.3; font-weight: 600; color: var(--curv-mobile-ink, #1b1b1b); }
+.curv-mobile-board-card-meta { display: flex; align-items: center; gap: 8px; margin-top: 8px; min-height: 22px; }
+.curv-mobile-board-avatar { flex: none; box-sizing: border-box; display: grid; place-items: center; width: 22px; height: 22px; border-radius: 50%; background: var(--curv-mobile-ink-3, #6b6b6f); color: #fff; font-size: 10px; line-height: 1; font-weight: 600; letter-spacing: 0.02em; }
+.curv-mobile-board-date { font-size: 13px; line-height: 1.3; color: var(--curv-mobile-ink-3, #6b6b6f); font-variant-numeric: tabular-nums; white-space: nowrap; }
+.curv-mobile-board-date[data-late="true"] { color: var(--curv-mobile-critical, var(--curv-critical, #b5352f)); font-weight: 500; }
+.curv-mobile-board-badge { margin-left: auto; flex: none; display: inline-flex; align-items: center; height: 22px; padding: 0 9px; border-radius: 11px; font-size: 12px; line-height: 1; font-weight: 500; white-space: nowrap; }
+.curv-mobile-board-badge-critical { background: var(--curv-mobile-board-critical-bg, #fce9e8); color: var(--curv-mobile-critical-fg, #a9302a); }
+.curv-mobile-board-badge-warning { background: var(--curv-mobile-board-warning-bg, #fdf1dc); color: var(--curv-mobile-board-warning-fg, #8a4e00); }
+.curv-mobile-board-move { position: absolute; z-index: 1; right: 7px; bottom: 7px; display: grid; place-items: center; width: 30px; height: 30px; padding: 0; border: 0; border-radius: 15px; background: transparent; color: var(--curv-mobile-ink-3, #6b6b6f); cursor: pointer; -webkit-tap-highlight-color: transparent; }
+/* 30px to look at, 44px to hit. */
+.curv-mobile-board-move::before { content: ""; position: absolute; inset: -7px; }
+.curv-mobile-board-move:active { background: rgb(0 0 0 / 0.06); }
+.curv-mobile-board-move:focus-visible { outline: 2px solid var(--curv-mobile-accent, #1764c0); outline-offset: 0; }
+.curv-mobile-board-drop-label { position: absolute; z-index: 2; left: 10px; top: 10px; box-sizing: border-box; display: inline-flex; align-items: center; max-width: calc(100% - 20px); height: 24px; padding: 0 10px; overflow: hidden; border-radius: 12px; background: var(--curv-mobile-accent, #1764c0); color: #fff; font-size: 12px; line-height: 1; font-weight: 600; white-space: nowrap; text-overflow: ellipsis; pointer-events: none; }
+
+.curv-mobile-board-sheet-title { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.curv-mobile-board-sheet-card { overflow: hidden; font-size: 14px; line-height: 1.3; font-weight: 400; color: var(--muted-foreground, #6b6b6f); white-space: nowrap; text-overflow: ellipsis; }
+.curv-mobile-board-move-list { margin: 0; padding: 0; list-style: none; }
+.curv-mobile-board-move-option { box-sizing: border-box; display: flex; align-items: center; justify-content: space-between; gap: 12px; width: 100%; min-height: 56px; padding: 0 4px; border: 0; border-bottom: 0.5px solid var(--border, var(--curv-mobile-hairline, #e3e3e6)); background: transparent; color: inherit; font: inherit; font-size: 17px; text-align: left; cursor: pointer; -webkit-tap-highlight-color: transparent; }
+.curv-mobile-board-move-option .curv-mobile-board-chip-count { font-size: 15px; color: var(--muted-foreground, #6b6b6f); opacity: 1; }
+.curv-mobile-board-move-option:focus-visible { outline: 2px solid var(--curv-mobile-accent, #1764c0); outline-offset: -2px; }
+
+/* ── Key-value list ──────────────────────────────────────────────────────── */
+.curv-mobile-kv { margin-inline: var(--curv-mobile-gutter, 16px); color: var(--curv-mobile-ink, #1b1b1b); font-family: inherit; }
+.curv-mobile-kv-head { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; padding: 0 4px 8px; }
+.curv-mobile-kv-head h2 { margin: 0; font-size: 13px; line-height: 1.3; font-weight: 500; color: var(--curv-mobile-ink-3, #6b6b6f); }
+.curv-mobile-kv-trailing { font-size: 13px; line-height: 1.3; color: var(--curv-mobile-ink-3, #6b6b6f); font-variant-numeric: tabular-nums; }
+.curv-mobile-kv-card { margin: 0; padding: 0; list-style: none; overflow: hidden; border-radius: 18px; background: var(--curv-mobile-surface, #fff); color: var(--curv-mobile-ink, #1b1b1b); box-shadow: 0 0 0 0.5px rgb(0 0 0 / 0.08); }
+.curv-mobile-kv-row { position: relative; }
+.curv-mobile-kv-row + .curv-mobile-kv-row::before { content: ""; position: absolute; top: 0; left: 16px; right: 0; height: 0.5px; background: var(--curv-mobile-hairline, #e3e3e6); pointer-events: none; }
+.curv-mobile-kv-line { box-sizing: border-box; display: flex; align-items: center; gap: 12px; min-height: 50px; padding: 10px 16px; color: inherit; text-decoration: none; -webkit-tap-highlight-color: transparent; }
+.curv-mobile-kv-link { cursor: pointer; }
+.curv-mobile-kv-link:active { background: rgb(0 0 0 / 0.045); }
+.curv-mobile-kv-link:focus-visible { outline: 2px solid var(--curv-mobile-accent, #1764c0); outline-offset: -2px; }
+.curv-mobile-kv-label { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 1px; font-size: 16px; line-height: 1.3; color: var(--curv-mobile-ink-2, #3a3a3d); }
+.curv-mobile-kv-value { flex: none; max-width: 55%; display: flex; flex-direction: column; align-items: flex-end; gap: 1px; text-align: right; font-size: 16px; line-height: 1.3; font-weight: 600; color: var(--curv-mobile-ink, #1b1b1b); font-variant-numeric: tabular-nums; }
+.curv-mobile-kv-value[data-tone="positive"] { color: var(--curv-mobile-positive-fg, #1f6b30); }
+.curv-mobile-kv-value[data-tone="critical"] { color: var(--curv-mobile-critical, var(--curv-critical, #b5352f)); }
+.curv-mobile-kv-value[data-tone="warning"] { color: var(--curv-mobile-board-warning-fg, #8a4e00); }
+/* Sub-lines are #6b6b6f, not the #8a8a90 of the first mock: that grey is 3.4:1 on white and the playbook asks for 4.5:1. */
+.curv-mobile-kv-sub { font-size: 12px; line-height: 1.3; font-weight: 400; color: var(--curv-mobile-sub, #6b6b6f); }
+.curv-mobile-kv-chevron { flex: none; display: grid; place-items: center; margin-right: -4px; color: var(--curv-mobile-thumb-icon, #8a8a90); }
+
+/* ── Gallery ─────────────────────────────────────────────────────────────── */
+.curv-mobile-gallery { margin-inline: var(--curv-mobile-gutter, 16px); font-family: inherit; }
+.curv-mobile-gallery-frame { position: relative; }
+.curv-mobile-gallery-strip { display: flex; height: 340px; overflow-x: auto; overflow-y: hidden; border-radius: 22px; background: var(--curv-mobile-thumb, #f4f4f5); scroll-snap-type: x mandatory; overscroll-behavior-x: contain; scrollbar-width: none; -webkit-overflow-scrolling: touch; }
+.curv-mobile-gallery-strip::-webkit-scrollbar { display: none; }
+.curv-mobile-gallery-strip:focus-visible { outline: 2px solid var(--curv-mobile-accent, #1764c0); outline-offset: 2px; }
+.curv-mobile-gallery-slide { flex: 0 0 100%; min-width: 0; scroll-snap-align: start; scroll-snap-stop: always; }
+.curv-mobile-gallery-slide > img { display: block; width: 100%; height: 100%; object-fit: cover; }
+.curv-mobile-gallery-pager { position: absolute; left: 50%; bottom: 12px; transform: translateX(-50%); display: inline-flex; align-items: center; height: 24px; padding: 0 10px; border-radius: 12px; background: rgb(0 0 0 / 0.5); pointer-events: none; }
+.curv-mobile-gallery-dots { display: inline-flex; align-items: center; gap: 5px; }
+.curv-mobile-gallery-dot { width: 6px; height: 6px; border-radius: 3px; background: rgb(255 255 255 / 0.6); transition: width 160ms ease-out, background-color 160ms ease-out; }
+.curv-mobile-gallery-dot[data-current="true"] { width: 16px; background: #fff; }
+.curv-mobile-gallery-live { position: absolute; width: 1px; height: 1px; margin: -1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
+/* 4px of room around each thumbnail for its 2px ring and 2px gap, which the scroller would otherwise clip. */
+.curv-mobile-gallery-thumbs { display: flex; gap: 10px; margin-top: 8px; padding: 4px; overflow-x: auto; overflow-y: hidden; scrollbar-width: none; -webkit-overflow-scrolling: touch; }
+.curv-mobile-gallery-thumbs::-webkit-scrollbar { display: none; }
+.curv-mobile-gallery-thumb { flex: none; width: 72px; height: 72px; padding: 0; border: 0; border-radius: 14px; overflow: hidden; background: var(--curv-mobile-thumb, #f4f4f5); cursor: pointer; -webkit-tap-highlight-color: transparent; }
+.curv-mobile-gallery-thumb > img { display: block; width: 100%; height: 100%; object-fit: cover; }
+.curv-mobile-gallery-thumb[aria-current="true"] { outline: 2px solid var(--curv-mobile-ink, #1b1b1b); outline-offset: 2px; }
+.curv-mobile-gallery-thumb:focus-visible { outline: 2px solid var(--curv-mobile-accent, #1764c0); outline-offset: 2px; }
+
+/* ── Press feedback, reduced motion, forced colors ───────────────────────── */
+@media (prefers-reduced-motion: no-preference) {
+  .curv-mobile-activity-card, .curv-mobile-hero-action, .curv-mobile-toolbar-button { transition: transform 120ms ease-out; }
+  .curv-mobile-activity-card:active, .curv-mobile-hero-action:active, .curv-mobile-toolbar-button:active { transform: scale(0.97); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .curv-mobile-swipe-surface, .curv-mobile-swipe-actions, .curv-mobile-board-card, .curv-mobile-gallery-dot { transition: none; }
+}
+@media (forced-colors: active) {
+  .curv-mobile-view-chip:is([aria-pressed="true"], [aria-current], :has(> [data-active="true"])),
+  .curv-mobile-hero-kpi:is([aria-pressed="true"], [aria-current], :has(> [data-active="true"])),
+  .curv-mobile-board-chip[aria-pressed="true"] { outline: 2px solid Highlight; outline-offset: -2px; }
+  .curv-mobile-activity-card, .curv-mobile-board-card, .curv-mobile-kv-card, .curv-mobile-flat-pill, .curv-mobile-board-badge { border: 1px solid CanvasText; }
+  .curv-mobile-flat-thumb, .curv-mobile-gallery-thumb { border: 1px solid CanvasText; }
+  .curv-mobile-gallery-thumb[aria-current="true"] { outline-color: Highlight; }
+  /* A background-only dot vanishes when colours are forced, and a late date is more than red. */
+  .curv-mobile-flat-unread { forced-color-adjust: none; background: Highlight; }
+  .curv-mobile-board-date[data-late="true"] { text-decoration: underline; text-decoration-thickness: 2px; text-underline-offset: 2px; font-weight: 700; }
+  .curv-mobile-gallery-pager { background: Canvas; border: 1px solid CanvasText; }
+  .curv-mobile-gallery-dot { background: GrayText; }
+  .curv-mobile-gallery-dot[data-current="true"] { background: CanvasText; }
+  .curv-mobile-swipe-trigger { background: ButtonFace; color: ButtonText; border: 1px solid ButtonText; }
+}

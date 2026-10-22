@@ -8,3 +8,6 @@ export { MobileHeader, MobileHeaderTitle, MobilePage, MobileSection, MobileMetri
 export { useMobileViewportStyle } from "./components/shell/mobile-command";
 
 export { MobileChart, type MobileChartProps, type MobileChartPoint } from "./components/shell/mobile-chart";
+
+export * from "./components/shell/mobile-nav";
+export * from "./components/shell/mobile-content";
