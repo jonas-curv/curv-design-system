@@ -50,7 +50,7 @@ test('a list row is one real link, with a thumbnail image or a placeholder, and 
   assert.match(html, /width="48" height="48"/);
   assert.match(html, /data-empty="true"[^>]*><svg/);                      // null thumbnail: the neutral box placeholder
   assert.equal(count(html, /<img /g), 1);
-  assert.equal(count(html, /data-thumb="true"/g), 2);                     // the plain row has no thumbnail and a 20px inset
+  assert.equal(count(html, /data-thumb="true"/g), 2);                     // the plain row has no thumbnail and the same 16px inset
   assert.match(html, /curv-mobile-flat-pill curv-mobile-flat-pill-positive">Healthy</);
   assert.match(html, /curv-mobile-flat-pill-special">Launching</);
 });
@@ -372,26 +372,29 @@ test('the hero panel owns its rounded bottom corners, 18px like the surface', ()
   assert.match(read('mobile.css'), /\.curv-mobile-hero-kpi:not\(a, button\) \{ cursor: default; \}/);
 });
 
-test('a line chart with future slots does not scrub by default; an explicit scrub is sized to the plotted part', () => {
+test('a line chart with future slots does not scrub by default; an explicit scrub keeps the whole plot as its touch area', () => {
   const { MobileChart } = mobile;
   const base = { points: days, variant: 'line', label: 'Revenue', futureSlots: 25 };
-  assert.doesNotMatch(render(h(MobileChart, base)), /type="range"/);
+  assert.doesNotMatch(render(h(MobileChart, base)), /type="range"|data-scrub/);
   assert.match(render(h(MobileChart, { points: days, variant: 'line', label: 'Revenue' })), /type="range"/);
+  // The plot itself is what is touched (see the events tests), so the hidden input carries no width of its own any more.
   const html = render(h(MobileChart, { ...base, scrub: true }));
-  const width = Number(html.match(/class="curv-mobile-chart-scrub"[^>]*style="width:([\d.]+)%"/)[1]);
-  assert.ok(width > 15 && width < 30, `scrub width ${width}%`);       // 6 of 31 slots: about a fifth, not the full width
-  assert.doesNotMatch(render(h(MobileChart, { points: days, variant: 'line', label: 'Revenue', scrub: true })), /class="curv-mobile-chart-scrub"[^>]*style=/);
+  assert.match(html, /<svg [^>]*data-scrub="true"/);
+  assert.match(html, /class="curv-mobile-chart-scrub"/);
+  assert.doesNotMatch(html, /class="curv-mobile-chart-scrub"[^>]*style=/);
 });
 
-test('a partial point says "so far" in the readout, the slider text and the chart summary', () => {
+test('a partial point says "so far" in the slider text and the chart summary, and there is no visible readout to say it twice', () => {
   const { MobileChart } = mobile;
   const points = days.map((p, i) => (i === 5 ? { ...p, partial: true } : p));
   const html = render(h(MobileChart, { points, variant: 'line', label: 'Revenue', scrub: true }));
   assert.match(html, /aria-valuetext="Oct 6 so far: 1,200"/);
-  assert.match(html, /<span>Oct 6 so far<\/span><strong>1,200<\/strong>/);
   assert.match(html, /role="img" aria-label="Revenue. Latest period, Oct 6 so far"/);
-  assert.match(render(h(MobileChart, { points, variant: 'line', label: 'Revenue', scrub: true, partialLabel: 'hittil' })), /<span>Oct 6 hittil<\/span>/);
+  assert.match(render(h(MobileChart, { points, variant: 'line', label: 'Revenue', scrub: true, partialLabel: 'hittil' })), /aria-valuetext="Oct 6 hittil: 1,200"/);
   assert.doesNotMatch(render(h(MobileChart, { points: days, variant: 'line', label: 'Revenue' })), /so far/);
+  // The row under the plot that repeated the period and the value is gone: the plot says them, once.
+  assert.doesNotMatch(html, /curv-mobile-chart-readout|aria-live/);
+  assert.doesNotMatch(read('mobile.css'), /curv-mobile-chart-readout/);
 });
 
 test('board ids built from app ids with spaces never split aria-labelledby', () => {
@@ -543,7 +546,7 @@ test('list sections, key-value lists and chart cards share one heading, so stack
   const heads = ['.curv-mobile-flat-section-head', '.curv-mobile-kv-head', '.curv-mobile-chart-card-head'];
   const head = cssRule(heads[0]);
   for (const selector of heads) assert.ok(head[2].split(',').map(part => part.trim()).includes(selector), `${selector} shares the list section's heading rule`);
-  assert.match(head[3], /padding: 16px 20px 6px/);
+  assert.match(head[3], /padding: 16px 16px 6px/);
   const title = cssRule('.curv-mobile-flat-section-head h2');
   for (const selector of ['.curv-mobile-kv-head h2', '.curv-mobile-chart-card-head h2']) assert.ok(title[2].includes(selector), selector);
   assert.match(title[3], /font-size: 14px/);
@@ -552,10 +555,10 @@ test('list sections, key-value lists and chart cards share one heading, so stack
   const trailing = cssRule('.curv-mobile-flat-section-trailing');
   for (const selector of ['.curv-mobile-kv-trailing', '.curv-mobile-chart-card-trailing']) assert.ok(trailing[2].includes(selector), selector);
   assert.match(trailing[3], /font-size: 14px/);
-  // The blocks that sit inside the gutter pad in only what is left of the 20px, so the heading starts where the
+  // The blocks that sit inside the gutter pad in only what is left of the 16px (none by default), so the heading starts where the
   // list's does, and with no negative margin a block whose gutter is removed never scrolls sideways.
   for (const selector of ['.curv-mobile-kv-head', '.curv-mobile-chart-card-head']) {
-    assert.match(cssRule(selector)[3], /padding-inline: max\(0px, calc\(20px - var\(--curv-mobile-gutter, 16px\)\)\)/);
+    assert.match(cssRule(selector)[3], /padding-inline: max\(0px, calc\(16px - var\(--curv-mobile-gutter, 16px\)\)\)/);
     assert.doesNotMatch(cssRule(selector)[3], /margin-inline: calc/);
   }
   // And nothing later re-sets the key-value heading to its old 13px.
@@ -1047,7 +1050,7 @@ test('the card is the chart card\'s ground and heading, by shared rules, with th
   assert.ok(cssRule('.curv-mobile-flat-section-head')[2].includes('.curv-mobile-panel-head'));
   assert.ok(cssRule('.curv-mobile-flat-section-head h2')[2].includes('.curv-mobile-panel-head :is(h2, h3, h4)'));
   assert.ok(cssRule('.curv-mobile-flat-section-trailing')[2].includes('.curv-mobile-panel-trailing'));
-  assert.ok(cssRule('.curv-mobile-kv-head')[2].includes('.curv-mobile-panel-head'), 'and pads in only what is left of the 20px');
+  assert.ok(cssRule('.curv-mobile-kv-head')[2].includes('.curv-mobile-panel-head'), 'and pads in only what is left of the 16px');
   // Nothing in the library draws its card with MobileCard: the chart card and key-value list keep their own markup.
   assert.doesNotMatch(read('src/components/shell/mobile-content/chart-card.tsx') + read('src/components/shell/mobile-content/key-value-list.tsx'), /MobileCard|curv-mobile-panel/);
 });
@@ -1480,4 +1483,245 @@ test('in a dark sheet the rows read: label, count and check clear their contrast
   assert.ok(contrastOf(accent, sheet) >= 4.5, `check ${contrastOf(accent, sheet).toFixed(2)}:1`);
   for (const [name, track] of [['off', '#8a8a90'], ['on', '#1f7a33']]) assert.ok(contrastOf(track, sheet) >= 3, `switch ${name} ${contrastOf(track, sheet).toFixed(2)}:1`);
   assert.match(css, new RegExp(`--curv-mobile-switch-off, ${'#8a8a90'}\\)`));
+});
+
+// ── 0.3.4: the chart's area under gaps ──────────────────────────────────────
+
+// How MobileChart lays out a line without future slots at the default ratio: a 260 x 108 viewBox, 6 in on each side, the baseline at 88.
+const lineX = (index, total) => 6 + index * (248 / (total - 1));
+const BASELINE = 88;
+const lineY = (value, top) => BASELINE - (value / top) * 68;
+/** The closed shapes of the area fill, each as its vertices. */
+const areaShapes = html => {
+  const d = html.match(/<path class="curv-mobile-chart-area" d="([^"]*)"/)?.[1] ?? '';
+  return d.split(/(?=M )/).map(part => part.trim()).filter(Boolean).map(part => ({
+    closed: /Z$/.test(part),
+    vertices: [...part.matchAll(/[ML] (-?[\d.]+) (-?[\d.]+)/g)].map(match => [Number(match[1]), Number(match[2])]),
+  }));
+};
+/** Runs of known values with more than one point: the ones that have an area. */
+const runsOf = values => {
+  const runs = [];
+  let first = -1;
+  values.forEach((value, index) => {
+    if (value !== null && first < 0) first = index;
+    if ((value === null || index === values.length - 1) && first >= 0) { const last = value === null ? index - 1 : index; if (last > first) runs.push([first, last]); first = -1; }
+  });
+  return runs;
+};
+const lineHtml = values => render(h(mobile.MobileChart, { points: values.map((value, index) => ({ label: `D${index + 1}`, value })), variant: 'line', label: 'Orders' }));
+
+test('chart: the area under a line closes every run of data to the baseline on its own, and a gap draws nothing', () => {
+  const cases = {
+    'a gap at the start': [null, null, 5, 8, 6, 9],
+    'a gap in the middle': [4, 7, null, null, 9, 3, 5],
+    'a gap at the end': [4, 7, 5, 8, null, null],
+    'gaps at both ends and in the middle': [null, 2, 6, null, 7, 4, 8, null],
+    'single points between runs': [3, null, 6, null, 9, 10, null, 4, 5, null, 2],
+    'no gap at all': [1, 2, 3, 4, 5],
+  };
+  for (const [name, values] of Object.entries(cases)) {
+    const top = Math.max(...values.filter(value => value !== null));
+    const shapes = areaShapes(lineHtml(values));
+    const runs = runsOf(values);
+    assert.equal(shapes.length, runs.length, `${name}: one shape per run of two or more points`);
+    shapes.forEach((shape, at) => {
+      const [first, last] = runs[at];
+      assert.ok(shape.closed, `${name}: shape ${at} is closed on its own (an open one is joined to the next run by a diagonal)`);
+      // Baseline, up to the first value, along the data, down to the baseline under the last value.
+      assert.equal(shape.vertices.length, last - first + 1 + 2, `${name}: shape ${at}`);
+      const expected = [[lineX(first, values.length), BASELINE], ...Array.from({ length: last - first + 1 }, (_, offset) => [lineX(first + offset, values.length), lineY(values[first + offset], top)]), [lineX(last, values.length), BASELINE]];
+      shape.vertices.forEach(([vx, vy], vertex) => {
+        assert.ok(Math.abs(vx - expected[vertex][0]) < 0.06 && Math.abs(vy - expected[vertex][1]) < 0.06, `${name}: shape ${at} vertex ${vertex} is (${vx}, ${vy}), expected (${expected[vertex].map(n => n.toFixed(1))})`);
+      });
+    });
+    // No shape reaches across a gap: they are ordered and apart.
+    shapes.slice(1).forEach((shape, at) => assert.ok(Math.min(...shape.vertices.map(vertex => vertex[0])) > Math.max(...shapes[at].vertices.map(vertex => vertex[0])), `${name}: shapes ${at} and ${at + 1} do not overlap`));
+  }
+});
+
+test('chart: a run of one point has no area, and a series of single points has no area path at all', () => {
+  const lonely = lineHtml([3, null, 5, null, 2]);
+  assert.deepEqual(areaShapes(lonely), []);
+  assert.doesNotMatch(lonely, /fill="url\(#/);
+  assert.equal(areaShapes(lineHtml([null, 4, null, 6, 7])).length, 1, 'only the run of two');
+});
+
+test('chart: a known value with a gap on both sides is drawn as a dot, not left out; the latest value keeps its own dot', () => {
+  const values = [3, null, 6, null, 9, 10, null, 4];
+  const dots = [...lineHtml(values).matchAll(/<circle class="curv-mobile-chart-dot" cx="([\d.]+)" cy="([\d.]+)" r="(3|3\.5)"/g)].map(match => [Number(match[1]), Number(match[2])]);
+  assert.equal(dots.length, 3, 'the single points 3 and 6, and the latest, 4 (the run 9, 10 is a line)');
+  for (const index of [0, 2, 7]) assert.ok(dots.some(([cx, cy]) => Math.abs(cx - lineX(index, values.length)) < 0.06 && Math.abs(cy - lineY(values[index], 10)) < 0.06), `a dot for ${values[index]}`);
+  assert.equal(count(lineHtml([1, 2, 3, 4]), /<circle/g), 1, 'a continuous series has only its latest dot');
+  assert.equal(count(render(h(mobile.MobileChart, { points: [3, null, 6].map((value, index) => ({ label: `D${index}`, value })), variant: 'bars', label: 'Bars' })), /<circle/g), 0, 'bars are never dotted');
+});
+
+// ── 0.3.4: type ─────────────────────────────────────────────────────────────
+
+test('warnings and empty states are 15px with a line-height to match, and the small print under figures is 13px', () => {
+  const notice = cssRule('.curv-mobile-notice')[3];
+  assert.equal(lastDeclaration(notice, 'font-size'), '15px');
+  assert.equal(lastDeclaration(notice, 'line-height'), '1.4', '21px lines for 15px text');
+  assert.equal(lastDeclaration(cssRule('.curv-mobile-chart-empty')[3], 'font-size'), '15px', 'a chart that has nothing to say is an empty state too');
+  assert.equal(lastDeclaration(cssRule('.curv-mobile-kv-sub')[3], 'font-size'), '13px');
+  assert.equal(lastDeclaration(cssRule('.curv-mobile-chart figcaption')[3], 'font-size'), '13px', 'the hero chart\'s caption');
+  // And nothing later sets them back.
+  const css = read('mobile.css');
+  assert.doesNotMatch(css, /\.curv-mobile-notice[^{]*\{[^}]*font-size: 13px/);
+  assert.doesNotMatch(css, /\.curv-mobile-kv-sub[^{,]*\{[^}]*font-size: 12px/);
+});
+
+// ── 0.3.4: one gutter ───────────────────────────────────────────────────────
+
+test('one 16px gutter: rows, section headings, the activity title and the board pad to the edge titles, chips and cards use', () => {
+  const css = read('mobile.css');
+  const row = cssRule('.curv-mobile-flat-row')[3];
+  assert.equal(lastDeclaration(row, 'padding'), '14px 16px', 'a row pads 16px each side (it was 20px at the start)');
+  assert.equal(lastDeclaration(cssRule('.curv-mobile-flat-section-head')[3], 'padding'), '16px 16px 6px');
+  assert.equal(lastDeclaration(cssRule('.curv-mobile-activity-title')[3], 'padding'), '16px 16px 8px');
+  assert.equal(lastDeclaration(cssRule('.curv-mobile-board-column-head')[3], 'padding'), '2px 0 10px', 'a column title sits on the same edge as its cards');
+  // Hairlines are inset to the text: the gutter, then the thumbnail and the gap to the text when there is one.
+  const thumb = Number(cssRule('.curv-mobile-flat-thumb')[3].match(/width: (\d+)px/)[1]);
+  const gap = Number(row.match(/gap: (\d+)px/)[1]);
+  assert.equal(lastDeclaration(cssRule('.curv-mobile-flat-row::after')[3], 'left'), '16px');
+  assert.equal(lastDeclaration(cssRule('.curv-mobile-flat-row[data-thumb]::after')[3], 'left'), `${16 + thumb + gap}px`, '16 + the thumbnail + the gap: the left edge of the text');
+  // The unread dot lives in the 16px margin, clear of the text.
+  const dot = cssRule('.curv-mobile-flat-unread')[3];
+  assert.ok(Number(dot.match(/left: (\d+)px/)[1]) + Number(dot.match(/width: (\d+)px/)[1]) + 4 <= 16, 'at least 4px between the dot and the text');
+  // No block pads content in from 20px any more: not a row, not a heading, not a hairline.
+  assert.doesNotMatch(css, /\.curv-mobile-flat-(row|section-head)[^{]*\{[^}]*(padding: [^;]*20px|left: 20px|left: 82px)/);
+  assert.doesNotMatch(css, /calc\(20px - var\(--curv-mobile-gutter/);
+  assert.doesNotMatch(css, /\.curv-mobile-activity-title[^{,]*\{[^}]*20px/);
+});
+
+test('one 16px gutter on Home: the hero\'s text, chart and buttons start where the title does, and the chosen KPI chip reaches out from it', () => {
+  const hero = cssRule('.curv-mobile-hero')[3];
+  const kpis = cssRule('.curv-mobile-hero-kpis')[3];
+  const kpi = cssRule('.curv-mobile-hero-kpi')[3];
+  assert.match(hero, /padding: 6px 16px 20px/, 'the chart and the buttons are on the gutter');
+  // The row bleeds to the panel's edge; the chip's text is the panel's padding, the row's, and the chip's own.
+  const panelEdge = Number(hero.match(/padding: \d+px (\d+)px/)[1]);
+  const rowBleed = Number(kpis.match(/margin: 0 -(\d+)px/)[1]);
+  const rowPad = Number(kpis.match(/padding: \d+px (\d+)px/)[1]);
+  const chipPad = Number(kpi.match(/padding: \d+px (\d+)px/)[1]);
+  assert.equal(panelEdge - rowBleed + rowPad + chipPad, 16, 'the KPI label starts at 16px');
+  assert.equal(rowBleed, panelEdge, 'the row reaches the screen\'s edge, so the chip rows scroll edge to edge');
+  assert.match(kpis, new RegExp(`scroll-padding-inline: ${rowPad}px`), 'a snapped chip lands where the first one starts');
+  // The chosen chip's box is that row's padding from the edge: 4px, not the 12px it was.
+  assert.equal(rowPad, 4);
+  // The panel scrolls the chosen chip to that same place.
+  assert.match(read('src/components/shell/mobile-content/hero-panel.tsx'), new RegExp(`chip\\.offsetLeft - ${rowPad}\\b`));
+});
+
+// ── 0.3.4: board geometry ───────────────────────────────────────────────────
+
+test('board: a snapped column\'s left edge is the 16px gutter, none of the column before it shows, and the next one peeks 50px, at every phone width', () => {
+  const columns = cssRule('.curv-mobile-board-columns')[3];
+  const column = cssRule('.curv-mobile-board-column')[3];
+  const gutter = Number(columns.match(/--curv-board-gutter: (\d+)px/)[1]);
+  const peek = Number(columns.match(/--curv-board-peek: (\d+)px/)[1]);
+  assert.equal(gutter, 16);
+  assert.equal(peek, 50);
+  assert.match(columns, /padding: 12px 0 32px var\(--curv-board-gutter\)/);
+  assert.match(columns, /scroll-padding-inline: var\(--curv-board-gutter\)/);
+  assert.match(column, /scroll-snap-align: start/);
+  assert.match(column, /flex: 0 0 calc\(100% - var\(--curv-board-peek\)\)/);
+  assert.match(cssRule('.curv-mobile-board-columns::after')[3], /flex: 0 0 var\(--curv-board-peek\)/);
+  const padding = column.match(/padding-right: calc\(var\(--curv-board-gutter\) \+ (\d+)px\)/);
+  assert.ok(padding, 'a column keeps the gutter and a little more as its own right padding');
+  const gutterAfter = gutter + Number(padding[1]);
+  for (const width of [320, 360, 375, 390, 402, 430, 440]) {
+    // A flex item's percentage is of the scroller's content box, which the gutter has already narrowed.
+    const columnWidth = (width - gutter) - peek;
+    const columnsCount = 4;
+    for (let index = 0; index < columnsCount; index += 1) {
+      const left = gutter + index * columnWidth;       // offsetLeft: the scroller pads the first one by the gutter
+      const scrollLeft = left - gutter;                // snap-align start under scroll-padding-inline
+      assert.equal(left - scrollLeft, gutter, `${width}px: the column's left edge is the gutter`);
+      if (index > 0) {
+        const cardsEnd = left - gutterAfter - scrollLeft;   // the column before it, where its cards stop, on screen
+        assert.ok(cardsEnd <= 0, `${width}px: the column before ends ${cardsEnd}px from the left edge, so none of it shows`);
+      }
+      if (index < columnsCount - 1) assert.equal(width - (left + columnWidth - scrollLeft), peek, `${width}px: the next column peeks ${peek}px`);
+    }
+    // The last column can be snapped to: the end spacer is the peek, so the scroll range is exactly one column per step.
+    assert.equal(gutter + columnsCount * columnWidth + peek - width, (columnsCount - 1) * columnWidth, `${width}px: the last column reaches the gutter`);
+  }
+  // It was 12px of padding at a 16px gutter: 4px of the previous column's cards showed.
+  assert.doesNotMatch(read('mobile.css'), /\.curv-mobile-board-column \{[^}]*padding-right: 12px/);
+});
+
+test('board: the chip row is 44px like the saved-view chips, so the chips do not move when the view changes', () => {
+  for (const selector of ['.curv-mobile-view-chips', '.curv-mobile-board-chips']) {
+    const body = cssRule(selector)[3];
+    assert.equal(lastDeclaration(body, 'padding'), '0 16px', `${selector}: no vertical padding around the 44px chips`);
+    assert.equal(lastDeclaration(body, 'align-items') ?? 'center', 'center');
+  }
+  assert.doesNotMatch(read('mobile.css'), /\.curv-mobile-board-chips \{[^}]*padding: 4px/);
+  assert.equal(lastDeclaration(cssRule('.curv-mobile-chip')[3], 'height'), '44px');
+});
+
+// ── 0.3.4: the chart's touch area and focus ring ────────────────────────────
+
+test('chart: the plot is the touch area (vertical scrolling stays with the page), and the range input is visually hidden but still there', () => {
+  const touch = cssRule('.curv-mobile-chart > svg[data-scrub]')[3];
+  assert.match(touch, /touch-action: pan-y pinch-zoom/);
+  assert.match(touch, /user-select: none/);
+  const input = cssRule('.curv-mobile-chart-scrub')[3];
+  for (const hidden of [/position: absolute/, /width: 1px/, /height: 1px/, /overflow: hidden/, /clip-path: inset\(50%\)/]) assert.match(input, hidden);
+  // Hidden by clipping, never by display, visibility or hidden, which would take it out of the tab order.
+  assert.doesNotMatch(input, /display: none|visibility: hidden|opacity: 0/);
+  // The chart shows the focus ring while the input has focus, in the dark tone's colour on the hero panel.
+  assert.match(cssRule('.curv-mobile-chart:has(.curv-mobile-chart-scrub:focus-visible) > svg')[3], /outline: 2px solid var\(--ring, currentColor\)/);
+  assert.match(cssRule('.curv-mobile-chart-dark:has(.curv-mobile-chart-scrub:focus-visible) > svg')[3], /outline-color: var\(--curv-mobile-hero-focus, #6aa9f0\)/);
+  // The visible slider is gone, in both tones.
+  assert.doesNotMatch(read('mobile.css'), /slider-thumb|slider-runnable-track|range-thumb|range-track/);
+  assert.match(cssRule('.curv-mobile-chart-dark :is(.curv-mobile-chart-label, .curv-mobile-chart-period)')[3], /fill: var\(--curv-mobile-hero-ink, #f2f2f2\)/);
+});
+
+// ── 0.3.4 audit: slot spacing, text area ────────────────────────────────────
+
+test('the chip-row slot spaces what is in it 8px apart and sits 8px from the chips, so an app never adds a margin of its own', () => {
+  assert.equal(lastDeclaration(cssRule('.curv-mobile-chips-trailing')[3], 'gap'), '8px', 'a Filter button beside a New project');
+  assert.equal(lastDeclaration(cssRule('.curv-mobile-chips-row')[3], 'gap'), '8px', 'and from the chips');
+  const html = render(h(mobile.MobileViewChips, { label: 'Views', items: [{ id: 'a', label: 'All' }], onSelect() {}, trailing: h(React.Fragment, null, h('button', null, 'Filter'), h('button', null, 'New')) }));
+  assert.match(html, /<div class="curv-mobile-chips-trailing"><button>Filter<\/button><button>New<\/button><\/div>/, 'two children are two siblings of one slot, spaced by it');
+});
+
+test('a text area does not resize: iOS draws no grip and a desktop one looked wrong on a phone', () => {
+  assert.equal(lastDeclaration(cssRule('.curv-mobile-field-textarea')[3], 'resize'), 'none');
+  assert.doesNotMatch(read('mobile.css'), /resize: (vertical|both|horizontal)/);
+});
+
+// ── 0.3.4: version and docs ─────────────────────────────────────────────────
+
+test('the package is 0.3.4 in package.json and in the lockfile, twice there', () => {
+  const pkg = JSON.parse(read('package.json'));
+  const lock = JSON.parse(read('package-lock.json'));
+  assert.equal(pkg.version, '0.3.4');
+  assert.equal(lock.version, '0.3.4');
+  assert.equal(lock.packages[''].version, '0.3.4');
+});
+
+test('the docs and the skill say what 0.3.4 changed: one gutter, type sizes, touch scrubbing, the board, the switcher and the search field', () => {
+  const docs = read('docs/mobile.md');
+  assert.match(docs, /## Upgrading to 0\.3\.4/);
+  const fit = docs.slice(docs.indexOf('## Fit and finish'), docs.indexOf('## Checklist for an OS'));
+  assert.match(fit, /One 16px gutter/);
+  assert.match(fit, /15px/);
+  assert.match(fit, /13px/);
+  assert.match(fit, /press or drag on the plot/i);
+  assert.match(docs, /closes the moment a page is tapped|closes as soon as a page is tapped/);
+  assert.match(docs, /left edge on the 16px gutter and nothing of the column before it shows/);
+  assert.match(docs, /44 × 44|44 by 44/);
+  assert.match(docs, /clear button/);
+  const skill = read('skills/curv-mobile/SKILL.md');
+  for (const needle of [/16px gutter/, /scrub/i, /switcher|title/]) assert.match(skill, needle);
+  // The upgrade notes name what moves layouts: the shorter chart, the taps, the nudged edges and the toggle's height.
+  const upgrade = docs.slice(docs.indexOf('## Upgrading to 0.3.4'), docs.indexOf('## Upgrading to 0.3.3'));
+  for (const needle of [/about 62px shorter/, /reacts to presses and taps/, /value: null/, /18px in/, /6px/, /48px tall/, /8px apart/, /no longer resizes/]) assert.match(upgrade, needle);
+  assert.doesNotMatch(read('src/components/shell/mobile-content/flat-list.tsx'), /20px inset/, 'the doc comment that ships in mobile.d.ts says 16px');
+  assert.match(read('src/components/shell/mobile-content/flat-list.tsx'), /keeps its own 16px inset/);
+  // A heading above a block with gutter="none" is described as it is, not as sitting on the gutter.
+  assert.match(fit, /`gutter="none"` keeps the same 16px of heading inset/);
 });

@@ -447,3 +447,42 @@ test('stylesheet: the top bar\'s text action is 44px, 17px, white on the bar, an
   // It is inside the bar, so the bar's focus ring and zero-specificity button reset already cover it.
   assert.match(section, /\.curv-mobile-topbar :is\(a, button\):focus-visible \{ outline: 2px solid currentColor;/);
 });
+
+// ── 0.3.4 ───────────────────────────────────────────────────────────────────
+
+test('view toggle: each option is a 44 by 44 target in its own right, in a frame that keeps the bar\'s 44px line and its quiet top 12px', () => {
+  const option = rule('.curv-mobile-viewtoggle-option');
+  const width = Number(option.match(/(?:^|[ ;{])width: (\d+)px/)[1]);
+  const height = Number(option.match(/(?:^|[ ;{])height: (\d+)px/)[1]);
+  assert.ok(width >= 44 && height >= 44, `${width} x ${height}`);
+  // The element itself is the target: no pseudo-element reaching out to make up the difference.
+  assert.doesNotMatch(section, /\.curv-mobile-viewtoggle-option::before/);
+  const frame = rule('.curv-mobile-viewtoggle');
+  const padding = Number(frame.match(/padding: (\d+)px/)[1]);
+  // The hang is the black bar's: a toggle anywhere else (the light tone on a surface) is just its 48px, with no negative margin.
+  assert.doesNotMatch(frame, /margin/);
+  const overhang = Number(rule('.curv-mobile-topbar .curv-mobile-viewtoggle').match(/margin-bottom: -(\d+)px/)[1]);
+  assert.equal(overhang, padding, 'the frame hangs as far under the row\'s floor as it has padding, which puts the options on the 44px line the title and the back chevron share');
+  assert.doesNotMatch(css.replace(section, ''), /viewtoggle[^{]*\{[^}]*margin-bottom/, 'and nothing outside the bar section sets it');
+  const rowHeight = Number(rule('.curv-mobile-topbar-row').match(/height: (\d+)px/)[1]);
+  const frameTop = rowHeight - (height + 2 * padding - overhang);
+  assert.ok(frameTop >= 12, `nothing interactive in the top 12px: the frame starts ${frameTop}px down`);
+  assert.equal(rowHeight - (height + 2 * padding - overhang) + padding, rowHeight - height, 'and the options end on the floor');
+  assert.match(rule('.curv-mobile-viewtoggle-option'), /border-radius: 22px/, 'a 44px circle');
+  // It still renders two options, as links or buttons.
+  assert.equal(count(render(MobileViewToggle, { options: [{ value: 'a', label: 'A', icon: icon('a') }, { value: 'b', label: 'B', icon: icon('b') }], value: 'a' }), /curv-mobile-viewtoggle-option"/g), 2);
+});
+
+test('tab bar: the search field has no clear button of its own: the bar\'s close circle is the only one', () => {
+  const base = '.curv-mobile-tabbar-search input';
+  for (const pseudo of ['::-webkit-search-cancel-button', '::-webkit-search-decoration', '::-webkit-search-results-button', '::-webkit-search-results-decoration']) {
+    const hidden = section.match(new RegExp(`${base.replace(/[.]/g, '\\.')}${pseudo}[^{]*\\{([^}]*)\\}`));
+    assert.ok(hidden, `${pseudo} is styled`);
+    assert.match(hidden[1], /display: none/, pseudo);
+    assert.match(hidden[1], /appearance: none/, pseudo);
+  }
+  assert.match(rule(base), /-webkit-appearance: none; appearance: none/, 'and the field itself is not drawn as the browser\'s search box');
+  const html = render(MobileTabBar, { mode: 'search', items, search: { value: 'sock', onChange() {}, onClose() {}, label: 'Search Product OS' } });
+  assert.match(html, /<input[^>]*type="search"/);
+  assert.equal(count(html, /aria-label="Close search"/g), 1);
+});

@@ -49,7 +49,7 @@
 .curv-mobile-detail-section summary > :nth-child(2) { color: var(--muted-foreground, #667780); font-size: 12px; }
 .curv-mobile-detail-section[open] summary > svg { transform: rotate(90deg); }
 .curv-mobile-detail-section > div { padding: 0 16px 16px; }
-.curv-mobile-notice { margin-top: 16px; padding: 12px 14px; border-radius: 12px; border: 1px solid var(--border, #e1e5e8); background: var(--card, white); font-size: 13px; line-height: 1.45; }
+.curv-mobile-notice { margin-top: 16px; padding: 12px 14px; border-radius: 12px; border: 1px solid var(--border, #e1e5e8); background: var(--card, white); font-size: 15px; line-height: 1.4; }
 .curv-mobile-notice[data-tone="warning"] { background: color-mix(in srgb, var(--verdict-amber, #a35c00) 7%, var(--card, white)); border-color: color-mix(in srgb, var(--verdict-amber, #a35c00) 25%, transparent); }
 .curv-mobile-notice[data-tone="error"] { border-color: var(--destructive, #d6453f); }
 .curv-mobile-scrim { position: fixed; inset: 0; background: var(--overlay, #0006); z-index: 50; }
@@ -251,20 +251,16 @@
 .curv-mobile-chart-delta { font-size: 12.5px; font-weight: 500; color: var(--muted-foreground, #6b7280); font-variant-numeric: tabular-nums; }
 .curv-mobile-chart-delta[data-tone="up"] { color: var(--positive, #0a7a4b); }
 .curv-mobile-chart-delta[data-tone="down"] { color: var(--negative, #b42318); }
-.curv-mobile-chart figcaption { display: flex; justify-content: space-between; gap: 12px; margin-top: 6px; font-size: 12px; color: var(--muted-foreground, #6b7280); }
-/* Phones have no hover: a range input scrubs the series instead of a tooltip.
-   It has to look like a control — an invisible 44px strip is dead space that
-   nobody discovers. */
-.curv-mobile-chart-scrub { display: block; width: 100%; margin: 2px 0 0; height: 44px; -webkit-appearance: none; appearance: none; background: transparent; }
-.curv-mobile-chart-scrub::-webkit-slider-runnable-track { height: 4px; border-radius: 2px; background: color-mix(in srgb, currentColor 16%, transparent); }
-.curv-mobile-chart-scrub::-moz-range-track { height: 4px; border-radius: 2px; background: color-mix(in srgb, currentColor 16%, transparent); }
-.curv-mobile-chart-scrub::-webkit-slider-thumb { -webkit-appearance: none; width: 22px; height: 22px; margin-top: -9px; border-radius: 11px; background: var(--card, #fff); border: 2px solid currentColor; box-shadow: 0 1px 3px rgb(0 0 0 / 0.2); }
-.curv-mobile-chart-scrub::-moz-range-thumb { width: 22px; height: 22px; border-radius: 11px; background: var(--card, #fff); border: 2px solid currentColor; box-shadow: 0 1px 3px rgb(0 0 0 / 0.2); }
-.curv-mobile-chart-scrub:focus-visible { outline: 2px solid var(--ring, currentColor); outline-offset: 2px; border-radius: 12px; }
-.curv-mobile-chart-readout { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; font-size: 13px; font-variant-numeric: tabular-nums; }
-.curv-mobile-chart-readout strong { font-weight: 600; }
+.curv-mobile-chart figcaption { display: flex; justify-content: space-between; gap: 12px; margin-top: 6px; font-size: 13px; color: var(--muted-foreground, #6b7280); }
+/* Phones have no hover: pressing or dragging on the plot scrubs the series, and the period it lands on says its value in the plot.
+   pan-y leaves vertical scrolling to the page, so a thumb that starts on the chart can still scroll past it; the rest is the
+   chart's. The range input is for the keyboard and screen readers: visually hidden, still focusable, and the chart draws its
+   focus ring while it has focus. */
+.curv-mobile-chart > svg[data-scrub] { touch-action: pan-y pinch-zoom; -webkit-user-select: none; user-select: none; -webkit-touch-callout: none; -webkit-tap-highlight-color: transparent; }
+.curv-mobile-chart-scrub { position: absolute; width: 1px; height: 1px; margin: -1px; padding: 0; overflow: hidden; clip-path: inset(50%); white-space: nowrap; border: 0; }
+.curv-mobile-chart:has(.curv-mobile-chart-scrub:focus-visible) > svg { outline: 2px solid var(--ring, currentColor); outline-offset: 6px; border-radius: 12px; }
 .curv-mobile-chart-leader { pointer-events: none; }
-.curv-mobile-chart-empty { padding: 20px 0; font-size: 13px; color: var(--muted-foreground, #6b7280); }
+.curv-mobile-chart-empty { padding: 20px 0; font-size: 15px; line-height: 1.4; color: var(--muted-foreground, #6b7280); }
 
 /* ═══════════════════════════════════════════════════════════════════════════
    Phone navigation chrome: MobileTopBar, MobileSurface, MobileTabBar,
@@ -338,10 +334,12 @@
 .curv-mobile-surface[data-tone="plain"] { --curv-surface: var(--curv-mobile-surface, var(--curv-mobile-surface-plain, #ffffff)); }
 
 /* ── MobileViewToggle ──────────────────────────────────────────────────── */
-.curv-mobile-viewtoggle { flex: none; display: inline-flex; padding: 3px; border-radius: 24px; background: rgba(255, 255, 255, .12); }
-.curv-mobile-viewtoggle-option { position: relative; display: grid; place-items: center; width: 44px; height: 40px; padding: 0; border-radius: 20px; color: #d8d8da; }
-/* The visible pill is 40px; the touch target grows to the container's 46px. */
-.curv-mobile-viewtoggle-option::before { content: ""; position: absolute; inset: -3px 0; }
+/* Each option is a 44 by 44 target in a 2px frame, 48px in all. In the black bar the controls share a 44px line on the row's floor, so
+   the 4px of frame is split around it: the frame's bottom hangs 2px under the floor and its top stays level with the 12px nothing
+   interactive may enter. Anywhere else (the light tone on a surface) the toggle is just its 48px. */
+.curv-mobile-viewtoggle { flex: none; display: inline-flex; padding: 2px; border-radius: 24px; background: rgba(255, 255, 255, .12); }
+.curv-mobile-topbar .curv-mobile-viewtoggle { margin-bottom: -2px; }
+.curv-mobile-viewtoggle-option { position: relative; display: grid; place-items: center; width: 44px; height: 44px; padding: 0; border-radius: 22px; color: #d8d8da; }
 .curv-mobile-viewtoggle-option svg { display: block; width: 22px; height: 22px; }
 .curv-mobile-viewtoggle-option:is([aria-pressed="true"], [aria-current="page"]) { background: #ffffff; color: #1b1b1b; }
 .curv-mobile-viewtoggle-option:focus-visible { outline: 2px solid #ffffff; outline-offset: 2px; }
@@ -410,7 +408,9 @@
 /* Search mode: the pill is the field. */
 .curv-mobile-tabbar-search { gap: 10px; padding: 0 18px; color: var(--curv-mobile-tabbar-ink-active, #111113); }
 .curv-mobile-tabbar-search > svg { flex: none; width: 22px; height: 22px; color: var(--curv-mobile-tabbar-ink, #3a3a3d); }
-.curv-mobile-tabbar-search input { flex: 1; min-width: 0; height: 52px; padding: 0; border: 0; outline: none; background: transparent; color: inherit; font: inherit; font-size: 17px; }
+.curv-mobile-tabbar-search input { flex: 1; min-width: 0; height: 52px; padding: 0; border: 0; border-radius: 0; outline: none; background: transparent; color: inherit; font: inherit; font-size: 17px; -webkit-appearance: none; appearance: none; }
+/* The bar has its own close circle beside the field, so the browser's clear button (and the magnifier it draws in some engines) would be a second one. */
+.curv-mobile-tabbar-search input::-webkit-search-cancel-button, .curv-mobile-tabbar-search input::-webkit-search-decoration, .curv-mobile-tabbar-search input::-webkit-search-results-button, .curv-mobile-tabbar-search input::-webkit-search-results-decoration { display: none; -webkit-appearance: none; appearance: none; }
 .curv-mobile-tabbar-search input::placeholder { color: #55555a; opacity: 1; }
 .curv-mobile-tabbar-search:focus-within { outline: 2px solid var(--curv-mobile-tabbar-ink-active, #111113); outline-offset: -3px; }
 
@@ -504,22 +504,22 @@
 /* ── Flat list ───────────────────────────────────────────────────────────── */
 .curv-mobile-flat-list { background: var(--curv-mobile-surface, #fff); color: var(--curv-mobile-ink, #1b1b1b); font-family: inherit; }
 .curv-mobile-flat-section { color: var(--curv-mobile-ink, #1b1b1b); font-family: inherit; }
-/* One section heading for list sections, key-value lists and chart cards: 14px/500 grey, 20px in, so they line up when stacked.
-   The key-value and chart blocks sit inside the gutter, so their heading pads in only what is left of the 20px (no negative margin, so a block without its gutter never scrolls sideways). */
-.curv-mobile-flat-section-head, .curv-mobile-kv-head, .curv-mobile-chart-card-head, .curv-mobile-panel-head { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; padding: 16px 20px 6px; }
-.curv-mobile-kv-head, .curv-mobile-chart-card-head, .curv-mobile-panel-head { padding-inline: max(0px, calc(20px - var(--curv-mobile-gutter, 16px))); }
+/* One section heading for list sections, key-value lists and chart cards: 14px/500 grey, on the 16px gutter like everything else, so they line up when stacked.
+   The key-value and chart blocks sit inside the gutter, so their heading pads in only what is left of the 16px (none by default; no negative margin, so a block without its gutter never scrolls sideways). */
+.curv-mobile-flat-section-head, .curv-mobile-kv-head, .curv-mobile-chart-card-head, .curv-mobile-panel-head { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; padding: 16px 16px 6px; }
+.curv-mobile-kv-head, .curv-mobile-chart-card-head, .curv-mobile-panel-head { padding-inline: max(0px, calc(16px - var(--curv-mobile-gutter, 16px))); }
 .curv-mobile-flat-section-head h2, .curv-mobile-kv-head h2, .curv-mobile-chart-card-head h2, .curv-mobile-panel-head :is(h2, h3, h4) { flex: 0 1 auto; margin: 0; font-size: 14px; line-height: 1.3; font-weight: 500; color: var(--curv-mobile-ink-3, #6b6b6f); }
 /* A long trailing note gives way first, never the label: it shrinks (100 to the label's 1) to a floor of 5em (70px: "as of 9:41" is 65px), cut with an
    ellipsis on one line. Only once it is at that floor does the label shrink too, and it then wraps at spaces, never mid-word. */
 .curv-mobile-flat-section-trailing, .curv-mobile-kv-trailing, .curv-mobile-chart-card-trailing, .curv-mobile-panel-trailing { flex: 0 100 auto; min-width: 5em; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; text-align: right; margin-inline-start: auto; font-size: 14px; line-height: 1.3; font-weight: 400; color: var(--curv-mobile-ink-3, #6b6b6f); font-variant-numeric: tabular-nums; }
 
-.curv-mobile-flat-row { position: relative; box-sizing: border-box; display: flex; align-items: center; gap: 14px; min-height: 64px; padding: 14px 16px 14px 20px; background: var(--curv-mobile-surface, #fff); color: var(--curv-mobile-ink, #1b1b1b); font-family: inherit; }
-/* The hairline starts under the text: 82px = 20 padding + 48 thumbnail + 14 gap. The last row of a list has none. */
-.curv-mobile-flat-row::after { content: ""; position: absolute; left: 20px; right: 0; bottom: 0; height: 0.5px; background: var(--curv-mobile-hairline, #e3e3e6); pointer-events: none; }
-.curv-mobile-flat-row[data-thumb]::after { left: 82px; }
+.curv-mobile-flat-row { position: relative; box-sizing: border-box; display: flex; align-items: center; gap: 14px; min-height: 64px; padding: 14px 16px; background: var(--curv-mobile-surface, #fff); color: var(--curv-mobile-ink, #1b1b1b); font-family: inherit; }
+/* The hairline starts under the text: 78px = 16 padding + 48 thumbnail + 14 gap. The last row of a list has none. */
+.curv-mobile-flat-row::after { content: ""; position: absolute; left: 16px; right: 0; bottom: 0; height: 0.5px; background: var(--curv-mobile-hairline, #e3e3e6); pointer-events: none; }
+.curv-mobile-flat-row[data-thumb]::after { left: 78px; }
 .curv-mobile-flat-item:last-child .curv-mobile-flat-row::after { display: none; }
 
-.curv-mobile-flat-unread { position: absolute; left: 6px; top: 50%; width: 7px; height: 7px; margin-top: -3.5px; border-radius: 50%; background: var(--curv-mobile-accent, #1764c0); }
+.curv-mobile-flat-unread { position: absolute; left: 4px; top: 50%; width: 7px; height: 7px; margin-top: -3.5px; border-radius: 50%; background: var(--curv-mobile-accent, #1764c0); }
 
 /* The row link is stretched over the whole row, so a trailing time is part of the target and a trailing button sits above it. */
 .curv-mobile-flat-target { flex: 1; min-width: 0; display: flex; align-items: center; gap: 14px; margin: 0; padding: 0; border: 0; background: none; font: inherit; color: inherit; text-align: left; text-decoration: none; -webkit-tap-highlight-color: transparent; }
@@ -588,12 +588,13 @@
    Filter button or an editor's "New project" sits level with the chips instead of in a toolbar row of its own. The chips keep their
    16px at the start; the row's 8px gap is the space between the scroller's edge and the slot, so a chip that is cut off by the slot is
    cut 8px before it and not flush against it, and the scroller drops its own end padding (the gap is the space after the last chip).
-   The slot ends on the 16px gutter and is 44px tall like the chips. A round button in it
+   The slot ends on the 16px gutter and is 44px tall like the chips, and what is in it (a Filter button beside a "New project", say) is
+   8px apart, like the chips: an app never adds a margin of its own. A round button in it
    is 44px (48px in the toolbar); a plain button or link is the toolbar action's text pill, 44px tall. */
 .curv-mobile-chips-row { box-sizing: border-box; display: flex; align-items: center; gap: 8px; min-width: 0; }
 .curv-mobile-view-chips-row { background: var(--curv-mobile-surface, #fff); color: var(--curv-mobile-ink, #1b1b1b); font-family: inherit; }
 .curv-mobile-chips-row > :is(.curv-mobile-view-chips, .curv-mobile-board-chips) { flex: 1 1 0; min-width: 0; padding-right: 0; }
-.curv-mobile-chips-trailing { flex: none; box-sizing: border-box; display: flex; align-items: center; min-height: 44px; padding-right: 16px; }
+.curv-mobile-chips-trailing { flex: none; box-sizing: border-box; display: flex; align-items: center; gap: 8px; min-height: 44px; padding-right: 16px; }
 .curv-mobile-chips-trailing .curv-mobile-toolbar-button { width: 44px; height: 44px; }
 .curv-mobile-chips-trailing > :is(button, a):not(.curv-mobile-toolbar-button) { height: 44px; }
 
@@ -620,7 +621,7 @@
 
 /* ── Activity cards ──────────────────────────────────────────────────────── */
 .curv-mobile-activity { color: var(--curv-mobile-ink, #1b1b1b); font-family: inherit; }
-.curv-mobile-activity-title { margin: 0; padding: 16px 20px 8px; }
+.curv-mobile-activity-title { margin: 0; padding: 16px 16px 8px; }
 /* One title-size heading: "Here's what needs you" and a list section with headingSize="title" (the trailing note stays 14px). */
 .curv-mobile-activity-title, .curv-mobile-flat-section[data-heading-size="title"] .curv-mobile-flat-section-head h2 { font-size: 20px; line-height: 1.25; font-weight: 600; letter-spacing: -0.02em; color: var(--curv-mobile-ink, #1b1b1b); }
 .curv-mobile-flat-section[data-heading-size="title"] .curv-mobile-flat-section-head { padding-bottom: 8px; }
@@ -639,8 +640,10 @@
 /* ── Hero panel ──────────────────────────────────────────────────────────── */
 /* The panel paints one extra pixel of its own colour above its top edge (a shadow: nothing moves), so no hairline of the page or of the
    sheet's anti-aliased corner shows where the black bar meets it. The fixed bar is above that pixel, so it is never seen as more panel. */
-.curv-mobile-hero { box-sizing: border-box; padding: 6px 12px 20px; box-shadow: 0 -1px 0 0 var(--curv-mobile-hero-bg, var(--curv-mobile-topbar, #1b1b1b)); border-radius: 0 0 18px 18px; background: var(--curv-mobile-hero-bg, var(--curv-mobile-topbar, #1b1b1b)); color: var(--curv-mobile-hero-ink, #f2f2f2); font-family: inherit; }
-.curv-mobile-hero-kpis { position: relative; display: flex; gap: 6px; margin: 0 -12px; padding: 4px 12px; overflow-x: auto; overflow-y: hidden; scroll-snap-type: x proximity; scroll-padding-inline: 12px; overscroll-behavior-x: contain; scrollbar-width: none; -webkit-overflow-scrolling: touch; }
+.curv-mobile-hero { box-sizing: border-box; padding: 6px 16px 20px; box-shadow: 0 -1px 0 0 var(--curv-mobile-hero-bg, var(--curv-mobile-topbar, #1b1b1b)); border-radius: 0 0 18px 18px; background: var(--curv-mobile-hero-bg, var(--curv-mobile-topbar, #1b1b1b)); color: var(--curv-mobile-hero-ink, #f2f2f2); font-family: inherit; }
+/* The panel pads 16px, so the chart and the buttons start on the gutter. The KPI row bleeds back out to the screen's edge and pads 4px, so
+   a chip's own 12px puts its text on the gutter too; the chosen chip's box is what reaches out of it. */
+.curv-mobile-hero-kpis { position: relative; display: flex; gap: 6px; margin: 0 -16px; padding: 4px 4px; overflow-x: auto; overflow-y: hidden; scroll-snap-type: x proximity; scroll-padding-inline: 4px; overscroll-behavior-x: contain; scrollbar-width: none; -webkit-overflow-scrolling: touch; }
 .curv-mobile-hero-kpis::-webkit-scrollbar { display: none; }
 /* Chips share the row: they keep their natural width while the row has room, then shrink and wrap their labels and deltas (to about
    two lines). A chip's text never gets narrower than 80px (the body's min-width, so 104px with the padding) or its widest figure,
@@ -679,33 +682,32 @@
 .curv-mobile-chart-dark .curv-mobile-chart-ref { stroke: var(--curv-mobile-hero-label, #b4b4b9); stroke-opacity: 0.7; }
 .curv-mobile-chart-dark .curv-mobile-chart-dot { fill: var(--curv-mobile-chart-line, #3ba7f0); stroke: var(--curv-mobile-hero-bg, var(--curv-mobile-topbar, #1b1b1b)); }
 .curv-mobile-chart-dark .curv-mobile-chart-dot-partial { fill: var(--curv-mobile-hero-bg, var(--curv-mobile-topbar, #1b1b1b)); stroke: var(--curv-mobile-chart-line, #3ba7f0); }
-.curv-mobile-chart-dark .curv-mobile-chart-label { fill: var(--curv-mobile-hero-ink, #f2f2f2); }
+.curv-mobile-chart-dark :is(.curv-mobile-chart-label, .curv-mobile-chart-period) { fill: var(--curv-mobile-hero-ink, #f2f2f2); }
 .curv-mobile-chart-dark .curv-mobile-chart-delta, .curv-mobile-chart-dark figcaption, .curv-mobile-chart-dark .curv-mobile-chart-empty { color: var(--curv-mobile-hero-label, #b4b4b9); }
 .curv-mobile-chart-dark .curv-mobile-chart-delta[data-tone="up"] { color: var(--curv-mobile-hero-positive, #7fd18b); }
 .curv-mobile-chart-dark .curv-mobile-chart-delta[data-tone="down"] { color: var(--curv-mobile-hero-critical, #f28b82); }
-.curv-mobile-chart-dark .curv-mobile-chart-scrub::-webkit-slider-runnable-track { background: var(--curv-mobile-hero-line, #3a3a3d); }
-.curv-mobile-chart-dark .curv-mobile-chart-scrub::-moz-range-track { background: var(--curv-mobile-hero-line, #3a3a3d); }
-.curv-mobile-chart-dark .curv-mobile-chart-scrub::-webkit-slider-thumb { background: var(--curv-mobile-hero-bg, var(--curv-mobile-topbar, #1b1b1b)); border-color: var(--curv-mobile-chart-line, #3ba7f0); }
-.curv-mobile-chart-dark .curv-mobile-chart-scrub::-moz-range-thumb { background: var(--curv-mobile-hero-bg, var(--curv-mobile-topbar, #1b1b1b)); border-color: var(--curv-mobile-chart-line, #3ba7f0); }
-.curv-mobile-chart-dark .curv-mobile-chart-scrub:focus-visible { outline-color: var(--curv-mobile-hero-focus, #6aa9f0); }
+.curv-mobile-chart-dark:has(.curv-mobile-chart-scrub:focus-visible) > svg { outline-color: var(--curv-mobile-hero-focus, #6aa9f0); }
 
 /* ── Stage board ─────────────────────────────────────────────────────────── */
 .curv-mobile-board { color: var(--curv-mobile-ink, #1b1b1b); font-family: inherit; }
-.curv-mobile-board-chips { position: relative; box-sizing: border-box; display: flex; gap: 8px; padding: 4px 16px; overflow-x: auto; overflow-y: hidden; overscroll-behavior-x: contain; scrollbar-width: none; -webkit-overflow-scrolling: touch; }
+.curv-mobile-board-chips { position: relative; box-sizing: border-box; display: flex; align-items: center; gap: 8px; padding: 0 16px; overflow-x: auto; overflow-y: hidden; overscroll-behavior-x: contain; scrollbar-width: none; -webkit-overflow-scrolling: touch; }
 .curv-mobile-board-chips::-webkit-scrollbar { display: none; }
 /* The chip itself is drawn by .curv-mobile-chip (see Chips); this class and its count stay as the board's hooks. */
 .curv-mobile-board-chip-count { font-variant-numeric: tabular-nums; }
 
 /* A column is the board's width minus 66px (16 gutter + 50 peek), so the next one shows 50px. A flex item's percentage
    resolves against the content box, which already excludes the 16px gutter, so only the peek is subtracted here.
-   The trailing spacer lets the last column reach the left edge instead of stopping flush right. */
+   The trailing spacer lets the last column reach the left edge instead of stopping flush right.
+   A column snaps with its left edge on the gutter, so the column before it stays off screen only if it keeps a full gutter of
+   its own padding on the right (with 12px, 4px of its cards showed at the left edge), and 4px more so the card's ring and shadow
+   never reach the screen either. Its cards are the column minus that padding, which is also the space between two columns' cards. */
 .curv-mobile-board-columns { --curv-board-gutter: 16px; --curv-board-peek: 50px; position: relative; box-sizing: border-box; display: flex; align-items: flex-start; padding: 12px 0 32px var(--curv-board-gutter); overflow-x: auto; overflow-y: hidden; scroll-snap-type: x mandatory; scroll-padding-inline: var(--curv-board-gutter); overscroll-behavior-x: contain; scrollbar-width: none; -webkit-overflow-scrolling: touch; }
 .curv-mobile-board-columns::-webkit-scrollbar { display: none; }
 .curv-mobile-board-columns::after { content: ""; flex: 0 0 var(--curv-board-peek); }
-.curv-mobile-board-column { flex: 0 0 calc(100% - var(--curv-board-peek)); box-sizing: border-box; min-width: 0; padding-right: 12px; scroll-snap-align: start; scroll-snap-stop: always; }
+.curv-mobile-board-column { flex: 0 0 calc(100% - var(--curv-board-peek)); box-sizing: border-box; min-width: 0; padding-right: calc(var(--curv-board-gutter) + 4px); scroll-snap-align: start; scroll-snap-stop: always; }
 .curv-mobile-board-column-inner { border-radius: 14px; }
 .curv-mobile-board-column[data-drop-target="true"] .curv-mobile-board-column-inner { background: rgb(23 100 192 / 0.08); outline: 2px dashed rgb(23 100 192 / 0.55); outline-offset: 4px; }
-.curv-mobile-board-column-head { display: flex; align-items: baseline; gap: 8px; margin: 0; padding: 2px 2px 10px; font-size: 17px; line-height: 1.3; font-weight: 600; letter-spacing: -0.01em; }
+.curv-mobile-board-column-head { display: flex; align-items: baseline; gap: 8px; margin: 0; padding: 2px 0 10px; font-size: 17px; line-height: 1.3; font-weight: 600; letter-spacing: -0.01em; }
 .curv-mobile-board-column-count { font-size: 15px; font-weight: 500; color: var(--curv-mobile-ink-3, #6b6b6f); font-variant-numeric: tabular-nums; }
 .curv-mobile-board-cards { display: flex; flex-direction: column; gap: 10px; min-height: 88px; margin: 0; padding: 0; list-style: none; }
 .curv-mobile-board-empty { margin: 0; padding: 24px 8px; text-align: center; font-size: 14px; line-height: 1.4; color: var(--curv-mobile-ink-3, #6b6b6f); }
@@ -791,7 +793,7 @@
 .curv-mobile-kv-value[data-tone="critical"] { color: var(--curv-mobile-critical, var(--curv-critical, #b5352f)); }
 .curv-mobile-kv-value[data-tone="warning"] { color: var(--curv-mobile-board-warning-fg, #8a4e00); }
 /* Sub-lines are #6b6b6f, not the #8a8a90 of the first mock: that grey is 3.4:1 on white and the playbook asks for 4.5:1. */
-.curv-mobile-kv-sub { font-size: 12px; line-height: 1.3; font-weight: 400; color: var(--curv-mobile-sub, #6b6b6f); }
+.curv-mobile-kv-sub { font-size: 13px; line-height: 1.3; font-weight: 400; color: var(--curv-mobile-sub, #6b6b6f); }
 .curv-mobile-kv-sub[data-tone="positive"] { color: var(--curv-mobile-positive-fg, #1f6b30); }
 .curv-mobile-kv-sub[data-tone="critical"] { color: var(--curv-mobile-critical, var(--curv-critical, #b5352f)); }
 .curv-mobile-kv-sub[data-tone="warning"] { color: var(--curv-mobile-board-warning-fg, #8a4e00); }
@@ -861,7 +863,7 @@
 .curv-mobile-field-control::placeholder { color: var(--curv-mobile-ink-3, #6b6b6f); opacity: 1; }
 .curv-mobile-field-control:focus-visible { outline: 2px solid var(--curv-mobile-accent, #1764c0); outline-offset: 1px; border-color: var(--curv-mobile-accent, #1764c0); }
 .curv-mobile-field-control:disabled { cursor: not-allowed; opacity: 0.45; background: var(--curv-mobile-fill, #efeff1); }
-.curv-mobile-field-textarea { min-height: 112px; line-height: 1.4; resize: vertical; }
+.curv-mobile-field-textarea { min-height: 112px; line-height: 1.4; resize: none; }
 /* iOS draws an empty date input at no height and centres its value: hold the line and keep it at the start. */
 .curv-mobile-field-control[type="date"] { min-height: 48px; }
 .curv-mobile-field-control[type="date"]::-webkit-date-and-time-value { min-height: 1.3em; text-align: left; }
