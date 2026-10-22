@@ -2,8 +2,8 @@
 
 import * as React from "react";
 import { cn } from "../../../lib/cn";
-import { MobileSheet } from "../mobile-command";
 import { idPart } from "../mobile-nav/id-part";
+import { MobileMoveSheet } from "./move-sheet";
 import { ContentLink, DotsIcon, formatCount, prefersReducedMotion, useIsomorphicLayoutEffect, type MobileContentRenderLink } from "./shared";
 
 export interface MobileStageCard {
@@ -446,32 +446,17 @@ export function MobileStageBoard({ label, columns, activeColumnId, onActiveColum
         })}
       </div>
       {onMove && (
-        <MobileSheet
+        <MobileMoveSheet
           open={moving !== null}
           onOpenChange={open => { if (!open) setMoving(null); }}
           title={movingCard ? <span className="curv-mobile-board-sheet-title"><span>{generic}</span><span className="curv-mobile-content-vh">: </span><span className="curv-mobile-board-sheet-card">{movingCard.title}</span></span> : generic}
-        >
-          <ul className="curv-mobile-board-move-list" role="list">
-            {columns.filter(column => column.id !== moving?.from).map(column => (
-              <li key={column.id}>
-                <button
-                  type="button"
-                  className="curv-mobile-board-move-option"
-                  onClick={() => {
-                    if (moving) {
-                      refocus.current = { cardId: moving.cardId, from: moving.from, at: performance.now() };
-                      onMove?.(moving.cardId, column.id);
-                    }
-                    setMoving(null);
-                  }}
-                >
-                  <span>{moveLabel(column.label)}</span>
-                  <span className="curv-mobile-board-chip-count">{formatCount(column.count)}</span>
-                </button>
-              </li>
-            ))}
-          </ul>
-        </MobileSheet>
+          options={columns.filter(column => column.id !== moving?.from).map(column => ({ id: column.id, label: moveLabel(column.label), count: column.count }))}
+          onChoose={id => {
+            if (!moving) return;
+            refocus.current = { cardId: moving.cardId, from: moving.from, at: performance.now() };
+            onMove?.(moving.cardId, id);
+          }}
+        />
       )}
     </section>
   );

@@ -2,7 +2,7 @@
 
 import * as React from "react";
 import { cn } from "../../../lib/cn";
-import { prefersReducedMotion } from "./shared";
+import { BoxIcon, imageHasFailed, prefersReducedMotion } from "./shared";
 
 export interface MobileGalleryImage {
   src: string;
@@ -15,7 +15,8 @@ export interface MobileGalleryProps {
   className?: string;
 }
 
-/** A swipeable photo strip with a pager pill and a row of thumbnails that jump to each photo. */
+/** A swipeable photo strip with a pager pill and a row of thumbnails that jump to each photo.
+ *  A photo that cannot load (hotlink blocked, deleted, offline) keeps its slide and shows a neutral placeholder. */
 export function MobileGallery({ images, label, className }: MobileGalleryProps) {
   const total = images.length;
   const [current, setCurrent] = React.useState(0);
@@ -24,6 +25,16 @@ export function MobileGallery({ images, label, className }: MobileGalleryProps) 
   // While a thumbnail jump is scrolling the strip, the strip's own scroll events are ours and must not move the pager.
   const jump = React.useRef({ busy: false, to: 0, timer: 0 });
   const frame = React.useRef(0);
+  const root = React.useRef<HTMLDivElement>(null);
+  // Addresses that failed to load. Keyed by address, so a gallery given other photos tries them.
+  const [failed, setFailed] = React.useState<ReadonlySet<string>>(() => new Set());
+  const fail = (src: string) => setFailed(previous => (previous.has(src) ? previous : new Set(previous).add(src)));
+
+  // An `error` that fired before this component hydrated was never heard: look at the elements themselves.
+  React.useEffect(() => {
+    const broken = Array.from(root.current?.querySelectorAll("img") ?? []).filter(imageHasFailed).map(image => image.getAttribute("src") as string);
+    if (broken.length) setFailed(previous => (broken.every(src => previous.has(src)) ? previous : new Set([...previous, ...broken])));
+  }, [images]);
 
   React.useEffect(() => () => { window.clearTimeout(jump.current.timer); window.cancelAnimationFrame(frame.current); }, []);
 
@@ -72,12 +83,14 @@ export function MobileGallery({ images, label, className }: MobileGalleryProps) 
   };
 
   return (
-    <div className={cn("curv-mobile-gallery", className)}>
+    <div ref={root} className={cn("curv-mobile-gallery", className)}>
       <div className="curv-mobile-gallery-frame">
         <div ref={strip} className="curv-mobile-gallery-strip" role="group" aria-label={label} tabIndex={0} onScroll={onScroll} onPointerDown={takeOver} onWheel={takeOver}>
           {images.map((image, index) => (
             <div key={index} className="curv-mobile-gallery-slide">
-              <img src={image.src} alt={image.alt} loading={index === 0 ? "eager" : "lazy"} decoding="async" draggable={false} />
+              {failed.has(image.src)
+                ? <div className="curv-mobile-gallery-placeholder" role="img" aria-label={image.alt || `${label}, photo ${index + 1}`}><BoxIcon size={44} /></div>
+                : <img src={image.src} alt={image.alt} loading={index === 0 ? "eager" : "lazy"} decoding="async" draggable={false} referrerPolicy="no-referrer" onError={() => fail(image.src)} />}
             </div>
           ))}
         </div>
@@ -101,7 +114,9 @@ export function MobileGallery({ images, label, className }: MobileGalleryProps) 
               aria-current={index === current ? "true" : undefined}
               onClick={() => show(index)}
             >
-              <img src={image.src} alt="" loading="lazy" decoding="async" draggable={false} />
+              {failed.has(image.src)
+                ? <span className="curv-mobile-gallery-placeholder" aria-hidden="true"><BoxIcon size={24} /></span>
+                : <img src={image.src} alt="" loading="lazy" decoding="async" draggable={false} referrerPolicy="no-referrer" onError={() => fail(image.src)} />}
             </button>
           ))}
         </div>

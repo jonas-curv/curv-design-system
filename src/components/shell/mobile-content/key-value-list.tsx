@@ -4,13 +4,19 @@ import * as React from "react";
 import { cn } from "../../../lib/cn";
 import { ChevronIcon, ContentLink, type MobileContentRenderLink } from "./shared";
 
+export type MobileKeyValueTone = "positive" | "critical" | "warning" | "neutral";
+
 export interface MobileKeyValueRow {
   id: string;
   label: React.ReactNode;
   sub?: React.ReactNode;
+  /** The colour of the left sub-line: "Short cover" in amber, "Overdue" in red. Neutral is the default grey. */
+  subTone?: MobileKeyValueTone;
   value: React.ReactNode;
   valueSub?: React.ReactNode;
-  valueTone?: "positive" | "critical" | "warning" | "neutral";
+  /** The colour of the right sub-line ("+4.2% vs prior" in green). The value's own colour is `valueTone`. */
+  valueSubTone?: MobileKeyValueTone;
+  valueTone?: MobileKeyValueTone;
   /** A row with an href is a link and shows a chevron. */
   href?: string;
 }
@@ -23,6 +29,8 @@ export interface MobileKeyValueListProps {
   renderLink?: MobileContentRenderLink;
   className?: string;
 }
+
+const toneOf = (tone: MobileKeyValueTone | undefined) => (tone && tone !== "neutral" ? tone : undefined);
 
 /** Settings-style figures: label on the left, a tabular value on the right, optional sub-lines. */
 export function MobileKeyValueList({ title, trailing, rows, renderLink, className }: MobileKeyValueListProps) {
@@ -39,10 +47,10 @@ export function MobileKeyValueList({ title, trailing, rows, renderLink, classNam
         {rows.map(row => {
           const body = (
             <>
-              <span className="curv-mobile-kv-label"><span>{row.label}</span>{row.sub != null && <span className="curv-mobile-kv-sub">{row.sub}</span>}</span>
-              <span className="curv-mobile-kv-value" data-tone={row.valueTone && row.valueTone !== "neutral" ? row.valueTone : undefined}>
+              <span className="curv-mobile-kv-label"><span>{row.label}</span>{row.sub != null && <span className="curv-mobile-kv-sub" data-tone={toneOf(row.subTone)}>{row.sub}</span>}</span>
+              <span className="curv-mobile-kv-value" data-tone={toneOf(row.valueTone)}>
                 <span>{row.value}</span>
-                {row.valueSub != null && <span className="curv-mobile-kv-sub">{row.valueSub}</span>}
+                {row.valueSub != null && <span className="curv-mobile-kv-sub" data-tone={toneOf(row.valueSubTone)}>{row.valueSub}</span>}
               </span>
               {row.href && <span className="curv-mobile-kv-chevron" aria-hidden="true"><ChevronIcon /></span>}
             </>

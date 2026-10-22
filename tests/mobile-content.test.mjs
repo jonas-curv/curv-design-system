@@ -14,6 +14,7 @@ test('the content components are exported from the mobile entry', () => {
   for (const name of [
     'MobileFlatList', 'MobileListSection', 'MobileListRow', 'MobileException', 'MobileListToolbar', 'MobileViewChips',
     'MobileSwipeRow', 'MobileActivityCards', 'MobileHeroPanel', 'MobileHeroAction', 'MobileStageBoard', 'MobileKeyValueList', 'MobileGallery',
+    'MobileStatusPill', 'MobileMoveSheet', 'MobileChartCard',
   ]) assert.equal(typeof mobile[name], 'function', name);
 });
 
@@ -401,7 +402,7 @@ test('board ids built from app ids with spaces never split aria-labelledby', () 
 test('light-only surfaces carry their own ink and the move sheet follows the theme', () => {
   const css = read('mobile.css');
   const rules = [...css.matchAll(/(^|\n)([^\n{}@/][^\n{]*) \{([^}]*)\}/g)].map(match => ({ selector: match[2], body: match[3] }));
-  const light = rules.filter(({ selector, body }) => /background: var\(--curv-mobile-surface,/.test(body) && /^\.curv-mobile-(flat|toolbar|view-chips|swipe|activity|board|kv)/.test(selector) && !/::|:active|:hover|:focus/.test(selector));
+  const light = rules.filter(({ selector, body }) => /background: var\(--curv-mobile-surface,/.test(body) && /^\.curv-mobile-(flat|toolbar|view-chips|swipe|activity|board|kv|chart-card)/.test(selector) && !/::|:active|:hover|:focus/.test(selector));
   assert.ok(light.length >= 10);
   const bare = light.filter(({ body }) => !/(^|[ ;])color: var\(--curv-mobile-ink[^;]*;/.test(body) && !/(^|[ ;])color: var\(--curv-mobile-(chip)/.test(body)).map(({ selector }) => selector);
   assert.deepEqual(bare, []);
@@ -420,4 +421,145 @@ test('the warning pill is the board\'s amber, so "At risk" looks the same in a l
     assert.match(badge, part);
   }
   assert.match(render(h(mobile.MobileListRow, { title: 'Spring catalog', status: { label: 'At risk', tone: 'warning' } })), /curv-mobile-flat-pill curv-mobile-flat-pill-warning">At risk</);
+});
+
+// ── Added for the first adopter (0.3.1) ─────────────────────────────────────
+
+// Every rule whose selector list names `selector`, as [text, selectors, body]. Commas inside parentheses (`:is(a, b)`) do not split a list.
+const cssRules = selector => [...read('mobile.css').matchAll(/(^|\n)([^\n{}@/][^\n{]*) \{([^}]*)\}/g)]
+  .filter(item => item[2].split(/,(?![^(]*\))/).map(part => part.trim()).includes(selector));
+const cssRule = selector => {
+  const rules = cssRules(selector);
+  assert.ok(rules.length, `a rule for ${selector}`);
+  // The declarations of every rule that names the selector, as one body: what the cascade gives it before specificity.
+  return [rules[0][0], rules[0][1], rules[0][2], rules.map(rule => rule[3]).join(' ')];
+};
+
+test('the status pill stands alone and is exactly the pill a list row draws', () => {
+  for (const tone of ['positive', 'critical', 'warning', 'info', 'special', 'neutral']) {
+    const pill = render(h(mobile.MobileStatusPill, { label: 'At risk', tone }));
+    assert.equal(pill, `<span class="curv-mobile-flat-pill curv-mobile-flat-pill-${tone}">At risk</span>`);
+    assert.ok(render(h(mobile.MobileListRow, { title: 'x', status: { label: 'At risk', tone } })).includes(pill), `a row draws the same markup for ${tone}`);
+  }
+  assert.equal(render(h(mobile.MobileStatusPill, { label: 'Late', tone: 'warning', className: 'ml-2' })), '<span class="curv-mobile-flat-pill curv-mobile-flat-pill-warning ml-2">Late</span>');
+});
+
+test('string thumbnails and gallery photos send no referrer; a node thumbnail is left alone', () => {
+  const row = render(h(mobile.MobileListRow, { title: 'x', thumbnail: '/a.jpg' }));
+  assert.match(row, /<img [^>]*referrerPolicy="no-referrer"/);
+  assert.equal(count(render(h(mobile.MobileListRow, { title: 'x', thumbnail: h('b', null, 'W') })), /<img /g), 0);
+  const gallery = render(h(mobile.MobileGallery, { images: [{ src: '/a.jpg', alt: 'A' }, { src: '/b.jpg', alt: 'B' }], label: 'Photos' }));
+  assert.equal(count(gallery, /<img [^>]*referrerPolicy="no-referrer"/g), 4);   // two photos, two thumbnails (the eager one is preloaded with the same policy)
+  assert.equal(count(gallery, /curv-mobile-gallery-placeholder/g), 0);        // nothing has failed in server markup
+  assert.match(read('mobile.css'), /\.curv-mobile-gallery-placeholder \{[^}]*background: var\(--curv-mobile-thumb, #f4f4f5\)[^}]*color: var\(--curv-mobile-thumb-icon, #8a8a90\)/);
+});
+
+test('the toolbar without a search field is just its round buttons, pushed to the right', () => {
+  const html = render(h(mobile.MobileListToolbar, { onSort() {}, onFilter() {}, filterCount: 2 }));
+  assert.match(html, /<div class="curv-mobile-toolbar" data-no-search="true">/);
+  assert.doesNotMatch(html, /<input|<label|curv-mobile-toolbar-search/);
+  assert.equal(count(html, /<button /g), 2);
+  assert.match(html, /aria-label="Filter \(2\)"/);
+  assert.match(cssRule('.curv-mobile-toolbar[data-no-search]')[3], /justify-content: flex-end/);
+  const withSearch = render(h(mobile.MobileListToolbar, { search: { value: '', onChange() {}, label: 'Search' } }));
+  assert.doesNotMatch(withSearch, /data-no-search/);                        // the markup with a search field did not change
+  assert.equal(render(h(mobile.MobileListToolbar, {})), '');                // nothing to show, nothing drawn
+});
+
+test('the toolbar action sits between the search field and Sort / Filter, as a round button or a text pill', () => {
+  const html = render(h(mobile.MobileListToolbar, {
+    search: { value: '', onChange() {}, label: 'Search projects' }, action: h('button', { type: 'button' }, 'New project'), onSort() {}, onFilter() {},
+  }));
+  const order = ['curv-mobile-toolbar-search', 'curv-mobile-toolbar-action"><button type="button">New project', 'aria-label="Sort"', 'aria-label="Filter"'].map(part => html.indexOf(part));
+  assert.ok(order.every(index => index >= 0), 'all four parts render');
+  assert.deepEqual(order, [...order].sort((a, b) => a - b));
+  const round = render(h(mobile.MobileListToolbar, { action: h('button', { type: 'button', className: 'curv-mobile-toolbar-button', 'aria-label': 'New project' }, '+') }));
+  assert.match(round, /data-no-search="true"><span class="curv-mobile-toolbar-action"><button type="button" class="curv-mobile-toolbar-button" aria-label="New project">/);
+  assert.equal(render(h(mobile.MobileListToolbar, { action: false, onSort() {} })).includes('curv-mobile-toolbar-action'), false);
+  const text = cssRule('.curv-mobile-toolbar-action > :is(button, a):not(.curv-mobile-toolbar-button)')[3];
+  assert.match(text, /height: 48px/);                                        // as tall as the round buttons
+  assert.match(text, /min-height|border-radius: 24px/);
+});
+
+test('an exception is red by default and amber when it is a warning, in the warning pill\'s ink', () => {
+  assert.equal(render(h(mobile.MobileException, null, '0 sellable')), '<span class="curv-mobile-flat-exception">0 sellable</span>');
+  assert.equal(render(h(mobile.MobileException, { tone: 'critical' }, '0 sellable')), '<span class="curv-mobile-flat-exception">0 sellable</span>');
+  assert.equal(render(h(mobile.MobileException, { tone: 'warning' }, '9 days of cover')), '<span class="curv-mobile-flat-exception" data-tone="warning">9 days of cover</span>');
+  assert.match(cssRule('.curv-mobile-flat-exception')[3], /color: var\(--curv-mobile-critical, var\(--curv-critical, #b5352f\)\)/);
+  assert.match(cssRule('.curv-mobile-flat-exception[data-tone="warning"]')[3], /color: var\(--curv-mobile-board-warning-fg, #8a4e00\)/);
+  const row = render(h(mobile.MobileListRow, { title: 'Dune rug', meta: h(React.Fragment, null, h(mobile.MobileException, { tone: 'warning' }, 'Short cover'), ' · 14 on order') }));
+  assert.match(row, /<span class="curv-mobile-flat-meta"><span class="curv-mobile-flat-exception" data-tone="warning">Short cover<\/span> · 14 on order<\/span>/);
+});
+
+test('key-value sub-lines take a tone of their own, and neutral or none draws no attribute', () => {
+  const html = render(h(mobile.MobileKeyValueList, { rows: [
+    { id: 'a', label: 'Cover', sub: 'Short', subTone: 'warning', value: '9 days', valueSub: '+4.2% vs prior', valueSubTone: 'positive', valueTone: 'critical' },
+    { id: 'b', label: 'Orders', sub: 'Late', subTone: 'critical', value: '3', valueSub: 'Same as prior', valueSubTone: 'neutral' },
+    { id: 'c', label: 'Plain', sub: 'Plain sub', value: '1', valueSub: 'Plain value sub' },
+  ] }));
+  assert.match(html, /<span class="curv-mobile-kv-sub" data-tone="warning">Short</);
+  assert.match(html, /<span class="curv-mobile-kv-sub" data-tone="positive">\+4.2% vs prior</);
+  assert.match(html, /<span class="curv-mobile-kv-sub" data-tone="critical">Late</);
+  assert.match(html, /<span class="curv-mobile-kv-sub">Same as prior</);
+  assert.match(html, /<span class="curv-mobile-kv-sub">Plain sub</);
+  assert.match(html, /<span class="curv-mobile-kv-sub">Plain value sub</);
+  assert.match(html, /curv-mobile-kv-value" data-tone="critical"/);         // the value keeps its own tone, apart from its sub-line
+  const css = read('mobile.css');
+  assert.match(css, /\.curv-mobile-kv-sub\[data-tone="positive"\] \{ color: var\(--curv-mobile-positive-fg, #1f6b30\); \}/);
+  assert.match(css, /\.curv-mobile-kv-sub\[data-tone="critical"\] \{ color: var\(--curv-mobile-critical, var\(--curv-critical, #b5352f\)\); \}/);
+  assert.match(css, /\.curv-mobile-kv-sub\[data-tone="warning"\] \{ color: var\(--curv-mobile-board-warning-fg, #8a4e00\); \}/);
+});
+
+test('the chart card frames a chart under a heading, on the same ground as the key-value card', () => {
+  const html = render(h(mobile.MobileChartCard, { title: 'Sales, last 30 days', trailing: 'as of 9:41' },
+    h(mobile.MobileChart, { points: days, variant: 'line', label: 'Sales' })));
+  const id = html.match(/<h2 id="([^"]+)"/)[1];
+  assert.ok(html.includes(`<section class="curv-mobile-chart-card" aria-labelledby="${id}">`));
+  assert.match(html, /<div class="curv-mobile-chart-card-head"><h2 id="[^"]+">Sales, last 30 days<\/h2><span class="curv-mobile-chart-card-trailing">as of 9:41<\/span><\/div>/);
+  assert.match(html, /<div class="curv-mobile-chart-card-body"><figure class="curv-mobile-chart">/);
+  const bare = render(h(mobile.MobileChartCard, null, h('p', null, 'chart')));
+  assert.equal(bare, '<section class="curv-mobile-chart-card"><div class="curv-mobile-chart-card-body"><p>chart</p></div></section>');
+  // One rule draws the card ground for both, so they cannot drift apart.
+  const ground = cssRule('.curv-mobile-chart-card-body');
+  assert.ok(ground[2].includes('.curv-mobile-kv-card'));
+  assert.match(ground[3], /border-radius: 18px/);
+  assert.match(ground[3], /box-shadow: 0 0 0 0\.5px rgb\(0 0 0 \/ 0\.08\)/);
+  assert.match(ground[3], /background: var\(--curv-mobile-surface, #fff\)/);
+  assert.match(cssRule('.curv-mobile-chart-card')[3], /margin-inline: var\(--curv-mobile-gutter, 16px\)/);
+  // Light-only, like the other phone surfaces: the desktop tokens a chart reads are pinned to light values inside it.
+  for (const pinned of [/padding: 16px/, /--card: var\(--curv-mobile-surface, #fff\)/, /--foreground: var\(--curv-mobile-ink, #1b1b1b\)/, /--muted-foreground: var\(--curv-mobile-ink-3, #6b6b6f\)/, /--positive: var\(--curv-mobile-positive-fg, #1f6b30\)/, /--negative: var\(--curv-mobile-critical/]) assert.match(ground[3], pinned);
+});
+
+test('the move sheet mounts nothing while closed', () => {
+  const html = render(h(mobile.MobileMoveSheet, { open: false, onOpenChange() {}, title: 'Move to…', options: [{ id: 'a', label: 'Move to A' }], onChoose() {} }));
+  assert.equal(html, '');
+});
+
+test('list sections, key-value lists and chart cards share one heading, so stacked sections line up', () => {
+  const heads = ['.curv-mobile-flat-section-head', '.curv-mobile-kv-head', '.curv-mobile-chart-card-head'];
+  const head = cssRule(heads[0]);
+  for (const selector of heads) assert.ok(head[2].split(',').map(part => part.trim()).includes(selector), `${selector} shares the list section's heading rule`);
+  assert.match(head[3], /padding: 16px 20px 6px/);
+  const title = cssRule('.curv-mobile-flat-section-head h2');
+  for (const selector of ['.curv-mobile-kv-head h2', '.curv-mobile-chart-card-head h2']) assert.ok(title[2].includes(selector), selector);
+  assert.match(title[3], /font-size: 14px/);
+  assert.match(title[3], /font-weight: 500/);
+  assert.match(title[3], /color: var\(--curv-mobile-ink-3, #6b6b6f\)/);
+  const trailing = cssRule('.curv-mobile-flat-section-trailing');
+  for (const selector of ['.curv-mobile-kv-trailing', '.curv-mobile-chart-card-trailing']) assert.ok(trailing[2].includes(selector), selector);
+  assert.match(trailing[3], /font-size: 14px/);
+  // The blocks that sit inside the gutter pad in only what is left of the 20px, so the heading starts where the
+  // list's does, and with no negative margin a block whose gutter is removed never scrolls sideways.
+  for (const selector of ['.curv-mobile-kv-head', '.curv-mobile-chart-card-head']) {
+    assert.match(cssRule(selector)[3], /padding-inline: max\(0px, calc\(20px - var\(--curv-mobile-gutter, 16px\)\)\)/);
+    assert.doesNotMatch(cssRule(selector)[3], /margin-inline: calc/);
+  }
+  // And nothing later re-sets the key-value heading to its old 13px.
+  assert.doesNotMatch(read('mobile.css'), /\.curv-mobile-kv-head[^{]*\{[^}]*(font-size: 13px|padding: 0 4px)/);
+});
+
+test('a move option that cannot be chosen is dimmed, and the current one keeps full ink with a check', () => {
+  assert.match(cssRule('.curv-mobile-board-move-option:disabled')[3], /opacity: 0\.45/);
+  assert.match(cssRule('.curv-mobile-board-move-option[aria-current="true"]:disabled')[3], /opacity: 1/);
+  assert.match(cssRule('.curv-mobile-board-move-check')[3], /color: var\(--curv-mobile-accent, #1764c0\)/);
 });

@@ -34,7 +34,7 @@ Mockups and builds use the OS's real records, photos and numbers. A phone layer 
 
 `MobileTopBar`: the fixed black top bar holds the page title and at most one trailing control (for example the List | Board toggle). Nothing else: no stats line, no bell, no menu button.
 
-- **The title is the switcher.** A hub with several pages shows `Development ⌄`; tapping it lists the hub's pages. Each page keeps its own route. This replaces tab strips on phones.
+- **The title is the switcher.** A hub with several pages shows its own name, `Development ⌄` or `Products ⌄`, on every one of those pages; tapping it lists the hub's pages with the current one marked. Each page keeps its own route. This replaces tab strips on phones. A page with no phone layout yet is left out of the switcher and dimmed in the menu (rule 6) instead of opening a desktop screen inside the phone frame.
 - **Records** show a back chevron only. The record's own title sits at the top of the content.
 - Content sits on a sheet with 18px rounded top corners over the black bar.
 
@@ -59,10 +59,10 @@ Mockups and builds use the OS's real records, photos and numbers. A phone layer 
 `MobileFlatList` + `MobileListRow`, modelled on Shopify's product list:
 
 - A 48px thumbnail with a hairline border (a neutral placeholder when there is no photo), the name (may wrap to two lines), **one** meta line, **one** status pill on the right.
-- Problems are written **in red inside the meta line** ("0 sellable", "1,182 sellable"), not as extra badges.
-- Status pills use the record's own vocabulary (Healthy, Low stock, Overstock, Launching) with fixed tones: positive, critical, warning (amber, e.g. At risk), info, special, neutral.
+- Problems are written **inside the meta line** with `MobileException` ("0 sellable" in red; `tone="warning"` for amber, such as short cover), not as extra badges. Everything that is not a problem stays plain grey.
+- Status pills (`MobileStatusPill`, which rows also use) speak the record's own vocabulary (Healthy, Low stock, Overstock, Launching) with fixed tones: positive, critical, warning (amber, e.g. At risk), info, special, neutral. One word means one tone everywhere: "At risk" is the amber warning pill in lists, on boards and on the record header alike.
 - Hairlines inset to the text, no cards around rows. About eight rows fit on a phone screen.
-- `MobileListToolbar`: a search field plus round Sort and Filter buttons. `MobileViewChips`: saved views as plain text chips with counts.
+- Every list on a phone uses the same header: `MobileListToolbar` (round Sort and Filter, an optional `action` such as "New project", and an in-list filter field only for long lists people narrow in place, like a catalog; never a second global search), then `MobileViewChips` for saved views as plain text chips with counts. No extra summary or clear rows: Reset lives in the filter sheet. Filter sheets follow one recipe: choices apply as they are tapped and the sheet ends with one "Show N" button.
 
 ### 8. Inbox rows are one line; tap opens, swipe acts
 
@@ -83,7 +83,8 @@ The landing screen (`/` on a phone) continues the black header into `MobileHeroP
 ## Fit and finish
 
 - Design at 390 × 844 and check at 402 × 874 (iPhone Pro size) and 440 × 956 (Pro Max). Respect the top and bottom safe areas; nothing interactive in the rounded corners.
-- Touch targets at least 44px. Body text 15–17px, titles 22–24px, Inter, tabular numbers for figures.
+- Touch targets at least 44px. Body text 15–17px, titles 22–24px, Inter, tabular numbers for figures. Use the components' own buttons and sheets rather than per-site size overrides.
+- Phone surfaces are light in both themes and carry their own ink until the package ships a complete dark mobile palette. Do not remap `--curv-mobile-*` tokens to an app's dark tokens.
 - Text contrast 4.5:1, including grey meta lines and text on glass.
 - Every icon-only control has an `aria-label`. Swipe and long-press always have a button equivalent.
 - Offline and restored states come from the bar; no service worker, no cached business data, no queued writes. A restored connection is not proof of a refresh.
@@ -107,7 +108,10 @@ The landing screen (`/` on a phone) continues the black header into `MobileHeroP
 | `MobileMenu`, `MobileMenuBody` | Full-screen dark menu: groups, dimmed rows, account and close at the bottom (the body without the dialog, for tests and embedding) |
 | `MobileViewToggle` | List / Board switch for the top bar |
 | `MobileFlatList`, `MobileListSection`, `MobileListRow`, `MobileException` | Flat lists with thumbnail, one meta line, one status pill; section headings; red problem text inside the meta line |
-| `MobileListToolbar`, `MobileViewChips` | Search, sort, filter; saved views |
+| `MobileStatusPill` | The status pill on its own, for record headers and sheets |
+| `MobileListToolbar`, `MobileViewChips` | Sort, filter, one action, an optional in-list filter field; saved views |
+| `MobileMoveSheet` | "Move to…" stage picker shared by boards, rows and record actions |
+| `MobileChartCard` | White card with a section heading around a light chart |
 | `MobileSwipeRow` | Up to two swipe actions with accessible equivalents |
 | `MobileActivityCards` | Horizontal count cards that link to work |
 | `MobileHeroPanel`, `MobileHeroAction` | Dark Home panel: KPI chips, one chart, up to two dark buttons |
