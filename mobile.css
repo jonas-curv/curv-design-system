@@ -318,6 +318,10 @@
 .curv-mobile-topbar-chevron { flex: none; opacity: .72; }
 .curv-mobile-topbar-back { flex: none; display: grid; place-items: center; width: 44px; height: 44px; margin-left: -6px; border-radius: 22px; color: inherit; }
 .curv-mobile-topbar-trailing { flex: none; display: flex; align-items: center; margin-left: auto; }
+/* A text action ("Mark all read"): 44px, white on the bar. 12px of hit area to its left and 4px to its right, so the text ends on the 16px gutter (the row's 12px plus 4px). */
+.curv-mobile-topbar-action { flex: none; display: inline-flex; align-items: center; justify-content: center; min-width: 44px; min-height: 44px; padding: 0 4px 0 12px; border-radius: 22px; color: inherit; font-size: 17px; line-height: 1.2; font-weight: 500; letter-spacing: -0.01em; white-space: nowrap; }
+.curv-mobile-topbar-action:active { opacity: 0.7; }
+.curv-mobile-topbar-action:disabled { opacity: 0.5; cursor: default; }
 .curv-mobile-topbar :is(a, button):focus-visible { outline: 2px solid currentColor; outline-offset: -3px; }
 /* The page list: a dark panel under the title, links all the way down. */
 .curv-mobile-topbar-scrim { pointer-events: auto; position: fixed; z-index: -1; inset: calc(58px + env(safe-area-inset-top)) 0 0 0; background: rgba(0, 0, 0, .4); }
@@ -481,24 +485,33 @@
      --curv-mobile-hairline  #e3e3e6   row separators
      --curv-mobile-accent    #1764c0   focus, unread dot, primary action
      --curv-mobile-critical  #b5352f   problems written in text, and the badge ground (white on it is 5.97:1)
+     --curv-mobile-field-border #8a8a90 the edge of a form field (3.4:1 on white, the 3:1 a control's edge needs)
+     --curv-mobile-accent-on-dark #6aa6f0 the accent as text (Reset, Clear) and as the check on a chosen row in a sheet under the dark theme (7.2:1 on --card #161618)
+     --curv-mobile-switch-off #8a8a90  a switch that is off (3.4:1 on white)
+     --curv-mobile-switch-on  #1f7a33  a switch that is on (falls back to --curv-mobile-positive-solid; 5.4:1 on white)
 
-   Rounded blocks (key-value list, gallery) take their side gutters from --curv-mobile-gutter (16px). Set it
-   to 0 on a parent that already pads its content. */
+   --curv-mobile-gutter is public: the side gutter (16px) of the rounded blocks (key-value list, chart card, gallery, card),
+   which also sets how far their headings pad in. Prefer the `gutter` prop ("none" for a parent that already pads its
+   content) of MobileKeyValueList, MobileChartCard, MobileGallery, MobileCard, MobileListSection and MobileFlatList to writing
+   it by hand. By hand, give it a length with a unit (0px, not 0): the headings subtract it inside calc(). */
 
 /* ── Shared ──────────────────────────────────────────────────────────────── */
 .curv-mobile-content-vh { position: absolute; width: 1px; height: 1px; margin: -1px; padding: 0; overflow: hidden; clip-path: inset(50%); white-space: nowrap; border: 0; }
+/* The gutter knob (the `gutter` prop): set on the block, so the block's own margin and the headings inside it follow. `none` is 0px, not 0. */
+:is(.curv-mobile-flat-list, .curv-mobile-flat-section, .curv-mobile-kv, .curv-mobile-chart-card, .curv-mobile-gallery, .curv-mobile-panel)[data-gutter="none"] { --curv-mobile-gutter: 0px; }
+:is(.curv-mobile-flat-list, .curv-mobile-flat-section, .curv-mobile-kv, .curv-mobile-chart-card, .curv-mobile-gallery, .curv-mobile-panel)[data-gutter="default"] { --curv-mobile-gutter: 16px; }
 
 /* ── Flat list ───────────────────────────────────────────────────────────── */
 .curv-mobile-flat-list { background: var(--curv-mobile-surface, #fff); color: var(--curv-mobile-ink, #1b1b1b); font-family: inherit; }
 .curv-mobile-flat-section { color: var(--curv-mobile-ink, #1b1b1b); font-family: inherit; }
 /* One section heading for list sections, key-value lists and chart cards: 14px/500 grey, 20px in, so they line up when stacked.
    The key-value and chart blocks sit inside the gutter, so their heading pads in only what is left of the 20px (no negative margin, so a block without its gutter never scrolls sideways). */
-.curv-mobile-flat-section-head, .curv-mobile-kv-head, .curv-mobile-chart-card-head { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; padding: 16px 20px 6px; }
-.curv-mobile-kv-head, .curv-mobile-chart-card-head { padding-inline: max(0px, calc(20px - var(--curv-mobile-gutter, 16px))); }
-.curv-mobile-flat-section-head h2, .curv-mobile-kv-head h2, .curv-mobile-chart-card-head h2 { flex: 0 1 auto; margin: 0; font-size: 14px; line-height: 1.3; font-weight: 500; color: var(--curv-mobile-ink-3, #6b6b6f); }
+.curv-mobile-flat-section-head, .curv-mobile-kv-head, .curv-mobile-chart-card-head, .curv-mobile-panel-head { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; padding: 16px 20px 6px; }
+.curv-mobile-kv-head, .curv-mobile-chart-card-head, .curv-mobile-panel-head { padding-inline: max(0px, calc(20px - var(--curv-mobile-gutter, 16px))); }
+.curv-mobile-flat-section-head h2, .curv-mobile-kv-head h2, .curv-mobile-chart-card-head h2, .curv-mobile-panel-head :is(h2, h3, h4) { flex: 0 1 auto; margin: 0; font-size: 14px; line-height: 1.3; font-weight: 500; color: var(--curv-mobile-ink-3, #6b6b6f); }
 /* A long trailing note gives way first, never the label: it shrinks (100 to the label's 1) to a floor of 5em (70px: "as of 9:41" is 65px), cut with an
    ellipsis on one line. Only once it is at that floor does the label shrink too, and it then wraps at spaces, never mid-word. */
-.curv-mobile-flat-section-trailing, .curv-mobile-kv-trailing, .curv-mobile-chart-card-trailing { flex: 0 100 auto; min-width: 5em; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; text-align: right; margin-inline-start: auto; font-size: 14px; line-height: 1.3; font-weight: 400; color: var(--curv-mobile-ink-3, #6b6b6f); font-variant-numeric: tabular-nums; }
+.curv-mobile-flat-section-trailing, .curv-mobile-kv-trailing, .curv-mobile-chart-card-trailing, .curv-mobile-panel-trailing { flex: 0 100 auto; min-width: 5em; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; text-align: right; margin-inline-start: auto; font-size: 14px; line-height: 1.3; font-weight: 400; color: var(--curv-mobile-ink-3, #6b6b6f); font-variant-numeric: tabular-nums; }
 
 .curv-mobile-flat-row { position: relative; box-sizing: border-box; display: flex; align-items: center; gap: 14px; min-height: 64px; padding: 14px 16px 14px 20px; background: var(--curv-mobile-surface, #fff); color: var(--curv-mobile-ink, #1b1b1b); font-family: inherit; }
 /* The hairline starts under the text: 82px = 20 padding + 48 thumbnail + 14 gap. The last row of a list has none. */
@@ -550,8 +563,8 @@
 .curv-mobile-toolbar[data-no-search] { justify-content: flex-end; }
 /* One extra control before Sort and Filter. A plain button or link in it is drawn as a text pill; a `.curv-mobile-toolbar-button` stays round. */
 .curv-mobile-toolbar-action { flex: none; display: flex; align-items: center; }
-.curv-mobile-toolbar-action > :is(button, a):not(.curv-mobile-toolbar-button) { box-sizing: border-box; display: inline-flex; align-items: center; justify-content: center; height: 48px; margin: 0; padding: 0 18px; border: 0; border-radius: 24px; background: var(--curv-mobile-fill, #efeff1); color: var(--curv-mobile-ink, #1b1b1b); font: inherit; font-size: 16px; line-height: 1; font-weight: 600; white-space: nowrap; text-decoration: none; cursor: pointer; -webkit-tap-highlight-color: transparent; }
-.curv-mobile-toolbar-action > :is(button, a):focus-visible { outline: 2px solid var(--curv-mobile-accent, #1764c0); outline-offset: 2px; }
+.curv-mobile-toolbar-action > :is(button, a):not(.curv-mobile-toolbar-button), .curv-mobile-chips-trailing > :is(button, a):not(.curv-mobile-toolbar-button) { box-sizing: border-box; display: inline-flex; align-items: center; justify-content: center; height: 48px; margin: 0; padding: 0 18px; border: 0; border-radius: 24px; background: var(--curv-mobile-fill, #efeff1); color: var(--curv-mobile-ink, #1b1b1b); font: inherit; font-size: 16px; line-height: 1; font-weight: 600; white-space: nowrap; text-decoration: none; cursor: pointer; -webkit-tap-highlight-color: transparent; }
+.curv-mobile-toolbar-action > :is(button, a):focus-visible, .curv-mobile-chips-trailing > :is(button, a):focus-visible { outline: 2px solid var(--curv-mobile-accent, #1764c0); outline-offset: 2px; }
 .curv-mobile-toolbar-button { position: relative; flex: none; display: grid; place-items: center; width: 48px; height: 48px; padding: 0; border: 0; border-radius: 50%; background: var(--curv-mobile-fill, #efeff1); color: var(--curv-mobile-ink, #1b1b1b); cursor: pointer; -webkit-tap-highlight-color: transparent; }
 .curv-mobile-toolbar-button:focus-visible { outline: 2px solid var(--curv-mobile-accent, #1764c0); outline-offset: 2px; }
 .curv-mobile-toolbar-badge { position: absolute; top: -2px; right: -2px; box-sizing: border-box; min-width: 20px; height: 20px; padding: 0 5px; display: grid; place-items: center; border-radius: 10px; background: var(--curv-mobile-accent, #1764c0); color: #fff; font-size: 12px; line-height: 1; font-weight: 600; font-variant-numeric: tabular-nums; box-shadow: 0 0 0 2px var(--curv-mobile-surface, #fff); }
@@ -569,6 +582,20 @@
 .curv-mobile-chip:is([aria-pressed="true"], [aria-current], :has(> [data-active="true"])) { background: var(--curv-mobile-ink, #1b1b1b); color: #fff; }
 .curv-mobile-chip:is([aria-pressed="true"], [aria-current], :has(> [data-active="true"])) :is(.curv-mobile-view-chip-count, .curv-mobile-board-chip-count) { color: rgb(255 255 255 / 0.78); }
 .curv-mobile-chip:focus-visible { outline: 2px solid var(--curv-mobile-accent, #1764c0); outline-offset: -2px; }
+
+/* ── Chip row with a trailing slot ───────────────────────────────────────
+   `trailing` (view chips) and `chipsTrailing` (board) put one control at the end of the row, outside the scroller, so a list's round
+   Filter button or an editor's "New project" sits level with the chips instead of in a toolbar row of its own. The chips keep their
+   16px at the start; the row's 8px gap is the space between the scroller's edge and the slot, so a chip that is cut off by the slot is
+   cut 8px before it and not flush against it, and the scroller drops its own end padding (the gap is the space after the last chip).
+   The slot ends on the 16px gutter and is 44px tall like the chips. A round button in it
+   is 44px (48px in the toolbar); a plain button or link is the toolbar action's text pill, 44px tall. */
+.curv-mobile-chips-row { box-sizing: border-box; display: flex; align-items: center; gap: 8px; min-width: 0; }
+.curv-mobile-view-chips-row { background: var(--curv-mobile-surface, #fff); color: var(--curv-mobile-ink, #1b1b1b); font-family: inherit; }
+.curv-mobile-chips-row > :is(.curv-mobile-view-chips, .curv-mobile-board-chips) { flex: 1 1 0; min-width: 0; padding-right: 0; }
+.curv-mobile-chips-trailing { flex: none; box-sizing: border-box; display: flex; align-items: center; min-height: 44px; padding-right: 16px; }
+.curv-mobile-chips-trailing .curv-mobile-toolbar-button { width: 44px; height: 44px; }
+.curv-mobile-chips-trailing > :is(button, a):not(.curv-mobile-toolbar-button) { height: 44px; }
 
 /* ── Swipe row ───────────────────────────────────────────────────────────── */
 .curv-mobile-swipe { position: relative; overflow: hidden; background: var(--curv-mobile-surface, #fff); color: var(--curv-mobile-ink, #1b1b1b); }
@@ -593,7 +620,10 @@
 
 /* ── Activity cards ──────────────────────────────────────────────────────── */
 .curv-mobile-activity { color: var(--curv-mobile-ink, #1b1b1b); font-family: inherit; }
-.curv-mobile-activity-title { margin: 0; padding: 16px 20px 8px; font-size: 20px; line-height: 1.25; font-weight: 600; letter-spacing: -0.02em; }
+.curv-mobile-activity-title { margin: 0; padding: 16px 20px 8px; }
+/* One title-size heading: "Here's what needs you" and a list section with headingSize="title" (the trailing note stays 14px). */
+.curv-mobile-activity-title, .curv-mobile-flat-section[data-heading-size="title"] .curv-mobile-flat-section-head h2 { font-size: 20px; line-height: 1.25; font-weight: 600; letter-spacing: -0.02em; color: var(--curv-mobile-ink, #1b1b1b); }
+.curv-mobile-flat-section[data-heading-size="title"] .curv-mobile-flat-section-head { padding-bottom: 8px; }
 .curv-mobile-activity-rail { display: flex; gap: 12px; margin: 0; padding: 4px 16px 16px; list-style: none; overflow-x: auto; overflow-y: hidden; scroll-snap-type: x proximity; scroll-padding-inline: 16px; overscroll-behavior-x: contain; scrollbar-width: none; -webkit-overflow-scrolling: touch; }
 .curv-mobile-activity-rail::-webkit-scrollbar { display: none; }
 .curv-mobile-activity-item { flex: none; display: flex; width: 150px; scroll-snap-align: start; }
@@ -708,16 +738,16 @@
 .curv-mobile-board-sheet-title { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
 .curv-mobile-board-sheet-card { overflow: hidden; font-size: 14px; line-height: 1.3; font-weight: 400; color: var(--muted-foreground, #6b6b6f); white-space: nowrap; text-overflow: ellipsis; }
 .curv-mobile-board-move-list { margin: 0; padding: 0; list-style: none; }
-/* The move sheet's rows and a filter or picker sheet's rows (MobileOptionRow) are one design: 56px, 17px, a hairline under each, the
-   label at the sheet body's 16px edge, a count and a check on the right. So they share every rule below; only the label,
-   the count's wrapper and the unchosen-check slot are the option row's own. */
-.curv-mobile-board-move-option, .curv-mobile-option { box-sizing: border-box; display: flex; align-items: center; justify-content: space-between; gap: 12px; width: 100%; min-height: 56px; margin: 0; padding: 0; border: 0; border-bottom: 0.5px solid var(--border, var(--curv-mobile-hairline, #e3e3e6)); border-radius: 0; background: transparent; color: inherit; font: inherit; font-size: 17px; text-align: left; cursor: pointer; -webkit-tap-highlight-color: transparent; }
+/* The move sheet's rows, a filter or picker sheet's rows (MobileOptionRow) and a switch row (MobileSwitchRow) are one design: 56px, 17px,
+   a hairline under each, the label at the container's 16px edge, a count, a check or a switch on the right. So they share every rule
+   below; only the label, the count's wrapper and the unchosen-check slot are the option row's own, and the switch's track is the switch row's. */
+.curv-mobile-board-move-option, .curv-mobile-option, .curv-mobile-switch-row { box-sizing: border-box; display: flex; align-items: center; justify-content: space-between; gap: 12px; width: 100%; min-height: 56px; margin: 0; padding: 0; border: 0; border-bottom: 0.5px solid var(--border, var(--curv-mobile-hairline, #e3e3e6)); border-radius: 0; background: transparent; color: inherit; font: inherit; font-size: 17px; text-align: left; cursor: pointer; -webkit-tap-highlight-color: transparent; }
 .curv-mobile-board-move-option .curv-mobile-board-chip-count, .curv-mobile-option-count { flex: none; font-size: 15px; color: var(--muted-foreground, #6b6b6f); font-variant-numeric: tabular-nums; opacity: 1; }
-.curv-mobile-board-move-option:focus-visible, .curv-mobile-option:focus-visible { outline: 2px solid var(--curv-mobile-accent, #1764c0); outline-offset: -2px; }
+.curv-mobile-board-move-option:focus-visible, .curv-mobile-option:focus-visible, .curv-mobile-switch-row:focus-visible { outline: 2px solid var(--curv-mobile-accent, #1764c0); outline-offset: -2px; }
 /* A row the record cannot move to is shown dimmed; the row it is already in keeps full ink and a check. */
-.curv-mobile-board-move-option:disabled, .curv-mobile-option:disabled { cursor: default; opacity: 0.45; }
+.curv-mobile-board-move-option:disabled, .curv-mobile-option:disabled, .curv-mobile-switch-row:disabled { cursor: default; opacity: 0.45; }
 .curv-mobile-board-move-option[aria-current="true"]:disabled { opacity: 1; }
-.curv-mobile-board-move-check, .curv-mobile-option-check { flex: none; display: grid; place-items: center; color: var(--curv-mobile-accent, #1764c0); }
+.curv-mobile-board-move-check, .curv-mobile-option-check { flex: none; display: grid; place-items: center; color: var(--curv-ink-accent, var(--curv-mobile-accent, #1764c0)); }
 
 /* ── Option list (filter and picker sheets) ───────────────────────────────── */
 .curv-mobile-option-section { color: inherit; font-family: inherit; }
@@ -733,9 +763,9 @@
    text. The classes also style a link that has to look like a button (mobileButtonClassName). A busy button keeps its width: the
    label stays and goes transparent, a spinner sits over it. */
 .curv-mobile-button { position: relative; box-sizing: border-box; display: inline-flex; align-items: center; justify-content: center; gap: 8px; min-width: 44px; min-height: 50px; margin: 0; padding: 12px 20px; border: 0; border-radius: 14px; font: inherit; font-size: 17px; line-height: 1.2; font-weight: 600; letter-spacing: -0.01em; text-align: center; text-decoration: none; cursor: pointer; -webkit-tap-highlight-color: transparent; }
-.curv-mobile-button-primary { background: #111113; color: #ffffff; }
-.curv-mobile-button-secondary { background: var(--curv-mobile-fill, #efeff1); color: var(--curv-mobile-ink, #1b1b1b); }
-.curv-mobile-button-plain { background: transparent; color: var(--curv-mobile-accent, #1764c0); }
+.curv-mobile-button-primary { background: var(--curv-button-primary-bg, #111113); color: var(--curv-button-primary-ink, #ffffff); }
+.curv-mobile-button-secondary { background: var(--curv-button-secondary-bg, var(--curv-mobile-fill, #efeff1)); color: var(--curv-button-secondary-ink, var(--curv-mobile-ink, #1b1b1b)); box-shadow: inset 0 0 0 1px var(--curv-button-secondary-edge, transparent); }
+.curv-mobile-button-plain { background: transparent; color: var(--curv-ink-accent, var(--curv-mobile-accent, #1764c0)); }
 .curv-mobile-button-block { display: flex; width: 100%; }
 .curv-mobile-button-label { display: inline-flex; align-items: center; justify-content: center; gap: 8px; }
 .curv-mobile-button:focus-visible { outline: 2px solid var(--curv-mobile-accent, #1764c0); outline-offset: 2px; }
@@ -747,7 +777,7 @@
 /* ── Key-value list ──────────────────────────────────────────────────────── */
 .curv-mobile-kv { margin-inline: var(--curv-mobile-gutter, 16px); color: var(--curv-mobile-ink, #1b1b1b); font-family: inherit; }
 /* The heading is shared with the list section, above. The card ground is shared with the chart card. */
-.curv-mobile-kv-card, .curv-mobile-chart-card-body { border-radius: 18px; background: var(--curv-mobile-surface, #fff); color: var(--curv-mobile-ink, #1b1b1b); box-shadow: 0 0 0 0.5px rgb(0 0 0 / 0.08); }
+.curv-mobile-kv-card, .curv-mobile-chart-card-body, .curv-mobile-panel-body { border-radius: 18px; background: var(--curv-mobile-surface, #fff); color: var(--curv-mobile-ink, #1b1b1b); box-shadow: 0 0 0 0.5px rgb(0 0 0 / 0.08); }
 .curv-mobile-kv-card { margin: 0; padding: 0; list-style: none; overflow: hidden; }
 .curv-mobile-kv-row { position: relative; }
 .curv-mobile-kv-row + .curv-mobile-kv-row::before { content: ""; position: absolute; top: 0; left: 16px; right: 0; height: 0.5px; background: var(--curv-mobile-hairline, #e3e3e6); pointer-events: none; }
@@ -791,15 +821,75 @@
 .curv-mobile-gallery-thumb:focus-visible { outline: 2px solid var(--curv-mobile-accent, #1764c0); outline-offset: 2px; }
 
 /* ── Chart card ──────────────────────────────────────────────────────────── */
-.curv-mobile-chart-card { margin-inline: var(--curv-mobile-gutter, 16px); color: var(--curv-mobile-ink, #1b1b1b); font-family: inherit; }
-/* The card stays light under the dark theme, so the desktop tokens a light chart reads are pinned to light values inside it. */
-.curv-mobile-chart-card-body { box-sizing: border-box; padding: 16px; --card: var(--curv-mobile-surface, #fff); --foreground: var(--curv-mobile-ink, #1b1b1b); --muted-foreground: var(--curv-mobile-ink-3, #6b6b6f); --positive: var(--curv-mobile-positive-fg, #1f6b30); --negative: var(--curv-mobile-critical, var(--curv-critical, #b5352f)); }
+.curv-mobile-chart-card, .curv-mobile-panel { margin-inline: var(--curv-mobile-gutter, 16px); color: var(--curv-mobile-ink, #1b1b1b); font-family: inherit; }
+/* The card stays light under the dark theme, so the desktop tokens a light chart reads are pinned to light values inside it.
+   MobileCard (.curv-mobile-panel) is this same card for any content, with the same heading above it: same rules, not a copy. */
+.curv-mobile-chart-card-body, .curv-mobile-panel-body { box-sizing: border-box; padding: 16px; --card: var(--curv-mobile-surface, #fff); --foreground: var(--curv-mobile-ink, #1b1b1b); --muted-foreground: var(--curv-mobile-ink-3, #6b6b6f); --positive: var(--curv-mobile-positive-fg, #1f6b30); --negative: var(--curv-mobile-critical, var(--curv-critical, #b5352f)); --border: var(--curv-mobile-hairline, #e3e3e6); --curv-ink-critical: var(--curv-mobile-critical, var(--curv-critical, #b5352f)); --curv-ink-accent: var(--curv-mobile-accent, #1764c0); --curv-button-primary-bg: initial; --curv-button-primary-ink: initial; --curv-button-secondary-bg: initial; --curv-button-secondary-ink: initial; --curv-button-secondary-edge: initial; }
+
+/* ── Text and buttons on a sheet ─────────────────────────────────────────
+   MobileSheet follows the theme (--card is #161618 in the dark one), so what is drawn for the white of a page does not carry over:
+   - The red and the blue that are 6:1 on white are 3:1 on it. Inside a dark sheet the ink of an error (a field's), of a plain button
+     (Reset, Clear) and of the check on a chosen row is the theme's own: --destructive (#f2545b, 5.3:1) and a light blue (7.2:1).
+   - The primary button's near-black fill is the sheet's own colour (1.1:1), so it is inverted: near-white with near-black text (17:1,
+     and the fill 16:1 against the sheet). The secondary button's grey fill cannot reach 3:1 against it as a fill, so it is a faint light fill with light
+     text (11:1) and a 1px edge that does (4.1:1).
+   A card inside the sheet is white again and puts the light values back (see .curv-mobile-panel-body). Everywhere else these variables
+   are unset, and the fallbacks in the rules that read them are the light values: the light phone surfaces and the tab bar are untouched. */
+:is(.dark, [data-theme="dark"]) .curv-mobile-sheet { --curv-ink-critical: var(--destructive, #f2545b); --curv-ink-accent: var(--curv-mobile-accent-on-dark, #6aa6f0); --curv-button-primary-bg: #f4f4f5; --curv-button-primary-ink: #111113; --curv-button-secondary-bg: rgb(255 255 255 / 0.12); --curv-button-secondary-ink: #f2f2f2; --curv-button-secondary-edge: rgb(255 255 255 / 0.42); }
+
+/* ── Filter sheet ────────────────────────────────────────────────────────── */
+/* Reset's row is held whether or not the button is drawn, so the lists below do not jump when a filter comes on. The plain button has no side
+   padding, so its label starts on the sheet body's 16px edge with the title, headings and rows; it keeps its 50px height and 44px width. */
+.curv-mobile-filter-reset { display: flex; align-items: center; min-height: 50px; }
+.curv-mobile-filter-reset > .curv-mobile-button-plain { padding-inline: 0; justify-content: flex-start; }
+
+/* ── Form fields ─────────────────────────────────────────────────────────
+   MobileTextField, MobileTextArea, MobileDateField: a visible 15px label, a control at 17px (16px and up, so iOS does not zoom the page
+   on focus) that is at least 44px tall (48px with its padding) and full width, then the hint and the error. The control is its own light
+   surface with its own ink; the label and hint take the ink of what they sit on (a sheet follows the theme, a MobileSurface is light), the
+   hint dimmed rather than a second grey so it reads on both. Its edge is the 3:1 a control needs. */
+.curv-mobile-field { min-width: 0; color: inherit; font-family: inherit; }
+.curv-mobile-field + .curv-mobile-field { margin-top: 16px; }
+.curv-mobile-field-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 6px; }
+/* A field with a Clear button holds the label row's height whether or not the button is drawn. The button is 28px to look at and 44px to hit. */
+.curv-mobile-field-head[data-action] { min-height: 28px; margin-bottom: 8px; }
+.curv-mobile-field-label { font-size: 15px; line-height: 1.3; font-weight: 500; color: inherit; }
+.curv-mobile-field-clear { position: relative; flex: none; margin: 0 -10px 0 0; padding: 0 10px; height: 28px; border: 0; background: transparent; color: var(--curv-ink-accent, var(--curv-mobile-accent, #1764c0)); font: inherit; font-size: 15px; line-height: 1; font-weight: 600; cursor: pointer; -webkit-tap-highlight-color: transparent; }
+.curv-mobile-field-clear::before { content: ""; position: absolute; inset: -8px -2px; }
+.curv-mobile-field-clear:focus-visible { outline: 2px solid var(--curv-mobile-accent, #1764c0); outline-offset: 0; border-radius: 6px; }
+.curv-mobile-field-control { box-sizing: border-box; display: block; width: 100%; min-width: 0; min-height: 44px; margin: 0; padding: 12px 14px; border: 1px solid var(--curv-mobile-field-border, #8a8a90); border-radius: 12px; background: var(--curv-mobile-surface, #fff); color: var(--curv-mobile-ink, #1b1b1b); color-scheme: light; font: inherit; font-size: 17px; line-height: 1.3; text-align: left; box-shadow: none; appearance: none; -webkit-appearance: none; }
+.curv-mobile-field-control::placeholder { color: var(--curv-mobile-ink-3, #6b6b6f); opacity: 1; }
+.curv-mobile-field-control:focus-visible { outline: 2px solid var(--curv-mobile-accent, #1764c0); outline-offset: 1px; border-color: var(--curv-mobile-accent, #1764c0); }
+.curv-mobile-field-control:disabled { cursor: not-allowed; opacity: 0.45; background: var(--curv-mobile-fill, #efeff1); }
+.curv-mobile-field-textarea { min-height: 112px; line-height: 1.4; resize: vertical; }
+/* iOS draws an empty date input at no height and centres its value: hold the line and keep it at the start. */
+.curv-mobile-field-control[type="date"] { min-height: 48px; }
+.curv-mobile-field-control[type="date"]::-webkit-date-and-time-value { min-height: 1.3em; text-align: left; }
+.curv-mobile-field-hint, .curv-mobile-field-error { margin: 6px 0 0; font-size: 14px; line-height: 1.3; }
+.curv-mobile-field-hint { color: inherit; opacity: 0.72; }
+.curv-mobile-field-error { color: var(--curv-ink-critical, var(--curv-mobile-critical, var(--curv-critical, #b5352f))); font-weight: 500; }
+/* An invalid field has a heavier red edge as well as the message under it. */
+.curv-mobile-field[data-invalid] .curv-mobile-field-control { border-color: var(--curv-mobile-critical, var(--curv-critical, #b5352f)); box-shadow: inset 0 0 0 1px var(--curv-mobile-critical, var(--curv-critical, #b5352f)); }
+
+/* ── Switch row ──────────────────────────────────────────────────────────
+   The row is the option row's design (56px, 17px, a hairline under it; see above), with the label and an optional sub-line on the left and
+   an iOS-proportioned switch, 51 by 31 with a 27px thumb, on the right. The whole row is the button. The track is 3:1 against white in
+   both states (grey off, green on), which iOS's own pale off-track is not. */
+.curv-mobile-switch-row:last-child { border-bottom: 0; }
+.curv-mobile-switch-text { flex: 1 1 auto; min-width: 0; display: flex; flex-direction: column; gap: 2px; padding-block: 8px; line-height: 1.3; overflow-wrap: anywhere; }
+.curv-mobile-switch-label { display: block; }
+.curv-mobile-switch-sub { font-size: 15px; line-height: 1.3; color: var(--muted-foreground, var(--curv-mobile-ink-3, #6b6b6f)); }
+.curv-mobile-switch { position: relative; flex: none; box-sizing: border-box; width: 51px; height: 31px; border-radius: 15.5px; background: var(--curv-mobile-switch-off, #8a8a90); }
+.curv-mobile-switch-thumb { position: absolute; top: 2px; left: 2px; width: 27px; height: 27px; border-radius: 50%; background: #fff; box-shadow: 0 1px 3px rgb(0 0 0 / 0.3); }
+.curv-mobile-switch-row[aria-checked="true"] .curv-mobile-switch { background: var(--curv-mobile-switch-on, var(--curv-mobile-positive-solid, #1f7a33)); }
+.curv-mobile-switch-row[aria-checked="true"] .curv-mobile-switch-thumb { transform: translateX(20px); }
 
 /* ── Press feedback, reduced motion, forced colors ───────────────────────── */
 @media (prefers-reduced-motion: no-preference) {
-  .curv-mobile-activity-card, .curv-mobile-hero-action, .curv-mobile-toolbar-button, .curv-mobile-toolbar-action > :is(button, a), .curv-mobile-button { transition: transform 120ms ease-out; }
-  .curv-mobile-activity-card:active, .curv-mobile-hero-action:active, .curv-mobile-toolbar-button:active, .curv-mobile-toolbar-action > :is(button, a):active, .curv-mobile-button:not(:disabled, [aria-busy="true"]):active { transform: scale(0.97); }
+  .curv-mobile-activity-card, .curv-mobile-hero-action, .curv-mobile-toolbar-button, .curv-mobile-toolbar-action > :is(button, a), .curv-mobile-chips-trailing > :is(button, a), .curv-mobile-button { transition: transform 120ms ease-out; }
+  .curv-mobile-activity-card:active, .curv-mobile-hero-action:active, .curv-mobile-toolbar-button:active, .curv-mobile-toolbar-action > :is(button, a):active, .curv-mobile-chips-trailing > :is(button, a):active, .curv-mobile-button:not(:disabled, [aria-busy="true"]):active { transform: scale(0.97); }
   .curv-mobile-button[aria-busy="true"]::after { animation: curv-mobile-spin 0.8s linear infinite; }
+  .curv-mobile-switch, .curv-mobile-switch-thumb { transition: background-color 160ms ease-out, transform 160ms cubic-bezier(0.23, 1, 0.32, 1); }
   @keyframes curv-mobile-spin { to { transform: rotate(360deg); } }
 }
 @media (prefers-reduced-motion: reduce) {
@@ -808,8 +898,13 @@
 @media (forced-colors: active) {
   .curv-mobile-chip:is([aria-pressed="true"], [aria-current], :has(> [data-active="true"])),
   .curv-mobile-hero-kpi:is([aria-pressed="true"], [aria-current], :has(> [data-active="true"])) { outline: 2px solid Highlight; outline-offset: -2px; }
-  .curv-mobile-activity-card, .curv-mobile-board-card, .curv-mobile-kv-card, .curv-mobile-chart-card-body, .curv-mobile-flat-pill, .curv-mobile-board-badge { border: 1px solid CanvasText; }
-  .curv-mobile-toolbar-action > :is(button, a):not(.curv-mobile-toolbar-button) { border: 1px solid ButtonText; }
+  .curv-mobile-activity-card, .curv-mobile-board-card, .curv-mobile-kv-card, .curv-mobile-chart-card-body, .curv-mobile-panel-body, .curv-mobile-flat-pill, .curv-mobile-board-badge { border: 1px solid CanvasText; }
+  .curv-mobile-toolbar-action > :is(button, a):not(.curv-mobile-toolbar-button), .curv-mobile-chips-trailing > :is(button, a):not(.curv-mobile-toolbar-button) { border: 1px solid ButtonText; }
+  /* Backgrounds are dropped, so the switch is an outlined track whose thumb sits at the start (off) or the end (on) and whose on-state is filled with the system highlight. */
+  .curv-mobile-switch { border: 2px solid ButtonText; }
+  .curv-mobile-switch-thumb { top: 0; left: 0; background: ButtonText; box-shadow: none; }
+  .curv-mobile-switch-row[aria-checked="true"] .curv-mobile-switch { forced-color-adjust: none; background: Highlight; border-color: Highlight; }
+  .curv-mobile-switch-row[aria-checked="true"] .curv-mobile-switch-thumb { background: HighlightText; }
   .curv-mobile-button-primary, .curv-mobile-button-secondary { border: 1px solid ButtonText; }
   .curv-mobile-flat-thumb, .curv-mobile-gallery-thumb { border: 1px solid CanvasText; }
   .curv-mobile-gallery-thumb[aria-current="true"] { outline-color: Highlight; }

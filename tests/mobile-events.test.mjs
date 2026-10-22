@@ -726,3 +726,391 @@ test('chart: the selected bar\'s guide starts under its own label, and a lifted 
   const selectedX = Number(line.getAttribute('x1'));
   assert.ok(leaders().every(leader => Math.abs(Number(leader.getAttribute('x1')) - selectedX) > 0.5), 'the selected bar has the guide, not a second leader');
 });
+
+// ── 0.3.3 ───────────────────────────────────────────────────────────────────
+
+const setNativeValue = async (control, value) => {
+  const prototype = control instanceof HTMLTextAreaElement ? HTMLTextAreaElement.prototype : HTMLInputElement.prototype;
+  Object.getOwnPropertyDescriptor(prototype, 'value').set.call(control, value);
+  await dispatch(control, new Event('input', { bubbles: true }));
+};
+
+// ── Filter sheet ────────────────────────────────────────────────────────────
+
+function FilterSheetHarness({ log, startOn = false, withReset = true, showDisabled, showPending, closeLabel, keepOn = false }) {
+  const [open, setOpen] = React.useState(true);
+  const [brand, setBrand] = React.useState(startOn ? 'nordic' : null);
+  return h(mobile.MobileFilterSheet, {
+    open, title: 'Filter projects', closeLabel, showDisabled, showPending,
+    onOpenChange: next => { log.push(['open', next]); setOpen(next); },
+    onReset: withReset ? () => { log.push(['reset']); if (!keepOn) setBrand(null); } : undefined,
+    resetVisible: brand !== null,
+    showLabel: `Show ${brand ? 12 : 40} projects`,
+    onShow: () => log.push(['show']),
+  }, h(mobile.MobileOptionList, { label: 'Brand', heading: 'Brand' },
+    ['floatie', 'nordic'].map(id => h(mobile.MobileOptionRow, { key: id, selected: brand === id, onClick: () => setBrand(id) }, id))));
+}
+const dialog = () => document.querySelector('[role="dialog"]');
+const sheetFooterButton = () => document.querySelector('.curv-mobile-sheet-footer button');
+const resetRow = () => document.querySelector('.curv-mobile-filter-reset');
+const resetButton = () => document.querySelector('.curv-mobile-filter-reset button');
+
+test('filter sheet: a titled sheet with the option lists, Reset at the top of the body and one primary button in the footer', async () => {
+  await mount(h(FilterSheetHarness, { log: [], startOn: true }));
+  await waitFor(dialog);
+  assert.match(dialog().querySelector('.curv-mobile-sheet-heading').textContent, /Filter projects/);
+  const body = dialog().querySelector('.curv-mobile-sheet-body');
+  is(body.firstElementChild, resetRow(), 'Reset is the first thing in the body');
+  assert.equal(resetButton().textContent, 'Reset');
+  assert.ok(resetButton().classList.contains('curv-mobile-button-plain'), 'a plain MobileButton');
+  assert.ok(body.querySelector('[role="radiogroup"][aria-label="Brand"]'), 'the option lists are the children');
+  const footer = dialog().querySelector('.curv-mobile-sheet-footer');
+  assert.equal(footer.querySelectorAll('button').length, 1, 'one footer button');
+  assert.equal(sheetFooterButton().textContent, 'Show 12 projects');
+  assert.ok(sheetFooterButton().classList.contains('curv-mobile-button-primary'));
+  assert.ok(sheetFooterButton().classList.contains('curv-mobile-button-block'));
+});
+
+test('filter sheet: Reset\'s row is held while Reset is hidden, so the lists do not move when it appears or goes', async () => {
+  await mount(h(FilterSheetHarness, { log: [] }));
+  await waitFor(dialog);
+  const row = resetRow();
+  const body = dialog().querySelector('.curv-mobile-sheet-body');
+  assert.ok(row, 'the row is there with no filter on');
+  assert.equal(resetButton(), null, 'a hidden Reset is not drawn at all, so it is neither tabbable nor read');
+  assert.equal(sheetFooterButton().textContent, 'Show 40 projects');
+  const rows = [...body.querySelectorAll('.curv-mobile-option')];
+  await click(rows[1]);
+  assert.equal(sheetFooterButton().textContent, 'Show 12 projects', 'choices apply as tapped and the footer follows');
+  assert.ok(resetButton(), 'Reset appears');
+  is(resetRow(), row, 'in the row that was already there');
+  is(body.firstElementChild, row);
+  assert.deepEqual([...body.querySelectorAll('.curv-mobile-option')].map(option => option.textContent), rows.map(option => option.textContent));
+  const none = [];
+  await mount(h(FilterSheetHarness, { log: none, withReset: false }));
+  await waitFor(() => document.querySelectorAll('[role="dialog"]').length === 2);
+  assert.equal(document.querySelectorAll('.curv-mobile-filter-reset').length, 1, 'a sheet with no onReset has no row (only the first sheet\'s)');
+});
+
+test('filter sheet: Reset calls the app, the sheet stays open, and focus goes to the footer button when Reset hides itself', async () => {
+  const log = [];
+  await mount(h(FilterSheetHarness, { log, startOn: true }));
+  await waitFor(dialog);
+  resetButton().focus();
+  is(document.activeElement, resetButton());
+  await click(resetButton());
+  assert.deepEqual(log, [['reset']], 'the app was told once and the sheet did not close');
+  assert.ok(dialog(), 'still open');
+  assert.equal(resetButton(), null);
+  assert.equal(sheetFooterButton().textContent, 'Show 40 projects');
+  is(document.activeElement, sheetFooterButton(), 'a keyboard user is not dropped to the page');
+});
+
+test('filter sheet: Reset does not move focus when it did not have it', async () => {
+  const log = [];
+  await mount(h(FilterSheetHarness, { log, startOn: true }));
+  await waitFor(dialog);
+  const option = document.querySelector('.curv-mobile-option');
+  option.focus();
+  await click(resetButton());
+  assert.equal(log.length, 1);
+  assert.ok(document.activeElement !== sheetFooterButton(), 'focus was not stolen');
+});
+
+test('filter sheet: the footer button tells the app, then closes the sheet; Escape closes without telling it', async () => {
+  const log = [];
+  await mount(h(FilterSheetHarness, { log, startOn: true, closeLabel: 'Lukk' }));
+  await waitFor(dialog);
+  assert.ok(dialog().querySelector('button[aria-label="Lukk"]'), 'the close control takes its name from closeLabel');
+  await click(sheetFooterButton());
+  assert.deepEqual(log, [['show'], ['open', false]]);
+  await waitFor(() => !dialog());
+
+  log.length = 0;
+  await mount(h(FilterSheetHarness, { log }));
+  await waitFor(dialog);
+  await key(document.activeElement && document.activeElement !== document.body ? document.activeElement : dialog(), 'Escape');
+  await waitFor(() => !dialog());
+  assert.deepEqual(log, [['open', false]], 'dismissed, not shown');
+});
+
+test('filter sheet: showDisabled dims the footer button and it does nothing', async () => {
+  const log = [];
+  await mount(h(FilterSheetHarness, { log, showDisabled: true }));
+  await waitFor(dialog);
+  assert.equal(sheetFooterButton().disabled, true);
+  await click(sheetFooterButton());
+  assert.deepEqual(log, []);
+  assert.ok(dialog());
+});
+
+test('filter sheet: when the footer button is disabled, Reset hands focus to the sheet\'s close control, after the commit that hides it', async () => {
+  const log = [];
+  await mount(h(FilterSheetHarness, { log, startOn: true, showDisabled: true }));
+  await waitFor(dialog);
+  assert.equal(sheetFooterButton().disabled, true);
+  // The dialog moves focus into itself shortly after it opens (to its first control, the close button): let that finish, or it
+  // would be what puts focus on the close button here, not the handoff.
+  await settle(200);
+  resetButton().focus();
+  is(document.activeElement, resetButton());
+  await click(resetButton());
+  assert.deepEqual(log, [['reset']]);
+  assert.equal(resetButton(), null, 'Reset is gone');
+  assert.ok(document.activeElement !== document.body, 'focus did not fall to the page');
+  is(document.activeElement, dialog().querySelector('.curv-mobile-sheet-heading button[aria-label="Close"]'));
+});
+
+test('filter sheet: focus stays on Reset when the app leaves it visible, and a later hide does not steal focus', async () => {
+  const log = [];
+  await mount(h(FilterSheetHarness, { log, startOn: true, keepOn: true }));
+  await waitFor(dialog);
+  resetButton().focus();
+  await click(resetButton());
+  assert.deepEqual(log, [['reset']]);
+  is(document.activeElement, resetButton(), 'Reset is still there, so it keeps focus');
+  // The flag was spent by that tap: a later change made elsewhere (a row, by pointer or keyboard) is not followed by a focus move.
+  const rows = [...dialog().querySelectorAll('.curv-mobile-option')];
+  rows[0].focus();
+  await click(rows[0]);
+  is(document.activeElement, rows[0]);
+});
+
+test('filter sheet: showPending makes the footer button busy and it ignores taps', async () => {
+  const log = [];
+  await mount(h(FilterSheetHarness, { log, showPending: true }));
+  await waitFor(dialog);
+  assert.equal(sheetFooterButton().getAttribute('aria-busy'), 'true');
+  assert.equal(sheetFooterButton().textContent, 'Show 40 projects', 'the label stays');
+  assert.equal(document.querySelector('.curv-mobile-sheet-footer [role="status"]').textContent, 'Working…');
+  await click(sheetFooterButton());
+  assert.deepEqual(log, []);
+  assert.ok(dialog(), 'still open');
+});
+
+// ── Switch row ──────────────────────────────────────────────────────────────
+
+function SwitchHarness({ log, disabled, onClick }) {
+  const [on, setOn] = React.useState(false);
+  return h(mobile.MobileSwitchRow, { label: 'Notify me', sub: 'When a milestone is late', checked: on, disabled, onClick, onCheckedChange: next => { log.push(next); setOn(next); } });
+}
+
+test('switch row: a tap anywhere on the row toggles it, and the state is the app\'s', async () => {
+  const log = [];
+  const view = await mount(h(SwitchHarness, { log }));
+  const row = view.container.querySelector('[role="switch"]');
+  assert.equal(row.getAttribute('aria-checked'), 'false');
+  await click(row);
+  assert.deepEqual(log, [true]);
+  assert.equal(row.getAttribute('aria-checked'), 'true');
+  await click(row.querySelector('.curv-mobile-switch'));
+  await click(row.querySelector('.curv-mobile-switch-sub'));
+  assert.deepEqual(log, [true, false, true], 'the switch itself, the sub-line and the row are one target');
+  assert.equal(row.tagName, 'BUTTON', 'a real button, so Space and Enter work');
+  assert.equal(row.getAttribute('type'), 'button');
+});
+
+test('switch row: a controlled row that the app does not update stays where it was', async () => {
+  const log = [];
+  const view = await mount(h(mobile.MobileSwitchRow, { label: 'Locked', checked: true, onCheckedChange: next => log.push(next) }));
+  const row = view.container.querySelector('[role="switch"]');
+  await click(row);
+  assert.deepEqual(log, [false], 'it asks');
+  assert.equal(row.getAttribute('aria-checked'), 'true', 'and does not decide');
+});
+
+test('switch row: disabled does nothing, and an onClick that prevents the default keeps the row from toggling', async () => {
+  const log = [];
+  const disabled = await mount(h(SwitchHarness, { log, disabled: true }));
+  await click(disabled.container.querySelector('[role="switch"]'));
+  assert.deepEqual(log, []);
+  const clicks = [];
+  const held = await mount(h(SwitchHarness, { log, onClick: event => { clicks.push('click'); event.preventDefault(); } }));
+  await click(held.container.querySelector('[role="switch"]'));
+  assert.deepEqual(clicks, ['click']);
+  assert.deepEqual(log, [], 'the app\'s own handler saw it first and said no');
+});
+
+test('switch row: the label names the switch and the sub-line describes it', async () => {
+  const view = await mount(h(SwitchHarness, { log: [] }));
+  const row = view.container.querySelector('[role="switch"]');
+  const named = id => document.getElementById(row.getAttribute(id)).textContent;
+  assert.equal(named('aria-labelledby'), 'Notify me');
+  assert.equal(named('aria-describedby'), 'When a milestone is late');
+  assert.equal(row.querySelector('.curv-mobile-switch').getAttribute('aria-hidden'), 'true');
+});
+
+// ── Fields ──────────────────────────────────────────────────────────────────
+
+test('text field: the ref and change events reach the input, and the label is its accessible label', async () => {
+  const ref = React.createRef();
+  const seen = [];
+  const view = await mount(h(mobile.MobileTextField, { ref, label: 'Project name', hint: 'Shown in lists', onChange: event => seen.push(event.target.value) }));
+  const input = view.container.querySelector('input');
+  is(ref.current, input);
+  assert.equal(view.container.querySelector('label').getAttribute('for'), input.id);
+  await setNativeValue(input, 'Spring catalog');
+  assert.deepEqual(seen, ['Spring catalog']);
+  await view.render(h(mobile.MobileTextField, { ref, label: 'Project name', hint: 'Shown in lists', error: 'Enter a name', onChange() {} }));
+  assert.equal(input.getAttribute('aria-invalid'), 'true');
+  assert.equal(input.getAttribute('aria-describedby'), `${input.id}-hint ${input.id}-error`);
+  assert.equal(view.container.querySelector('[role="alert"]').textContent, 'Enter a name');
+  await view.render(h(mobile.MobileTextField, { ref, label: 'Project name', hint: 'Shown in lists', onChange() {} }));
+  assert.equal(input.hasAttribute('aria-invalid'), false, 'fixed, so no longer invalid');
+  assert.equal(input.getAttribute('aria-describedby'), `${input.id}-hint`);
+});
+
+test('text area: the ref and change events reach the textarea', async () => {
+  const ref = React.createRef();
+  const seen = [];
+  const view = await mount(h(mobile.MobileTextArea, { ref, label: 'Note', onChange: event => seen.push(event.target.value) }));
+  const area = view.container.querySelector('textarea');
+  is(ref.current, area);
+  await setNativeValue(area, 'Call the factory');
+  assert.deepEqual(seen, ['Call the factory']);
+});
+
+function DateHarness({ log, controlled, inputRef }) {
+  const [value, setValue] = React.useState('2026-10-22');
+  const own = controlled ? { value, onChange: event => setValue(event.target.value) } : { defaultValue: '2026-10-22' };
+  return h(mobile.MobileDateField, { ref: inputRef, label: 'Due date', ...own, onClear: () => { log.push('clear'); if (controlled) setValue(''); } });
+}
+const clearButton = container => container.querySelector('.curv-mobile-field-clear');
+
+for (const controlled of [true, false]) {
+  test(`date field (${controlled ? 'controlled' : 'uncontrolled'}): Clear shows while there is a value, empties it and tells the app; focus returns to the field only if the button had it`, async () => {
+    const log = [];
+    const ref = React.createRef();
+    const view = await mount(h(DateHarness, { log, controlled, inputRef: ref }));
+    const input = view.container.querySelector('input');
+    is(ref.current, input, 'the ref reaches the input');
+    assert.equal(input.type, 'date');
+    assert.equal(input.value, '2026-10-22');
+    const head = view.container.querySelector('.curv-mobile-field-head');
+    assert.ok(clearButton(view.container), 'a value, so Clear');
+    assert.equal(clearButton(view.container).getAttribute('aria-label'), 'Clear Due date');
+    // A tap: iOS does not focus a tapped button, and focusing the date input afterwards would open the picker.
+    await click(clearButton(view.container));
+    assert.deepEqual(log, ['clear']);
+    assert.equal(input.value, '');
+    assert.equal(clearButton(view.container), null, 'no value, no Clear');
+    is(view.container.querySelector('.curv-mobile-field-head'), head, 'the label row stays');
+    assert.ok(document.activeElement !== input, 'a tap on Clear does not focus the input');
+    await setNativeValue(input, '2026-11-01');
+    assert.ok(clearButton(view.container), 'typing a date brings it back');
+    // Keyboard or screen reader: the button had focus and is about to go, so focus goes to the field.
+    clearButton(view.container).focus();
+    is(document.activeElement, clearButton(view.container));
+    await click(clearButton(view.container));
+    assert.equal(input.value, '');
+    is(document.activeElement, input, 'focus is where the button was, not on the page');
+    await setNativeValue(input, '2026-11-02');
+    await setNativeValue(input, '');
+    assert.equal(clearButton(view.container), null, 'emptying it by hand takes it away');
+  });
+}
+
+function FormHarness({ inputRef, defaultValue }) {
+  return h('form', { id: 'f' }, h(mobile.MobileDateField, { ref: inputRef, label: 'Due date', defaultValue, onClear() {} }));
+}
+
+test('date field (uncontrolled): Clear follows the input\'s real value through a form reset', async () => {
+  const view = await mount(h(FormHarness, { defaultValue: '2026-10-22' }));
+  const input = view.container.querySelector('input');
+  const form = view.container.querySelector('form');
+  assert.ok(clearButton(view.container));
+  await click(clearButton(view.container));
+  assert.equal(input.value, '');
+  assert.equal(clearButton(view.container), null);
+  await act(async () => { form.reset(); await sleep(20); });
+  assert.equal(input.value, '2026-10-22', 'the form put its value back');
+  assert.ok(clearButton(view.container), 'so Clear is back');
+
+  const typed = await mount(h(FormHarness, { defaultValue: '' }));
+  const field = typed.container.querySelector('input');
+  assert.equal(clearButton(typed.container), null);
+  await setNativeValue(field, '2026-12-01');
+  assert.ok(clearButton(typed.container));
+  await act(async () => { typed.container.querySelector('form').reset(); await sleep(20); });
+  assert.equal(field.value, '');
+  assert.equal(clearButton(typed.container), null, 'a reset that empties the field takes Clear away');
+});
+
+test('date field (uncontrolled): a value written through the ref, as a form library does, shows Clear after the next render and at mount', async () => {
+  const ref = React.createRef();
+  const field = hint => h(mobile.MobileDateField, { ref, label: 'Due date', hint, onClear() {} });
+  const view = await mount(field('a'));
+  assert.equal(clearButton(view.container), null);
+  ref.current.value = '2026-12-01';
+  await view.render(field('b'));
+  assert.ok(clearButton(view.container), 'seen on the next render');
+  ref.current.value = '';
+  await view.render(field('c'));
+  assert.equal(clearButton(view.container), null);
+
+  // A library's callback ref that fills the field when it registers it: seen at mount, and called once, not on every render.
+  const seen = [];
+  const register = element => { if (element) { seen.push(element); if (!element.value) element.value = '2026-01-15'; } };
+  const registered = h(mobile.MobileDateField, { ref: register, label: 'Start', onClear() {}, hint: 'x' });
+  const second = await mount(registered);
+  assert.ok(clearButton(second.container), 'a value written at registration shows Clear with no event');
+  await second.render(h(mobile.MobileDateField, { ref: register, label: 'Start', onClear() {}, hint: 'y' }));
+  await second.render(h(mobile.MobileDateField, { ref: register, label: 'Start', onClear() {}, hint: 'z' }));
+  assert.equal(seen.length, 1, 'one ref callback for the life of the field');
+});
+
+test('date field: without onClear there is no button even with a value', async () => {
+  const view = await mount(h(mobile.MobileDateField, { label: 'Due date', defaultValue: '2026-10-22' }));
+  assert.equal(clearButton(view.container), null);
+  assert.equal(view.container.querySelector('.curv-mobile-field-head').hasAttribute('data-action'), false);
+});
+
+// ── Chip row slot, toolbar button, top bar action, counts ───────────────────
+
+test('view chips: the trailing control is its own target and never selects a chip', async () => {
+  const log = [];
+  const view = await mount(h(mobile.MobileViewChips, {
+    label: 'Views', items: [{ id: 'all', label: 'All', active: true }, { id: 'late', label: 'Late', count: '12+' }], onSelect: id => log.push(['select', id]),
+    trailing: h(mobile.MobileToolbarButton, { label: 'Filter projects', count: 2, onClick: () => log.push(['filter']) }),
+  }));
+  const group = view.container.querySelector('[role="group"]');
+  const button = view.container.querySelector('.curv-mobile-chips-trailing button');
+  assert.ok(button && !group.contains(button), 'outside the scroller');
+  await click(button);
+  assert.deepEqual(log, [['filter']]);
+  await click(group.querySelectorAll('button')[1]);
+  assert.deepEqual(log, [['filter'], ['select', 'late']]);
+  assert.match(group.textContent, /Late12\+/);
+});
+
+test('toolbar button: a click reaches the app, the ref reaches the button', async () => {
+  const log = [];
+  const ref = React.createRef();
+  const view = await mount(h(mobile.MobileToolbarButton, { ref, label: 'Filter', count: 1, onClick: () => log.push('filter') }));
+  const button = view.container.querySelector('button');
+  is(ref.current, button);
+  await click(button);
+  assert.deepEqual(log, ['filter']);
+});
+
+test('top bar text action: a click reaches the app, the ref reaches the button', async () => {
+  const log = [];
+  const ref = React.createRef();
+  const view = await mount(h(mobile.MobileTopBar, { title: 'Inbox', trailing: h(mobile.MobileTopBarTextAction, { ref, onClick: () => log.push('read') }, 'Mark all read') }));
+  const button = view.container.querySelector('.curv-mobile-topbar-trailing button');
+  is(ref.current, button);
+  assert.equal(button.textContent, 'Mark all read');
+  await click(button);
+  assert.deepEqual(log, ['read']);
+});
+
+test('move sheet: a count can be a number with separators or a floor shown as given', async () => {
+  await mount(h(mobile.MobileMoveSheet, {
+    open: true, onOpenChange() {}, title: 'Move to…', onChoose() {},
+    options: [{ id: 'a', label: 'Move to A', count: 1284 }, { id: 'b', label: 'Move to B', count: '12+' }, { id: 'c', label: 'Move to C', count: '' }],
+  }));
+  await waitFor(() => sheetRows().length);
+  assert.match(sheetRow('Move to A').textContent, /1,284/);
+  assert.match(sheetRow('Move to B').textContent, /12\+/);
+  assert.ok(sheetRow('Move to C').querySelector('.curv-mobile-board-chip-count') === null, 'an empty string draws nothing');
+});

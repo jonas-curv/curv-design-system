@@ -8,7 +8,7 @@ This is the mobile extension of the existing design system, not a separate theme
 
 Import components from `@curvgroup/design-system/mobile` and import `@curvgroup/design-system/mobile.css` once after existing application styles. Consume a pinned build of this source; do not copy components into app folders. The `curv-mobile` skill in this package points agents here.
 
-The mobile entry is a client module (it ships with `"use client"`), so the top bar and tab bar can be mounted from a layout. Navigation components take `renderLink(item, props)` and content components take `renderLink(props)`; both prop objects carry `href`, so one adapter body serves both: spread the props onto the app's router link (`<Link {...props} />`), including `aria-current`.
+The mobile entry is a client module (it ships with `"use client"`), so the top bar and tab bar can be mounted from a layout. For the same reason a function imported from it cannot be called in a **server component** (Next hands it over as a client reference and it throws). Two of its exports are pure functions with no React, `mobileAvatarColor` and `mobileButtonClassName`, and the main entry `@curvgroup/design-system` (no `"use client"`) exports them too: import them from there when a server component needs them (`import { mobileButtonClassName } from "@curvgroup/design-system"`); from a client component either import works. Navigation components take `renderLink(item, props)` and content components take `renderLink(props)`; both prop objects carry `href`, so one adapter body serves both: spread the props onto the app's router link (`<Link {...props} />`), including `aria-current`.
 
 ## The rules
 
@@ -32,7 +32,7 @@ Mockups and builds use the OS's real records, photos and numbers. A phone layer 
 
 ### 4. One quiet black header
 
-`MobileTopBar`: the fixed black top bar holds the page title and at most one trailing control (for example the List | Board toggle). Nothing else: no stats line, no bell, no menu button.
+`MobileTopBar`: the fixed black top bar holds the page title and at most one trailing control (for example the List | Board toggle, or a text action such as "Mark all read", which is `MobileTopBarTextAction`: 44px, 17px, white on the bar, its text ending on the 16px gutter; never a hand-rolled button). Nothing else: no stats line, no bell, no menu button.
 
 - **The title is the switcher.** A hub with several pages shows its own name, `Development ⌄` or `Products ⌄`, on every one of those pages; tapping it lists the hub's pages with the current one marked. Each page keeps its own route. This replaces tab strips on phones. A page with no phone layout yet is left out of the switcher and dimmed in the menu (rule 6) instead of opening a desktop screen inside the phone frame.
 - **Records** show a back chevron only. The record's own title sits at the top of the content.
@@ -63,8 +63,8 @@ Mockups and builds use the OS's real records, photos and numbers. A phone layer 
 - Problems are written **inside the meta line** with `MobileException` ("0 sellable" in red; `tone="warning"` for amber, such as short cover), not as extra badges. Everything that is not a problem stays plain grey.
 - Status pills (`MobileStatusPill`, which rows also use) speak the record's own vocabulary (Healthy, Low stock, Overstock, Launching) with fixed tones: positive, critical, warning (amber, e.g. At risk), info, special, neutral. One word means one tone everywhere: "At risk" is the amber warning pill in lists, on boards and on the record header alike.
 - Hairlines inset to the text, no cards around rows. About eight rows fit on a phone screen.
-- Every list on a phone uses the same header: `MobileListToolbar` (round Sort and Filter, an optional `action` such as "New project", and an in-list filter field only for long lists people narrow in place, like a catalog; never a second global search), then `MobileViewChips` for saved views with counts. They are the same 44px chips a board draws (rule 11): grey, the chosen one dark with white text. No extra summary or clear rows: Reset lives in the filter sheet.
-- **Filter and picker sheets follow one recipe**, built from this package so no sheet is desktop-styled: a `MobileSheet` titled with what it filters; one `MobileOptionList` per filter, each with a `heading`, holding `MobileOptionRow`s (17px label, optional count, a check when chosen; `mode="single"` for one choice, `"multiple"` for several); and a footer with one primary `MobileButton block`, "Show N projects", N being what the list will show right now. **Choices apply as they are tapped.** There is no Apply step, and no visible radio or checkbox inputs, disclosures or desktop selects. Reset is a `plain` `MobileButton` at the top of the body, shown only while a filter is on. The sheet's title, headings and rows all start at its 16px edge.
+- Every list on a phone uses the same header: `MobileViewChips` for saved views with counts, the same 44px chips a board draws (rule 11): grey, the chosen one dark with white text. The list's round Filter button sits at the **end of the chip row**, in the chips' `trailing` slot (`MobileStageBoard` has the same slot, `chipsTrailing`), as a `MobileToolbarButton` with the number of filters that are on; so does an editor's "New project" (a plain button there is drawn as the toolbar's 44px text pill). The slot is outside the scroller: it does not scroll away with the chips, and it saves the 72px toolbar row. `MobileListToolbar` (round Sort and Filter, an optional `action`, an in-list filter field) stays for a list that needs more than that: a long list people narrow in place, like a catalog, or one with a Sort; never a second global search. A chip count is a number (printed with separators) or a string, `"12+"`, when the list is not fully loaded. No extra summary or clear rows: Reset lives in the filter sheet.
+- **Filter and picker sheets follow one recipe**, and `MobileFilterSheet` is that recipe, so no sheet is desktop-styled: it is a `MobileSheet` titled with what it filters (`title`); its children are one `MobileOptionList` per filter, each with a `heading`, holding `MobileOptionRow`s (17px label, optional count, a check when chosen; `mode="single"` for one choice, `"multiple"` for several); and a footer with one primary `MobileButton block`, `showLabel`, "Show N projects", N being what the list will show right now (`onShow` is called when it is tapped, and the sheet closes). **Choices apply as they are tapped.** There is no Apply step, and no visible radio or checkbox inputs, disclosures or desktop selects. Reset (`onReset`) is a `plain` `MobileButton` at the top of the body. It is only for a sheet with a filter on, so pass `resetVisible`: true only while a filter is on (it defaults to true so a sheet that leaves it out still works, but then Reset is offered when there is nothing to reset). Its row is held while it is hidden, so the lists do not jump when a filter comes on; when it hides itself after being used by keyboard or screen reader, focus moves to the footer button, or to the sheet's close control while the footer button is disabled. The footer button can be `showDisabled` (a filter that matches nothing) or `showPending` (a count being fetched). The sheet's title, headings, Reset and rows all start at its 16px edge. Build a sheet by hand from `MobileSheet` only for something that is not a filter.
 
 ### 8. Inbox rows are one line; tap opens, swipe acts
 
@@ -87,6 +87,11 @@ The landing screen (`/` on a phone) continues the black header into `MobileHeroP
 - Design at 390 × 844 and check at 402 × 874 (iPhone Pro size) and 440 × 956 (Pro Max). Respect the top and bottom safe areas; nothing interactive in the rounded corners.
 - Touch targets at least 44px. Body text 15–17px, titles 22–24px, Inter, tabular numbers for figures. Use the components' own buttons and sheets rather than per-site size overrides.
 - Buttons on a phone surface are `MobileButton`, never the desktop `Button` (13px, 9.6px corners): 50px, 17px semibold, 14px corners. `primary` is the screen's one action (the dark fill of the tab bar's action), `secondary` a quiet grey, `plain` text; `block` fills the width of a sheet footer or the end of a form; `pending` keeps the width, shows a spinner and tells screen readers (`pendingLabel`, default "Working…"). A link that has to look like a button takes `mobileButtonClassName({ variant, block })`.
+- Forms on a phone are `MobileTextField`, `MobileTextArea` and `MobileDateField`, never the desktop `Input` or a bare `<input>`: a visible label (a placeholder is not one), a control at 17px (16px and up, or iOS zooms the page on focus) and at least 44px tall, full width, an optional `hint` under it and an `error` that says what to do; the package wires them to the control (`aria-describedby`, `aria-invalid`, the error announced). Type and keyboard come from the native props (`type`, `inputMode`, `autoComplete`, `enterKeyHint`). A date is the OS's own picker, and a date that can be emptied passes `onClear` for a plain "Clear" button while it has a value. Fields stack 16px apart.
+- An on/off setting is a `MobileSwitchRow`: a 56px row with a 17px label, an optional sub-line and a 51 × 31 switch; the whole row is the tap target (`role="switch"`). Never a desktop `Switch` or a checkbox on a phone. It takes its text colour from what it sits in (a sheet, a `MobileCard`), and the container supplies the 16px edge, as for option rows.
+- A block of content that is not a list, a chart or a figure list is a `MobileCard`: 18px corners, the 0.5px ring, 16px padding, an optional section-heading `title` and `trailing` above it, and `as` for `section`, `article` or `div`. A list section whose heading is the screen's main block takes `headingSize="title"` (20px, the size of "Here's what needs you"); the default is the 14px grey heading.
+- The side gutter of the rounded blocks (key-value list, chart card, gallery, card) is `--curv-mobile-gutter`, 16px, and it is public. A block inside a parent that already pads its content takes `gutter="none"` (`MobileKeyValueList`, `MobileChartCard`, `MobileGallery`, `MobileCard`, `MobileListSection`, `MobileFlatList`), which sets the variable for the block and what is inside it; do not write the variable or an `!important` margin by hand. If you do set it yourself, give it a unit (`0px`, not `0`): the headings subtract it inside `calc()`.
+- An avatar's colour comes from the person's name: `mobileAvatarColor(name)` is one of the desktop avatar's eight hues for that name, drawn darker so white initials pass 4.5:1 on all eight. A stage card's avatar uses it when the app gives no `color`, hashing `avatar.name`, or `avatar.label` when there is no `name`: pass the bare name (`name: "Justin Shook"`) next to a screen-reader `label` such as "Owner Justin Shook", so the colour matches the person's desktop avatar. Pass `mobileAvatarColor(name)` as the `color` of any other avatar, or as the background of one you draw, so a person is the same colour on desktop (hue) and phone. Do not use the desktop avatar's own colours behind white text on a phone.
 - Phone surfaces are light in both themes and carry their own ink until the package ships a complete dark mobile palette. Do not remap `--curv-mobile-*` tokens to an app's dark tokens.
 - Text contrast 4.5:1, including grey meta lines and text on glass.
 - Every icon-only control has an `aria-label`. Swipe and long-press always have a button equivalent.
@@ -105,26 +110,39 @@ The landing screen (`/` on a phone) continues the black header into `MobileHeroP
 
 | Component | Use |
 | --- | --- |
-| `MobileTopBar` | Black header: title switcher, back, one trailing control |
+| `MobileTopBar`, `MobileTopBarTextAction` | Black header: title switcher, back, one trailing control; the text action ("Mark all read") for that slot |
 | `MobileSurface` | The content sheet under the top bar: rounded top, room for the tab bar |
 | `MobileTabBar` | The glass bar: search circle, icon pill, record actions, search mode, shrink on scroll |
 | `MobileMenu`, `MobileMenuBody` | Full-screen dark menu: groups, dimmed rows, account and close at the bottom (the body without the dialog, for tests and embedding) |
 | `MobileViewToggle` | List / Board switch for the top bar |
-| `MobileFlatList`, `MobileListSection`, `MobileListRow`, `MobileException` | Flat lists with thumbnail, one meta line, one status pill; section headings; red problem text inside the meta line |
+| `MobileFlatList`, `MobileListSection`, `MobileListRow`, `MobileException` | Flat lists with thumbnail, one meta line, one status pill; section headings (`headingSize="title"` for the 20px main heading); red problem text inside the meta line; `gutter` |
 | `MobileStatusPill` | The status pill on its own, for record headers and sheets |
-| `MobileListToolbar`, `MobileViewChips` | Sort, filter, one action, an optional in-list filter field; saved views |
+| `MobileViewChips` | Saved views as 44px chips with counts (a number or `"12+"`); `trailing` holds the list's Filter button at the end of the row |
+| `MobileToolbarButton` | The round icon button (Filter, Sort) with a count badge: 48px in the toolbar, 44px in a chip row's end slot |
+| `MobileListToolbar` | Sort, filter, one action, an optional in-list filter field, for a list that needs more than the chip row |
 | `MobileMoveSheet` | "Move to…" stage picker shared by boards, rows and record actions |
+| `MobileFilterSheet` | The filter sheet of rule 7: title, optional Reset at the top, option lists as children, one "Show N projects" button in the footer |
 | `MobileButton`, `mobileButtonClassName` | The phone's button: primary (dark), secondary (grey), plain; `block` and `pending`; the class names for a link that must look like one |
 | `MobileOptionList`, `MobileOptionRow` | Rows of a filter or picker sheet: 56px, label, optional count, check; single (radio group) or multiple (toggle buttons); optional `heading` |
-| `MobileChartCard` | White card with a section heading around a light chart |
+| `MobileChartCard` | White card with a section heading around a light chart; `gutter` |
+| `MobileCard` | The same card for any content: section heading above, 18px corners, ring, 16px padding; `as` section, article or div; `gutter` |
+| `MobileTextField`, `MobileTextArea`, `MobileDateField` | Phone form fields: visible label, 17px, 44px+, hint and error wired to the control; the date field can `onClear` |
+| `MobileSwitchRow` | An on/off setting: 56px row, 17px label, optional sub-line, 51 × 31 switch; the whole row is the target |
+| `mobileAvatarColor` | A name's avatar colour: the desktop hues, dark enough for white initials at 4.5:1 |
 | `MobileSwipeRow` | Up to two swipe actions with accessible equivalents |
 | `MobileActivityCards` | Horizontal count cards that link to work |
 | `MobileHeroPanel`, `MobileHeroAction` | Dark Home panel: KPI chips, one chart, up to two dark buttons |
-| `MobileStageBoard` | One-column board with peek, stage chips and move |
-| `MobileKeyValueList` | Settings-style figures with sub-lines |
-| `MobileGallery` | Swipeable photos with pager and thumbnails (`eagerFirst={false}` inside a branch that is hidden on desktop, so desktop never fetches the first photo) |
+| `MobileStageBoard` | One-column board with peek, stage chips (`chipsTrailing` holds a Filter button) and move; avatars take `mobileAvatarColor` by default |
+| `MobileKeyValueList` | Settings-style figures with sub-lines; `gutter` |
+| `MobileGallery` | Swipeable photos with pager and thumbnails (`eagerFirst={false}` inside a branch that is hidden on desktop, so desktop never fetches the first photo); `gutter` |
 | `MobileSheet`, `MobileSearchSurface`, `MobileNotice`, `MobileChart` | Existing: sheets, search, visible failures, charts |
 | `MobileBottomNav`, `MobileMoreMenu`, `MobileHeader` | Earlier dock, More sheet and header; kept for OSes not yet moved |
+
+## Upgrading to 0.3.3
+
+- `count` on `MobileViewChipItem`, `MobileStageColumn` and `MobileMoveOption` is now `number | string` (a string such as `"12+"` is printed as given). Code that reads these values back, to sum or compare them, must narrow the type first; the components print numbers exactly as before.
+- A stage card avatar without a `color` used to be grey and is now coloured from the name (`mobileAvatarColor`).
+- `MobileListToolbar` draws its Sort and Filter buttons with `MobileToolbarButton`; the markup is unchanged.
 
 ## Glass navigation
 

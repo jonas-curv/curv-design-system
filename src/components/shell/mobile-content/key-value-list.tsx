@@ -2,7 +2,7 @@
 
 import * as React from "react";
 import { cn } from "../../../lib/cn";
-import { ChevronIcon, ContentLink, type MobileContentRenderLink } from "./shared";
+import { ChevronIcon, ContentLink, type MobileContentRenderLink, type MobileGutter } from "./shared";
 
 export type MobileKeyValueTone = "positive" | "critical" | "warning" | "neutral";
 
@@ -26,6 +26,8 @@ export interface MobileKeyValueListProps {
   /** A short note at the right of the title: "as of 9:41". */
   trailing?: React.ReactNode;
   rows: MobileKeyValueRow[];
+  /** Side gutters of the card. `none` for a parent that already pads its content. Default: 16px. */
+  gutter?: MobileGutter;
   renderLink?: MobileContentRenderLink;
   className?: string;
 }
@@ -33,10 +35,10 @@ export interface MobileKeyValueListProps {
 const toneOf = (tone: MobileKeyValueTone | undefined) => (tone && tone !== "neutral" ? tone : undefined);
 
 /** Settings-style figures: label on the left, a tabular value on the right, optional sub-lines. */
-export function MobileKeyValueList({ title, trailing, rows, renderLink, className }: MobileKeyValueListProps) {
+export function MobileKeyValueList({ title, trailing, rows, gutter, renderLink, className }: MobileKeyValueListProps) {
   const id = React.useId();
   return (
-    <section className={cn("curv-mobile-kv", className)}>
+    <section className={cn("curv-mobile-kv", className)} data-gutter={gutter}>
       {(title != null || trailing != null) && (
         <div className="curv-mobile-kv-head">
           {title != null && <h2 id={id}>{title}</h2>}

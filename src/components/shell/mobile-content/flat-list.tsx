@@ -2,24 +2,38 @@
 
 import * as React from "react";
 import { cn } from "../../../lib/cn";
-import { BoxIcon, ContentLink, imageHasFailed, type MobileContentRenderLink } from "./shared";
+import { BoxIcon, ContentLink, imageHasFailed, type MobileContentRenderLink, type MobileGutter } from "./shared";
 
 export type MobileStatusTone = "positive" | "critical" | "warning" | "info" | "special" | "neutral";
 
-/** A plain white list. Rows draw their own inset hairline; there are no cards around them. */
-export function MobileFlatList({ label, children, className }: { label: string; children: React.ReactNode; className?: string }) {
+/** A plain white list. Rows draw their own inset hairline; there are no cards around them. `gutter` sets `--curv-mobile-gutter`
+ *  for what is inside it (a key-value list or a card in a row); the rows themselves are full width either way. */
+export function MobileFlatList({ label, children, gutter, className }: { label: string; children: React.ReactNode; gutter?: MobileGutter; className?: string }) {
   return (
-    <div className={cn("curv-mobile-flat-list", className)} role="list" aria-label={label}>
+    <div className={cn("curv-mobile-flat-list", className)} role="list" aria-label={label} data-gutter={gutter}>
       {React.Children.map(children, child => (child == null || typeof child === "boolean" ? null : <div role="listitem" className="curv-mobile-flat-item">{child}</div>))}
     </div>
   );
 }
 
+export interface MobileListSectionProps {
+  title: React.ReactNode;
+  trailing?: React.ReactNode;
+  /** "section" (default): the 14px grey heading every section has. "title": 20px semibold ink, the size of "Here's what needs you",
+   *  for a section that is the main block of its screen. The trailing note stays 14px. */
+  headingSize?: "section" | "title";
+  /** Sets `--curv-mobile-gutter` for what is inside (a key-value list or a chart card in the section). `none` for a parent that
+   *  already pads its content. The heading keeps its own 20px inset either way. */
+  gutter?: MobileGutter;
+  children: React.ReactNode;
+  className?: string;
+}
+
 /** A heading above a list. Put a `MobileFlatList` (or any rows) inside. */
-export function MobileListSection({ title, trailing, children, className }: { title: React.ReactNode; trailing?: React.ReactNode; children: React.ReactNode; className?: string }) {
+export function MobileListSection({ title, trailing, headingSize = "section", gutter, children, className }: MobileListSectionProps) {
   const id = React.useId();
   return (
-    <section className={cn("curv-mobile-flat-section", className)} aria-labelledby={id}>
+    <section className={cn("curv-mobile-flat-section", className)} aria-labelledby={id} data-heading-size={headingSize === "title" ? "title" : undefined} data-gutter={gutter}>
       <div className="curv-mobile-flat-section-head">
         <h2 id={id}>{title}</h2>
         {trailing != null && trailing !== false && <span className="curv-mobile-flat-section-trailing">{trailing}</span>}

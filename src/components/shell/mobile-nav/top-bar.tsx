@@ -97,6 +97,22 @@ export function MobileTopBar({ title, switcher, switcherLabel = "Pages", backHre
   </>;
 }
 
+export type MobileTopBarTextActionProps = Omit<React.ButtonHTMLAttributes<HTMLButtonElement>, "children"> & {
+  /** What it says: "Mark all read". Keep it to two or three words; it sits beside the title. */
+  children: React.ReactNode;
+};
+
+/**
+ * A text button for the black bar's `trailing` slot ("Mark all read"): 44px tall, 17px, white on the bar, with its text ending on the
+ * 16px content gutter like a trailing icon does. It is the bar's one trailing control, so pass nothing else beside it.
+ * `type` defaults to "button".
+ */
+export const MobileTopBarTextAction = React.forwardRef<HTMLButtonElement, MobileTopBarTextActionProps>(function MobileTopBarTextAction(
+  { className, type = "button", children, ...props }, ref,
+) {
+  return <button {...props} ref={ref} type={type} className={cn("curv-mobile-topbar-action", className)}>{children}</button>;
+});
+
 export interface MobileSurfaceProps extends React.HTMLAttributes<HTMLDivElement> {
   /** grouped: #f4f4f5 for stacked cards and lists. plain: white for a single flat list or a record. */
   tone?: "grouped" | "plain";
