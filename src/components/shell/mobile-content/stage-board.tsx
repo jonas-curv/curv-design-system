@@ -352,7 +352,7 @@ export function MobileStageBoard({ label, columns, activeColumnId, onActiveColum
             <button
               key={column.id}
               type="button"
-              className="curv-mobile-board-chip"
+              className="curv-mobile-chip curv-mobile-board-chip"
               aria-pressed={active}
               aria-label={column.shortLabel ? `${column.label}, ${formatCount(column.count)}` : undefined}
               onClick={() => chooseColumn(column.id)}

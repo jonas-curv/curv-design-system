@@ -125,12 +125,10 @@ export function MobileTabBar({ items = [], renderLink, onSearch, searchLabel = "
       "aria-describedby": badgeId,
       "data-compact": compact ? "true" : undefined,
       children: <>
-        <span className="curv-mobile-tabbar-icon" aria-hidden="true">{item.icon}</span>
+        {/* The badge lives in the icon's box, so it sits on the icon's corner in the full bar and the shrunken one alike and never reaches the label. */}
+        <span className="curv-mobile-tabbar-icon" aria-hidden="true">{item.icon}{badge && <span className="curv-mobile-tabbar-badge" aria-hidden="true">{badge}</span>}</span>
         {compact && <span className="curv-mobile-tabbar-label" aria-hidden="true">{item.label}</span>}
-        {badge && <>
-          <span className="curv-mobile-tabbar-badge" aria-hidden="true">{badge}</span>
-          <span id={badgeId} className="curv-mobile-nav-sr">{badgeDescription(item)}</span>
-        </>}
+        {badge && <span id={badgeId} className="curv-mobile-nav-sr">{badgeDescription(item)}</span>}
       </>,
     })}</React.Fragment>;
   };

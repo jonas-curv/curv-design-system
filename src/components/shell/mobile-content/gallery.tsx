@@ -12,12 +12,15 @@ export interface MobileGalleryProps {
   images: MobileGalleryImage[];
   /** Names the gallery for screen readers: "Product photos". */
   label: string;
+  /** The first photo loads at once (it is what the page is about). Default true. Pass false when the gallery sits in a branch
+   *  that is hidden on desktop, so the first photo is lazy like the rest and a desktop visitor never fetches it. */
+  eagerFirst?: boolean;
   className?: string;
 }
 
 /** A swipeable photo strip with a pager pill and a row of thumbnails that jump to each photo.
  *  A photo that cannot load (hotlink blocked, deleted, offline) keeps its slide and shows a neutral placeholder. */
-export function MobileGallery({ images, label, className }: MobileGalleryProps) {
+export function MobileGallery({ images, label, eagerFirst = true, className }: MobileGalleryProps) {
   const total = images.length;
   const [current, setCurrent] = React.useState(0);
   const strip = React.useRef<HTMLDivElement>(null);
@@ -90,7 +93,7 @@ export function MobileGallery({ images, label, className }: MobileGalleryProps) 
             <div key={index} className="curv-mobile-gallery-slide">
               {failed.has(image.src)
                 ? <div className="curv-mobile-gallery-placeholder" role="img" aria-label={image.alt || `${label}, photo ${index + 1}`}><BoxIcon size={44} /></div>
-                : <img src={image.src} alt={image.alt} loading={index === 0 ? "eager" : "lazy"} decoding="async" draggable={false} referrerPolicy="no-referrer" onError={() => fail(image.src)} />}
+                : <img src={image.src} alt={image.alt} loading={index === 0 && eagerFirst ? "eager" : "lazy"} decoding="async" draggable={false} referrerPolicy="no-referrer" onError={() => fail(image.src)} />}
             </div>
           ))}
         </div>
