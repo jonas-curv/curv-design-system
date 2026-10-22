@@ -483,9 +483,12 @@
 /* ── Flat list ───────────────────────────────────────────────────────────── */
 .curv-mobile-flat-list { background: var(--curv-mobile-surface, #fff); color: var(--curv-mobile-ink, #1b1b1b); font-family: inherit; }
 .curv-mobile-flat-section { color: var(--curv-mobile-ink, #1b1b1b); font-family: inherit; }
-.curv-mobile-flat-section-head { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; padding: 16px 20px 6px; }
-.curv-mobile-flat-section-head h2 { margin: 0; font-size: 14px; line-height: 1.3; font-weight: 500; color: var(--curv-mobile-ink-3, #6b6b6f); }
-.curv-mobile-flat-section-trailing { font-size: 14px; line-height: 1.3; color: var(--curv-mobile-ink-3, #6b6b6f); font-variant-numeric: tabular-nums; }
+/* One section heading for list sections, key-value lists and chart cards: 14px/500 grey, 20px in, so they line up when stacked.
+   The key-value and chart blocks sit inside the gutter, so their heading pads in only what is left of the 20px (no negative margin, so a block without its gutter never scrolls sideways). */
+.curv-mobile-flat-section-head, .curv-mobile-kv-head, .curv-mobile-chart-card-head { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; padding: 16px 20px 6px; }
+.curv-mobile-kv-head, .curv-mobile-chart-card-head { padding-inline: max(0px, calc(20px - var(--curv-mobile-gutter, 16px))); }
+.curv-mobile-flat-section-head h2, .curv-mobile-kv-head h2, .curv-mobile-chart-card-head h2 { margin: 0; font-size: 14px; line-height: 1.3; font-weight: 500; color: var(--curv-mobile-ink-3, #6b6b6f); }
+.curv-mobile-flat-section-trailing, .curv-mobile-kv-trailing, .curv-mobile-chart-card-trailing { margin-inline-start: auto; font-size: 14px; line-height: 1.3; font-weight: 400; color: var(--curv-mobile-ink-3, #6b6b6f); font-variant-numeric: tabular-nums; }
 
 .curv-mobile-flat-row { position: relative; box-sizing: border-box; display: flex; align-items: center; gap: 14px; min-height: 64px; padding: 14px 16px 14px 20px; background: var(--curv-mobile-surface, #fff); color: var(--curv-mobile-ink, #1b1b1b); font-family: inherit; }
 /* The hairline starts under the text: 82px = 20 padding + 48 thumbnail + 14 gap. The last row of a list has none. */
@@ -512,6 +515,8 @@
 .curv-mobile-flat-title { display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; line-clamp: 2; overflow: hidden; overflow-wrap: anywhere; font-size: 17px; line-height: 1.25; font-weight: 600; letter-spacing: -0.01em; color: var(--curv-mobile-ink, #1b1b1b); }
 .curv-mobile-flat-meta { display: block; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; font-size: 15px; line-height: 1.3; color: var(--curv-mobile-ink-3, #6b6b6f); font-variant-numeric: tabular-nums; }
 .curv-mobile-flat-exception { color: var(--curv-mobile-critical, var(--curv-critical, #b5352f)); font-weight: 500; }
+/* Amber, for a problem that needs watching rather than fixing now: the same ink as the warning pill and the board's badge. */
+.curv-mobile-flat-exception[data-tone="warning"] { color: var(--curv-mobile-board-warning-fg, #8a4e00); }
 
 .curv-mobile-flat-trailing { position: relative; z-index: 1; flex: none; display: flex; align-items: center; gap: 8px; font-size: 13px; line-height: 1.3; color: var(--curv-mobile-ink-3, #6b6b6f); font-variant-numeric: tabular-nums; white-space: nowrap; pointer-events: none; }
 .curv-mobile-flat-trailing :is(a, button, input, select, textarea, [role="button"]) { pointer-events: auto; }
@@ -532,6 +537,11 @@
 .curv-mobile-toolbar-search > svg { flex: none; }
 .curv-mobile-toolbar-search input { flex: 1; min-width: 0; height: 100%; margin: 0; padding: 0; border: 0; border-radius: 0; background: transparent; outline: none; box-shadow: none; font: inherit; font-size: 17px; color: var(--curv-mobile-ink, #1b1b1b); }
 .curv-mobile-toolbar-search input::placeholder { color: var(--curv-mobile-ink-3, #6b6b6f); opacity: 1; }
+.curv-mobile-toolbar[data-no-search] { justify-content: flex-end; }
+/* One extra control before Sort and Filter. A plain button or link in it is drawn as a text pill; a `.curv-mobile-toolbar-button` stays round. */
+.curv-mobile-toolbar-action { flex: none; display: flex; align-items: center; }
+.curv-mobile-toolbar-action > :is(button, a):not(.curv-mobile-toolbar-button) { box-sizing: border-box; display: inline-flex; align-items: center; justify-content: center; height: 48px; margin: 0; padding: 0 18px; border: 0; border-radius: 24px; background: var(--curv-mobile-fill, #efeff1); color: var(--curv-mobile-ink, #1b1b1b); font: inherit; font-size: 16px; line-height: 1; font-weight: 600; white-space: nowrap; text-decoration: none; cursor: pointer; -webkit-tap-highlight-color: transparent; }
+.curv-mobile-toolbar-action > :is(button, a):focus-visible { outline: 2px solid var(--curv-mobile-accent, #1764c0); outline-offset: 2px; }
 .curv-mobile-toolbar-button { position: relative; flex: none; display: grid; place-items: center; width: 48px; height: 48px; padding: 0; border: 0; border-radius: 50%; background: var(--curv-mobile-fill, #efeff1); color: var(--curv-mobile-ink, #1b1b1b); cursor: pointer; -webkit-tap-highlight-color: transparent; }
 .curv-mobile-toolbar-button:focus-visible { outline: 2px solid var(--curv-mobile-accent, #1764c0); outline-offset: 2px; }
 .curv-mobile-toolbar-badge { position: absolute; top: -2px; right: -2px; box-sizing: border-box; min-width: 20px; height: 20px; padding: 0 5px; display: grid; place-items: center; border-radius: 10px; background: var(--curv-mobile-accent, #1764c0); color: #fff; font-size: 12px; line-height: 1; font-weight: 600; font-variant-numeric: tabular-nums; box-shadow: 0 0 0 2px var(--curv-mobile-surface, #fff); }
@@ -684,13 +694,16 @@
 .curv-mobile-board-move-option { box-sizing: border-box; display: flex; align-items: center; justify-content: space-between; gap: 12px; width: 100%; min-height: 56px; padding: 0 4px; border: 0; border-bottom: 0.5px solid var(--border, var(--curv-mobile-hairline, #e3e3e6)); background: transparent; color: inherit; font: inherit; font-size: 17px; text-align: left; cursor: pointer; -webkit-tap-highlight-color: transparent; }
 .curv-mobile-board-move-option .curv-mobile-board-chip-count { font-size: 15px; color: var(--muted-foreground, #6b6b6f); opacity: 1; }
 .curv-mobile-board-move-option:focus-visible { outline: 2px solid var(--curv-mobile-accent, #1764c0); outline-offset: -2px; }
+/* A row the record cannot move to is shown dimmed; the row it is already in keeps full ink and a check. */
+.curv-mobile-board-move-option:disabled { cursor: default; opacity: 0.45; }
+.curv-mobile-board-move-option[aria-current="true"]:disabled { opacity: 1; }
+.curv-mobile-board-move-check { flex: none; display: grid; place-items: center; color: var(--curv-mobile-accent, #1764c0); }
 
 /* ── Key-value list ──────────────────────────────────────────────────────── */
 .curv-mobile-kv { margin-inline: var(--curv-mobile-gutter, 16px); color: var(--curv-mobile-ink, #1b1b1b); font-family: inherit; }
-.curv-mobile-kv-head { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; padding: 0 4px 8px; }
-.curv-mobile-kv-head h2 { margin: 0; font-size: 13px; line-height: 1.3; font-weight: 500; color: var(--curv-mobile-ink-3, #6b6b6f); }
-.curv-mobile-kv-trailing { font-size: 13px; line-height: 1.3; color: var(--curv-mobile-ink-3, #6b6b6f); font-variant-numeric: tabular-nums; }
-.curv-mobile-kv-card { margin: 0; padding: 0; list-style: none; overflow: hidden; border-radius: 18px; background: var(--curv-mobile-surface, #fff); color: var(--curv-mobile-ink, #1b1b1b); box-shadow: 0 0 0 0.5px rgb(0 0 0 / 0.08); }
+/* The heading is shared with the list section, above. The card ground is shared with the chart card. */
+.curv-mobile-kv-card, .curv-mobile-chart-card-body { border-radius: 18px; background: var(--curv-mobile-surface, #fff); color: var(--curv-mobile-ink, #1b1b1b); box-shadow: 0 0 0 0.5px rgb(0 0 0 / 0.08); }
+.curv-mobile-kv-card { margin: 0; padding: 0; list-style: none; overflow: hidden; }
 .curv-mobile-kv-row { position: relative; }
 .curv-mobile-kv-row + .curv-mobile-kv-row::before { content: ""; position: absolute; top: 0; left: 16px; right: 0; height: 0.5px; background: var(--curv-mobile-hairline, #e3e3e6); pointer-events: none; }
 .curv-mobile-kv-line { box-sizing: border-box; display: flex; align-items: center; gap: 12px; min-height: 50px; padding: 10px 16px; color: inherit; text-decoration: none; -webkit-tap-highlight-color: transparent; }
@@ -704,6 +717,9 @@
 .curv-mobile-kv-value[data-tone="warning"] { color: var(--curv-mobile-board-warning-fg, #8a4e00); }
 /* Sub-lines are #6b6b6f, not the #8a8a90 of the first mock: that grey is 3.4:1 on white and the playbook asks for 4.5:1. */
 .curv-mobile-kv-sub { font-size: 12px; line-height: 1.3; font-weight: 400; color: var(--curv-mobile-sub, #6b6b6f); }
+.curv-mobile-kv-sub[data-tone="positive"] { color: var(--curv-mobile-positive-fg, #1f6b30); }
+.curv-mobile-kv-sub[data-tone="critical"] { color: var(--curv-mobile-critical, var(--curv-critical, #b5352f)); }
+.curv-mobile-kv-sub[data-tone="warning"] { color: var(--curv-mobile-board-warning-fg, #8a4e00); }
 .curv-mobile-kv-chevron { flex: none; display: grid; place-items: center; margin-right: -4px; color: var(--curv-mobile-thumb-icon, #8a8a90); }
 
 /* ── Gallery ─────────────────────────────────────────────────────────────── */
@@ -714,6 +730,8 @@
 .curv-mobile-gallery-strip:focus-visible { outline: 2px solid var(--curv-mobile-accent, #1764c0); outline-offset: 2px; }
 .curv-mobile-gallery-slide { flex: 0 0 100%; min-width: 0; scroll-snap-align: start; scroll-snap-stop: always; }
 .curv-mobile-gallery-slide > img { display: block; width: 100%; height: 100%; object-fit: cover; }
+/* A photo that would not load: the same neutral box a list row draws, in the slide or the thumbnail. */
+.curv-mobile-gallery-placeholder { display: grid; place-items: center; width: 100%; height: 100%; background: var(--curv-mobile-thumb, #f4f4f5); color: var(--curv-mobile-thumb-icon, #8a8a90); }
 .curv-mobile-gallery-pager { position: absolute; left: 50%; bottom: 12px; transform: translateX(-50%); display: inline-flex; align-items: center; height: 24px; padding: 0 10px; border-radius: 12px; background: rgb(0 0 0 / 0.5); pointer-events: none; }
 .curv-mobile-gallery-dots { display: inline-flex; align-items: center; gap: 5px; }
 .curv-mobile-gallery-dot { width: 6px; height: 6px; border-radius: 3px; background: rgb(255 255 255 / 0.6); transition: width 160ms ease-out, background-color 160ms ease-out; }
@@ -727,10 +745,15 @@
 .curv-mobile-gallery-thumb[aria-current="true"] { outline: 2px solid var(--curv-mobile-ink, #1b1b1b); outline-offset: 2px; }
 .curv-mobile-gallery-thumb:focus-visible { outline: 2px solid var(--curv-mobile-accent, #1764c0); outline-offset: 2px; }
 
+/* ── Chart card ──────────────────────────────────────────────────────────── */
+.curv-mobile-chart-card { margin-inline: var(--curv-mobile-gutter, 16px); color: var(--curv-mobile-ink, #1b1b1b); font-family: inherit; }
+/* The card stays light under the dark theme, so the desktop tokens a light chart reads are pinned to light values inside it. */
+.curv-mobile-chart-card-body { box-sizing: border-box; padding: 16px; --card: var(--curv-mobile-surface, #fff); --foreground: var(--curv-mobile-ink, #1b1b1b); --muted-foreground: var(--curv-mobile-ink-3, #6b6b6f); --positive: var(--curv-mobile-positive-fg, #1f6b30); --negative: var(--curv-mobile-critical, var(--curv-critical, #b5352f)); }
+
 /* ── Press feedback, reduced motion, forced colors ───────────────────────── */
 @media (prefers-reduced-motion: no-preference) {
-  .curv-mobile-activity-card, .curv-mobile-hero-action, .curv-mobile-toolbar-button { transition: transform 120ms ease-out; }
-  .curv-mobile-activity-card:active, .curv-mobile-hero-action:active, .curv-mobile-toolbar-button:active { transform: scale(0.97); }
+  .curv-mobile-activity-card, .curv-mobile-hero-action, .curv-mobile-toolbar-button, .curv-mobile-toolbar-action > :is(button, a) { transition: transform 120ms ease-out; }
+  .curv-mobile-activity-card:active, .curv-mobile-hero-action:active, .curv-mobile-toolbar-button:active, .curv-mobile-toolbar-action > :is(button, a):active { transform: scale(0.97); }
 }
 @media (prefers-reduced-motion: reduce) {
   .curv-mobile-swipe-surface, .curv-mobile-swipe-actions, .curv-mobile-board-card, .curv-mobile-gallery-dot { transition: none; }
@@ -739,7 +762,8 @@
   .curv-mobile-view-chip:is([aria-pressed="true"], [aria-current], :has(> [data-active="true"])),
   .curv-mobile-hero-kpi:is([aria-pressed="true"], [aria-current], :has(> [data-active="true"])),
   .curv-mobile-board-chip[aria-pressed="true"] { outline: 2px solid Highlight; outline-offset: -2px; }
-  .curv-mobile-activity-card, .curv-mobile-board-card, .curv-mobile-kv-card, .curv-mobile-flat-pill, .curv-mobile-board-badge { border: 1px solid CanvasText; }
+  .curv-mobile-activity-card, .curv-mobile-board-card, .curv-mobile-kv-card, .curv-mobile-chart-card-body, .curv-mobile-flat-pill, .curv-mobile-board-badge { border: 1px solid CanvasText; }
+  .curv-mobile-toolbar-action > :is(button, a):not(.curv-mobile-toolbar-button) { border: 1px solid ButtonText; }
   .curv-mobile-flat-thumb, .curv-mobile-gallery-thumb { border: 1px solid CanvasText; }
   .curv-mobile-gallery-thumb[aria-current="true"] { outline-color: Highlight; }
   /* A background-only dot vanishes when colours are forced, and a late date is more than red. */

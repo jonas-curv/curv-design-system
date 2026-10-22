@@ -384,3 +384,150 @@ test('swipe row: a vertical gesture is a scroll, not a swipe, and its click goes
   assert.deepEqual(followed, ['record']);
   assert.equal(view.container.querySelector('.curv-mobile-swipe').dataset.open, 'false');
 });
+
+// ── Images that degrade ─────────────────────────────────────────────────────
+
+// A real, loadable image. happy-dom does not fetch file URLs, so a plain path stays "complete with no pixels": exactly
+// what a browser reports for a photo that failed before React hydrated, which the last tests below rely on.
+const PIXEL = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==';
+const BROKEN = '/photos/blocked.jpg';
+
+test('list row: a thumbnail that fails to load becomes the neutral box, the row stays one link, and the photo sends no referrer', async () => {
+  const view = await mount(h(mobile.MobileListRow, { title: 'Ocean Mist throw', thumbnail: PIXEL, thumbnailAlt: 'Ocean Mist throw', href: '/p/1', status: { label: 'Healthy', tone: 'positive' } }));
+  const image = view.container.querySelector('.curv-mobile-flat-thumb img');
+  assert.ok(image, 'the photo is drawn while it has not failed');
+  assert.equal(image.getAttribute('referrerpolicy'), 'no-referrer');
+  assert.equal(view.container.querySelector('.curv-mobile-flat-thumb').dataset.empty, undefined);
+
+  await dispatch(image, new Event('error'));
+  const thumb = view.container.querySelector('.curv-mobile-flat-thumb');
+  assert.ok(view.container.querySelector('img') === null, 'the broken image is gone');
+  assert.equal(thumb.dataset.empty, 'true');
+  assert.ok(thumb.querySelector('svg'), 'the same box a null thumbnail draws');
+  assert.equal(view.container.querySelectorAll('a').length, 1);
+  assert.equal(view.container.querySelector('.curv-mobile-flat-pill').textContent, 'Healthy');
+});
+
+test('list row: a failed photo is not retried on every render, but a row given another photo tries it', async () => {
+  const row = thumbnail => h(mobile.MobileListRow, { title: 'Row', thumbnail });
+  const view = await mount(row(PIXEL));
+  await dispatch(view.container.querySelector('img'), new Event('error'));
+  assert.ok(view.container.querySelector('img') === null);
+  await view.render(row(PIXEL));
+  assert.ok(view.container.querySelector('img') === null, 'still the placeholder after a re-render');
+  await view.render(row(`${PIXEL}#second`));
+  assert.ok(view.container.querySelector('img'), 'a different address is tried');
+});
+
+test('list row: a photo that had already failed before the row hydrated shows the placeholder, and a loaded one does not', async () => {
+  const broken = await mount(h(mobile.MobileListRow, { title: 'Blocked', thumbnail: BROKEN }));
+  assert.ok(broken.container.querySelector('img') === null, 'complete with no pixels is a failed load');
+  assert.equal(broken.container.querySelector('.curv-mobile-flat-thumb').dataset.empty, 'true');
+  const fine = await mount(h(mobile.MobileListRow, { title: 'Fine', thumbnail: PIXEL }));
+  assert.ok(fine.container.querySelector('img'), 'a loaded photo stays');
+});
+
+test('gallery: a photo that fails keeps its slide as a neutral placeholder, and the rest still swipe', async () => {
+  const images = [{ src: PIXEL, alt: 'Front' }, { src: `${PIXEL}#side`, alt: 'Side' }, { src: `${PIXEL}#detail`, alt: 'Detail' }];
+  const view = await mount(h(mobile.MobileGallery, { images, label: 'Product photos' }));
+  const slides = () => [...view.container.querySelectorAll('.curv-mobile-gallery-slide')];
+  assert.equal(slides().length, 3);
+  assert.equal(view.container.querySelectorAll('.curv-mobile-gallery-slide img').length, 3);
+  assert.equal(view.container.querySelector('.curv-mobile-gallery-slide img').getAttribute('referrerpolicy'), 'no-referrer');
+  assert.equal(view.container.querySelector('.curv-mobile-gallery-thumb img').getAttribute('referrerpolicy'), 'no-referrer');
+
+  await dispatch(slides()[1].querySelector('img'), new Event('error'));
+  assert.equal(slides().length, 3, 'the slide is still there');
+  const placeholder = slides()[1].querySelector('.curv-mobile-gallery-placeholder');
+  assert.ok(placeholder && placeholder.querySelector('svg'));
+  assert.equal(placeholder.getAttribute('role'), 'img');
+  assert.equal(placeholder.getAttribute('aria-label'), 'Side');
+  assert.ok(slides()[0].querySelector('img') && slides()[2].querySelector('img'), 'the others are untouched');
+  const thumbs = [...view.container.querySelectorAll('.curv-mobile-gallery-thumb')];
+  assert.equal(thumbs.length, 3, 'the thumbnail button stays, so every photo can still be jumped to');
+  assert.ok(thumbs[1].querySelector('.curv-mobile-gallery-placeholder') && thumbs[1].querySelector('img') === null);
+  assert.equal(thumbs[1].getAttribute('aria-label'), 'Photo 2: Side');
+  assert.ok(thumbs[0].querySelector('img'));
+});
+
+test('gallery: a thumbnail that fails marks its photo as failed everywhere, and a photo that failed before hydration is found on mount', async () => {
+  const images = [{ src: PIXEL, alt: 'Front' }, { src: `${PIXEL}#side`, alt: 'Side' }];
+  const view = await mount(h(mobile.MobileGallery, { images, label: 'Photos' }));
+  await dispatch(view.container.querySelectorAll('.curv-mobile-gallery-thumb img')[0], new Event('error'));
+  assert.ok(view.container.querySelector('.curv-mobile-gallery-slide .curv-mobile-gallery-placeholder'), 'the big slide follows its thumbnail');
+  const blocked = await mount(h(mobile.MobileGallery, { images: [{ src: BROKEN, alt: 'Blocked' }, images[0]], label: 'Photos' }));
+  assert.equal(blocked.container.querySelectorAll('.curv-mobile-gallery-slide').length, 2);
+  assert.ok(blocked.container.querySelectorAll('.curv-mobile-gallery-slide')[0].querySelector('.curv-mobile-gallery-placeholder'));
+  assert.ok(blocked.container.querySelectorAll('.curv-mobile-gallery-slide')[1].querySelector('img'));
+});
+
+// ── Move sheet ──────────────────────────────────────────────────────────────
+
+const moveOptions = [
+  { id: 'todo', label: 'Move to To do', count: 2, current: true },
+  { id: 'doing', label: 'Move to In production', count: 1284 },
+  { id: 'review', label: 'Move to Review', count: 3, disabled: true },
+  { id: 'done', label: 'Move to Done' },
+];
+function SheetHarness({ log, cancelLabel }) {
+  const [open, setOpen] = React.useState(true);
+  return h(React.Fragment, null,
+    h('button', { type: 'button', id: 'opener', onClick: () => setOpen(true) }, 'Open'),
+    h(mobile.MobileMoveSheet, {
+      open, title: 'Move to…', options: moveOptions, cancelLabel,
+      onOpenChange: next => { log.push(['open', next]); setOpen(next); },
+      onChoose: id => log.push(['choose', id]),
+    }));
+}
+const sheetRows = () => [...document.querySelectorAll('.curv-mobile-board-move-option')];
+const sheetRow = text => sheetRows().find(row => row.textContent.includes(text));
+
+test('move sheet: tapping a row chooses it once and closes the sheet', async () => {
+  const log = [];
+  await mount(h(SheetHarness, { log }));
+  await waitFor(() => sheetRows().length);
+  assert.equal(document.querySelector('[role="dialog"]').textContent.includes('Move to…'), true);
+  assert.match(sheetRow('In production').textContent, /1,284/, 'the count is formatted');
+  assert.ok(sheetRow('Move to Done').querySelector('.curv-mobile-board-chip-count') === null, 'no count, none drawn');
+  await click(sheetRow('In production'));
+  assert.deepEqual(log, [['choose', 'doing'], ['open', false]]);
+  await waitFor(() => sheetRows().length === 0);
+});
+
+test('move sheet: the current row and a disabled row are shown but cannot be chosen', async () => {
+  const log = [];
+  await mount(h(SheetHarness, { log }));
+  await waitFor(() => sheetRows().length);
+  const current = sheetRow('To do');
+  assert.equal(current.disabled, true);
+  assert.equal(current.getAttribute('aria-current'), 'true');
+  assert.ok(current.querySelector('.curv-mobile-board-move-check svg'), 'a check instead of a count');
+  assert.equal(sheetRow('Review').disabled, true);
+  assert.equal(sheetRow('Review').getAttribute('aria-current'), null);
+  await click(current);
+  await click(sheetRow('Review'));
+  assert.deepEqual(log, [], 'nothing was chosen and the sheet stayed open');
+  assert.equal(sheetRows().length, 4);
+});
+
+test('move sheet: Escape and the close control dismiss without choosing, and the close control takes its name from cancelLabel', async () => {
+  const log = [];
+  await mount(h(SheetHarness, { log, cancelLabel: 'Avbryt' }));
+  await waitFor(() => sheetRows().length);
+  assert.ok(document.querySelector('[role="dialog"] button[aria-label="Avbryt"]'));
+  assert.ok(document.querySelector('[role="dialog"] button[aria-label="Close"]') === null);
+  await key(document.activeElement && document.activeElement !== document.body ? document.activeElement : document.querySelector('[role="dialog"]'), 'Escape');
+  await waitFor(() => sheetRows().length === 0);
+  assert.deepEqual(log, [['open', false]]);
+
+  log.length = 0;
+  await click(document.querySelector('#opener'));
+  await waitFor(() => sheetRows().length);
+  await click(document.querySelector('[role="dialog"] button[aria-label="Avbryt"]'));
+  await waitFor(() => sheetRows().length === 0);
+  assert.deepEqual(log, [['open', false]], 'closed without a choice');
+
+  const plain = [];
+  await mount(h(SheetHarness, { log: plain }));
+  await waitFor(() => document.querySelector('[role="dialog"] button[aria-label="Close"]'));
+});

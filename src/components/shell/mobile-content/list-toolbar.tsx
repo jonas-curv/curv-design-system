@@ -5,7 +5,12 @@ import { cn } from "../../../lib/cn";
 import { ContentLink, FilterIcon, SearchIcon, SortIcon, formatCount, prefersReducedMotion, useIsomorphicLayoutEffect, type MobileContentRenderLink } from "./shared";
 
 export interface MobileListToolbarProps {
-  search: { value: string; onChange: (value: string) => void; placeholder?: string; label: string };
+  /** Leave it out for a screen whose search lives elsewhere: only the round buttons render, right-aligned. */
+  search?: { value: string; onChange: (value: string) => void; placeholder?: string; label: string };
+  /** One extra control before Sort and Filter, for the screen's one creating action: a round icon button
+   *  (`className="curv-mobile-toolbar-button"`) or a plain `<button>` / `<a>` with text ("New project"),
+   *  which the toolbar draws as a 48px pill. Give an icon-only control an `aria-label`. */
+  action?: React.ReactNode;
   onSort?: () => void;
   sortLabel?: string;
   onFilter?: () => void;
@@ -15,25 +20,30 @@ export interface MobileListToolbarProps {
   className?: string;
 }
 
-/** A search field and two round buttons. The one search on a list screen lives here. */
-export function MobileListToolbar({ search, onSort, sortLabel = "Sort", onFilter, filterLabel = "Filter", filterCount, className }: MobileListToolbarProps) {
+/** A search field, an optional action and two round buttons. The one search on a list screen lives here. */
+export function MobileListToolbar({ search, action, onSort, sortLabel = "Sort", onFilter, filterLabel = "Filter", filterCount, className }: MobileListToolbarProps) {
   const count = filterCount && filterCount > 0 ? filterCount : 0;
+  const hasAction = action != null && action !== false;
+  if (!search && !hasAction && !onSort && !onFilter) return null;
   return (
-    <div className={cn("curv-mobile-toolbar", className)}>
-      <label className="curv-mobile-toolbar-search">
-        <SearchIcon size={20} />
-        <input
-          type="search"
-          aria-label={search.label}
-          placeholder={search.placeholder}
-          value={search.value}
-          onChange={event => search.onChange(event.target.value)}
-          autoComplete="off"
-          autoCorrect="off"
-          spellCheck={false}
-          enterKeyHint="search"
-        />
-      </label>
+    <div className={cn("curv-mobile-toolbar", className)} data-no-search={search ? undefined : "true"}>
+      {search && (
+        <label className="curv-mobile-toolbar-search">
+          <SearchIcon size={20} />
+          <input
+            type="search"
+            aria-label={search.label}
+            placeholder={search.placeholder}
+            value={search.value}
+            onChange={event => search.onChange(event.target.value)}
+            autoComplete="off"
+            autoCorrect="off"
+            spellCheck={false}
+            enterKeyHint="search"
+          />
+        </label>
+      )}
+      {hasAction && <span className="curv-mobile-toolbar-action">{action}</span>}
       {onSort && <button type="button" className="curv-mobile-toolbar-button" aria-label={sortLabel} onClick={onSort}><SortIcon /></button>}
       {onFilter && (
         <button type="button" className="curv-mobile-toolbar-button" aria-label={count ? `${filterLabel} (${count})` : filterLabel} onClick={onFilter}>

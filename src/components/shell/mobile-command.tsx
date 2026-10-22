@@ -75,6 +75,8 @@ export interface MobileSheetProps {
   fullScreen?: boolean;
   dark?: boolean;
   initialFocus?: React.RefObject<HTMLElement | null>;
+  /** Accessible name of the close control. Default "Close". */
+  closeLabel?: string;
 }
 const subscribeViewport = (callback: () => void) => {
   window.visualViewport?.addEventListener("resize", callback);
@@ -85,7 +87,7 @@ const viewportSnapshot = () => `${window.visualViewport?.height ?? window.innerH
 const serverViewportSnapshot = () => "";
 
 /** Base UI owns focus trapping, Escape and restoration. No page-specific overlay behavior. */
-export function MobileSheet({ open, onOpenChange, title, children, footer, fullScreen, dark, initialFocus }: MobileSheetProps) {
+export function MobileSheet({ open, onOpenChange, title, children, footer, fullScreen, dark, initialFocus, closeLabel = "Close" }: MobileSheetProps) {
   const viewport = React.useSyncExternalStore(subscribeViewport, viewportSnapshot, serverViewportSnapshot);
   const [height, offset, layoutHeight] = viewport.split(":").map(Number);
   const viewportStyle: React.CSSProperties | undefined = viewport ? {
@@ -93,7 +95,7 @@ export function MobileSheet({ open, onOpenChange, title, children, footer, fullS
     ...(fullScreen ? { height, top: offset, bottom: "auto" } : { bottom: Math.max(0, layoutHeight - height - offset) }),
   } : undefined;
   return <Dialog.Root open={open} onOpenChange={onOpenChange}><Dialog.Portal><Dialog.Backdrop className="curv-mobile-scrim" /><Dialog.Popup className={cn("curv-mobile-sheet", fullScreen && "curv-mobile-fullscreen", dark && "curv-mobile-more")} initialFocus={initialFocus} style={viewportStyle}>
-    <div className="curv-mobile-sheet-heading"><Dialog.Title>{title}</Dialog.Title><Dialog.Close className="curv-mobile-icon-button" aria-label="Close"><Close /></Dialog.Close></div>
+    <div className="curv-mobile-sheet-heading"><Dialog.Title>{title}</Dialog.Title><Dialog.Close className="curv-mobile-icon-button" aria-label={closeLabel}><Close /></Dialog.Close></div>
     <div className="curv-mobile-sheet-body">{children}</div>{footer && <div className="curv-mobile-sheet-footer">{footer}</div>}
   </Dialog.Popup></Dialog.Portal></Dialog.Root>;
 }

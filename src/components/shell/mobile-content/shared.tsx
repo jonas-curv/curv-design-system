@@ -23,6 +23,11 @@ export const useIsomorphicLayoutEffect = typeof window === "undefined" ? React.u
 export const prefersReducedMotion = () =>
   typeof window !== "undefined" && typeof window.matchMedia === "function" && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
 
+/** An image the browser has already given up on. React never hears an `error` that fires before it hydrates the
+ *  element, so a photo that failed in server markup (a 403 comes back fast) has to be found on the element itself. */
+export const imageHasFailed = (image: HTMLImageElement | null | undefined) =>
+  Boolean(image && image.getAttribute("src") && image.complete && image.naturalWidth === 0 && image.naturalHeight === 0);
+
 /** Fixed locale so server and client markup agree. */
 export const formatCount = (value: number) => value.toLocaleString("en-US");
 
