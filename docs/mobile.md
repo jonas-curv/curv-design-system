@@ -36,6 +36,7 @@ Mockups and builds use the OS's real records, photos and numbers. A phone layer 
 
 - **The title is the switcher.** A hub with several pages shows its own name, `Development ⌄` or `Products ⌄`, on every one of those pages; tapping it lists the hub's pages with the current one marked. Each page keeps its own route. This replaces tab strips on phones. A page with no phone layout yet is left out of the switcher and dimmed in the menu (rule 6) instead of opening a desktop screen inside the phone frame.
 - **Records** show a back chevron only. The record's own title sits at the top of the content.
+- Plain titles and the switcher's title start at the same x, the 16px content gutter, so nothing moves when someone changes page.
 - Content sits on a sheet with 18px rounded top corners over the black bar.
 
 ### 5. One bar, always in the same place
@@ -47,7 +48,7 @@ Mockups and builds use the OS's real records, photos and numbers. A phone layer 
 - **Records swap the pill** for the one thing that page is for: a composer ("Add an update") with a camera button on a project, "Request a SKU" on a product, "Reply" and "Done" on an inbox item. The left circle becomes the hub's icon and goes back.
 - **Search mode** turns the pill into the search field, down where the thumb is, with a close circle.
 - **Sheets cover the bar.** The sheet's one primary button does the work; the close control and Escape dismiss it.
-- **Scrolling down** shrinks the bar to the current hub and Search; scrolling up or a tap restores it. **The keyboard** hides it.
+- **Scrolling down** shrinks the bar to the current hub and Search; scrolling up or a tap restores it. The shrunken bar keeps 44px targets, and the unread badge sits on the icon's corner in both sizes, never on the label. **The keyboard** hides it.
 - Glass is a web treatment (backdrop blur), not the iOS API. Reduced transparency, increased contrast and forced colors get the solid surface.
 
 ### 6. The menu shows everything, dims what the phone can't do
@@ -62,7 +63,8 @@ Mockups and builds use the OS's real records, photos and numbers. A phone layer 
 - Problems are written **inside the meta line** with `MobileException` ("0 sellable" in red; `tone="warning"` for amber, such as short cover), not as extra badges. Everything that is not a problem stays plain grey.
 - Status pills (`MobileStatusPill`, which rows also use) speak the record's own vocabulary (Healthy, Low stock, Overstock, Launching) with fixed tones: positive, critical, warning (amber, e.g. At risk), info, special, neutral. One word means one tone everywhere: "At risk" is the amber warning pill in lists, on boards and on the record header alike.
 - Hairlines inset to the text, no cards around rows. About eight rows fit on a phone screen.
-- Every list on a phone uses the same header: `MobileListToolbar` (round Sort and Filter, an optional `action` such as "New project", and an in-list filter field only for long lists people narrow in place, like a catalog; never a second global search), then `MobileViewChips` for saved views as plain text chips with counts. No extra summary or clear rows: Reset lives in the filter sheet. Filter sheets follow one recipe: choices apply as they are tapped and the sheet ends with one "Show N" button.
+- Every list on a phone uses the same header: `MobileListToolbar` (round Sort and Filter, an optional `action` such as "New project", and an in-list filter field only for long lists people narrow in place, like a catalog; never a second global search), then `MobileViewChips` for saved views with counts. They are the same 44px chips a board draws (rule 11): grey, the chosen one dark with white text. No extra summary or clear rows: Reset lives in the filter sheet.
+- **Filter and picker sheets follow one recipe**, built from this package so no sheet is desktop-styled: a `MobileSheet` titled with what it filters; one `MobileOptionList` per filter, each with a `heading`, holding `MobileOptionRow`s (17px label, optional count, a check when chosen; `mode="single"` for one choice, `"multiple"` for several); and a footer with one primary `MobileButton block`, "Show N projects", N being what the list will show right now. **Choices apply as they are tapped.** There is no Apply step, and no visible radio or checkbox inputs, disclosures or desktop selects. Reset is a `plain` `MobileButton` at the top of the body, shown only while a filter is on. The sheet's title, headings and rows all start at its 16px edge.
 
 ### 8. Inbox rows are one line; tap opens, swipe acts
 
@@ -74,7 +76,7 @@ A primary record (a project, a product Line) is one long page with sections, nev
 
 ### 10. Home: the story, then what needs you
 
-The landing screen (`/` on a phone) continues the black header into `MobileHeroPanel`: KPI chips that select the series, one chart with its comparison as a dashed line, and at most two dark buttons. Below it, `MobileActivityCards` ("Here's what needs you": counts that are jobs, each a link), then one insight card that names a real record. The desktop KPI wall stays on desktop.
+The landing screen (`/` on a phone) continues the black header into `MobileHeroPanel`: KPI chips that select the series, one chart with its comparison as a dashed line, and at most two dark buttons. A chip that has no series to show (a "Per day" figure) sets `selectable: false` on its `MobileHeroKpi`: it stays plain text in the same chip type, is never boxed as the active one and is skipped by the keyboard, while the others remain buttons (`onKpiChange` is only called for selectable ones). The chips shrink and wrap their labels and deltas to about two lines (never below 104px wide, or their widest figure) before the row scrolls (snapping chip by chip), and a figure is never clipped. The chart puts the latest value beside the end of the line, never under the dashed segment of a period still in progress. Below it, `MobileActivityCards` ("Here's what needs you": counts that are jobs, each a link), then one insight card that names a real record. The desktop KPI wall stays on desktop.
 
 ### 11. Boards: one column at a time, and a List | Board toggle
 
@@ -84,6 +86,7 @@ The landing screen (`/` on a phone) continues the black header into `MobileHeroP
 
 - Design at 390 × 844 and check at 402 × 874 (iPhone Pro size) and 440 × 956 (Pro Max). Respect the top and bottom safe areas; nothing interactive in the rounded corners.
 - Touch targets at least 44px. Body text 15–17px, titles 22–24px, Inter, tabular numbers for figures. Use the components' own buttons and sheets rather than per-site size overrides.
+- Buttons on a phone surface are `MobileButton`, never the desktop `Button` (13px, 9.6px corners): 50px, 17px semibold, 14px corners. `primary` is the screen's one action (the dark fill of the tab bar's action), `secondary` a quiet grey, `plain` text; `block` fills the width of a sheet footer or the end of a form; `pending` keeps the width, shows a spinner and tells screen readers (`pendingLabel`, default "Working…"). A link that has to look like a button takes `mobileButtonClassName({ variant, block })`.
 - Phone surfaces are light in both themes and carry their own ink until the package ships a complete dark mobile palette. Do not remap `--curv-mobile-*` tokens to an app's dark tokens.
 - Text contrast 4.5:1, including grey meta lines and text on glass.
 - Every icon-only control has an `aria-label`. Swipe and long-press always have a button equivalent.
@@ -111,13 +114,15 @@ The landing screen (`/` on a phone) continues the black header into `MobileHeroP
 | `MobileStatusPill` | The status pill on its own, for record headers and sheets |
 | `MobileListToolbar`, `MobileViewChips` | Sort, filter, one action, an optional in-list filter field; saved views |
 | `MobileMoveSheet` | "Move to…" stage picker shared by boards, rows and record actions |
+| `MobileButton`, `mobileButtonClassName` | The phone's button: primary (dark), secondary (grey), plain; `block` and `pending`; the class names for a link that must look like one |
+| `MobileOptionList`, `MobileOptionRow` | Rows of a filter or picker sheet: 56px, label, optional count, check; single (radio group) or multiple (toggle buttons); optional `heading` |
 | `MobileChartCard` | White card with a section heading around a light chart |
 | `MobileSwipeRow` | Up to two swipe actions with accessible equivalents |
 | `MobileActivityCards` | Horizontal count cards that link to work |
 | `MobileHeroPanel`, `MobileHeroAction` | Dark Home panel: KPI chips, one chart, up to two dark buttons |
 | `MobileStageBoard` | One-column board with peek, stage chips and move |
 | `MobileKeyValueList` | Settings-style figures with sub-lines |
-| `MobileGallery` | Swipeable photos with pager and thumbnails |
+| `MobileGallery` | Swipeable photos with pager and thumbnails (`eagerFirst={false}` inside a branch that is hidden on desktop, so desktop never fetches the first photo) |
 | `MobileSheet`, `MobileSearchSurface`, `MobileNotice`, `MobileChart` | Existing: sheets, search, visible failures, charts |
 | `MobileBottomNav`, `MobileMoreMenu`, `MobileHeader` | Earlier dock, More sheet and header; kept for OSes not yet moved |
 

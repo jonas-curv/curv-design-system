@@ -531,3 +531,198 @@ test('move sheet: Escape and the close control dismiss without choosing, and the
   await mount(h(SheetHarness, { log: plain }));
   await waitFor(() => document.querySelector('[role="dialog"] button[aria-label="Close"]'));
 });
+
+// ── Refinement round 1 (0.3.2) ──────────────────────────────────────────────
+
+test('hero: onKpiChange only fires for selectable chips; informational ones are text, not focusable and never boxed', async () => {
+  const picked = [];
+  const kpis = [
+    { id: 'orders', label: 'Orders', value: '24' },
+    { id: 'revenue', label: 'Revenue', value: '$48K' },
+    { id: 'perday', label: 'Per day', value: '$1,606', selectable: false },
+    { id: 'pace', label: 'On pace for', value: '$50K', selectable: false },
+  ];
+  const panel = active => h(mobile.MobileHeroPanel, { kpis, activeKpiId: active, onKpiChange: id => picked.push(id), chart: null });
+  const view = await mount(panel('orders'));
+  const chips = [...view.container.querySelectorAll('.curv-mobile-hero-kpi')];
+  assert.equal(chips.length, 4);
+  assert.deepEqual(chips.map(chip => chip.tagName), ['BUTTON', 'BUTTON', 'DIV', 'DIV']);
+  assert.deepEqual(chips.map(chip => chip.getAttribute('tabindex')), [null, null, null, null], 'nothing sets a tab stop on the text chips');
+  assert.equal(view.container.querySelectorAll('button.curv-mobile-hero-kpi').length, 2, 'only the two selectable chips can take focus');
+  await click(chips[2]);
+  await click(chips[3]);
+  assert.deepEqual(picked, [], 'tapping an informational chip selects nothing');
+  await click(chips[1]);
+  assert.deepEqual(picked, ['revenue']);
+  await view.render(panel('revenue'));
+  assert.equal(view.container.querySelector('.curv-mobile-hero-kpi[aria-pressed="true"]').textContent, 'Revenue$48K');
+  await view.render(panel('perday'));
+  assert.equal(view.container.querySelectorAll('[aria-pressed="true"], [data-active="true"]').length, 0, 'an informational chip is never the boxed one');
+});
+
+test('button: a pending MobileButton is busy, keeps its label, ignores taps and does not submit its form, but stays focusable', async () => {
+  const log = [];
+  const ref = React.createRef();
+  const form = pending => h('form', { onSubmit: event => { event.preventDefault(); log.push('submit'); } },
+    h(mobile.MobileButton, { ref, type: 'submit', pending, onClick: () => log.push('click'), 'data-test': 'go' }, 'Submit request'));
+  const view = await mount(form(false));
+  const button = view.container.querySelector('button');
+  assert.ok(ref.current === button, 'the ref reaches the button');
+  assert.equal(button.getAttribute('type'), 'submit');
+  assert.equal(button.getAttribute('data-test'), 'go', 'button props are forwarded');
+  await click(button);
+  assert.deepEqual(log, ['click', 'submit']);
+  log.length = 0;
+  const status = view.container.querySelector('[role="status"]');
+  assert.equal(status.textContent, '', 'the live region is there from the start, empty');
+  await view.render(form(true));
+  assert.equal(status.textContent, 'Working…', 'pending is announced');
+  assert.equal(button.getAttribute('aria-busy'), 'true');
+  assert.equal(button.disabled, false, 'a disabled button would drop the person\'s focus');
+  assert.equal(button.textContent, 'Submit request', 'the label is still there, so the width does not change');
+  const tap = await click(button);
+  assert.deepEqual(log, [], 'neither the app\'s handler nor the form hear a second tap');
+  assert.equal(tap.defaultPrevented, true);
+  await view.render(form(false));
+  assert.equal(status.textContent, '');
+  assert.equal(button.hasAttribute('aria-busy'), false);
+  await click(button);
+  assert.deepEqual(log, ['click', 'submit']);
+});
+
+test('button: a disabled MobileButton does nothing when tapped', async () => {
+  const log = [];
+  const view = await mount(h(mobile.MobileButton, { disabled: true, onClick: () => log.push('click') }, 'Show 0'));
+  await click(view.container.querySelector('button'));
+  assert.deepEqual(log, []);
+});
+
+function FilterHarness({ log }) {
+  const [brand, setBrand] = React.useState('nordic');
+  const [status, setStatus] = React.useState(['risk']);
+  const toggle = id => setStatus(current => { const next = current.includes(id) ? current.filter(item => item !== id) : [...current, id]; log.push(['status', next.join(',')]); return next; });
+  return h(React.Fragment, null,
+    h(mobile.MobileOptionList, { label: 'Brand', heading: 'Brand' },
+      ['floatie', 'nordic', 'third'].map((id, index) => h(mobile.MobileOptionRow, { key: id, id: `brand-${id}`, selected: brand === id, count: [1182, 14, 3][index], onClick: () => { log.push(['brand', id]); setBrand(id); } }, id))),
+    h(mobile.MobileOptionList, { label: 'Status', mode: 'multiple' },
+      ['risk', 'late', 'ok'].map(id => h(mobile.MobileOptionRow, { key: id, selected: status.includes(id), onClick: () => toggle(id) }, id))));
+}
+
+test('option list: a single list is one tab stop, arrows move and choose, and the chosen row is the stop', async () => {
+  const log = [];
+  const view = await mount(h(FilterHarness, { log }));
+  const radios = () => [...view.container.querySelectorAll('[role="radio"]')];
+  assert.deepEqual(radios().map(radio => radio.getAttribute('tabindex')), ['-1', '0', '-1'], 'the chosen row is the one tab stop');
+  radios()[1].focus();
+  await key(radios()[1], 'ArrowDown');
+  assert.deepEqual(log, [['brand', 'third']], 'the arrow chooses as it moves');
+  is(document.activeElement, radios()[2], 'focus followed');
+  assert.deepEqual(radios().map(radio => radio.getAttribute('aria-checked')), ['false', 'false', 'true']);
+  assert.deepEqual(radios().map(radio => radio.getAttribute('tabindex')), ['-1', '-1', '0'], 'the tab stop moved with the choice');
+  await key(radios()[2], 'ArrowDown');
+  assert.deepEqual(log.at(-1), ['brand', 'floatie'], 'it wraps');
+  await key(radios()[0], 'ArrowUp');
+  assert.deepEqual(log.at(-1), ['brand', 'third'], 'and wraps the other way');
+  const before = log.length;
+  await key(radios()[2], 'Tab');
+  assert.equal(log.length, before, 'other keys are left alone');
+});
+
+test('option list: a multiple list toggles each row on its own, and its rows keep their tab stops', async () => {
+  const log = [];
+  const view = await mount(h(FilterHarness, { log }));
+  const toggles = () => [...view.container.querySelectorAll('[aria-pressed]')];
+  assert.deepEqual(toggles().map(button => button.getAttribute('aria-pressed')), ['true', 'false', 'false']);
+  assert.ok(toggles().every(button => button.getAttribute('tabindex') === null), 'every toggle is tabbable');
+  await click(toggles()[1]);
+  await click(toggles()[0]);
+  assert.deepEqual(log, [['status', 'risk,late'], ['status', 'late']]);
+  assert.deepEqual(toggles().map(button => button.getAttribute('aria-pressed')), ['false', 'true', 'false']);
+  await key(toggles()[1], 'ArrowDown');
+  assert.equal(log.length, 2, 'arrows only mean something in a radio group');
+});
+
+test('option list: a disabled row is skipped by the arrows and cannot be chosen', async () => {
+  const log = [];
+  const view = await mount(h(mobile.MobileOptionList, { label: 'Brand' },
+    h(mobile.MobileOptionRow, { selected: true, onClick: () => log.push('a') }, 'A'),
+    h(mobile.MobileOptionRow, { disabled: true, onClick: () => log.push('b') }, 'B'),
+    h(mobile.MobileOptionRow, { onClick: () => log.push('c') }, 'C')));
+  const radios = [...view.container.querySelectorAll('[role="radio"]')];
+  await click(radios[1]);
+  assert.deepEqual(log, []);
+  await key(radios[0], 'ArrowDown');
+  assert.deepEqual(log, ['c'], 'B is passed over');
+});
+
+test('tab bar: scrolled down, the compact item keeps its badge in the icon\'s box, apart from the label', async () => {
+  const items = [
+    { id: 'home', label: 'Home', href: '/', icon: icon('home') },
+    { id: 'inbox', label: 'Inbox', href: '/inbox', icon: icon('inbox'), badge: 794, active: true },
+  ];
+  const view = await mount(h(mobile.MobileTabBar, { items, onSearch() {}, onMenu() {} }));
+  assert.equal(view.container.querySelector('.curv-mobile-tabbar-label'), null, 'icons only while the bar is full');
+  let scrollY = 0;
+  const original = Object.getOwnPropertyDescriptor(window, 'scrollY');
+  Object.defineProperty(window, 'scrollY', { configurable: true, get: () => scrollY });
+  try {
+    for (const y of [60, 140, 260]) {
+      scrollY = y;
+      await dispatch(window, new Event('scroll'));
+      await settle(40);
+    }
+  } finally { if (original) Object.defineProperty(window, 'scrollY', original); else delete window.scrollY; }
+  const compact = await waitFor(() => view.container.querySelector('.curv-mobile-tabbar-item[data-compact]'));
+  assert.equal(compact.querySelector('.curv-mobile-tabbar-label').textContent, 'Inbox');
+  const badge = compact.querySelector('.curv-mobile-tabbar-badge');
+  assert.equal(badge.textContent, '99+');
+  assert.equal(badge.parentElement.className, 'curv-mobile-tabbar-icon', 'in the icon\'s box, so it sits on the icon\'s corner');
+  assert.equal(compact.querySelector('.curv-mobile-tabbar-label').querySelector('.curv-mobile-tabbar-badge'), null);
+  assert.ok(compact.querySelector('.curv-mobile-nav-sr').textContent.includes('794'), 'the real count is still spoken');
+});
+
+test('chart: the selected bar\'s label shows, clear of the bars around it, and the peak and latest labels that would touch it give way', async () => {
+  const weeks = [90, 120, 100, 150, 140, 160, 190, 80, 90, 110, 100, 130].map((value, index) => ({ label: `W${index + 1}`, value: value * 1000, display: `$${value}K` }));
+  const view = await mount(h(mobile.MobileChart, { points: weeks, variant: 'bars', scrub: true, label: 'Revenue by week' }));
+  const labels = () => [...view.container.querySelectorAll('.curv-mobile-chart-label')].map(label => label.textContent);
+  assert.deepEqual(labels().sort(), ['$130K', '$190K'], 'resting: the peak and the latest');
+  const input = view.container.querySelector('input[type="range"]');
+  const setValue = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value').set;
+  await act(async () => { setValue.call(input, '5'); input.dispatchEvent(new Event('input', { bubbles: true })); });
+  assert.ok(labels().includes('$160K'), 'the selected bar says its value in the plot');
+  assert.ok(!labels().includes('$190K'), 'the peak is next to it, so it gives way rather than overprint');
+  assert.ok(labels().includes('$130K'), 'the latest is far away and stays');
+  const rects = [...view.container.querySelectorAll('rect')];
+  const texts = [...view.container.querySelectorAll('.curv-mobile-chart-label')];
+  const selected = texts.find(text => text.textContent === '$160K');
+  const baseline = Number(selected.getAttribute('y'));
+  const left = Number(selected.getAttribute('x')) - 5 * 0.58 * 11 / 2;
+  for (const rect of rects.filter(rect => Number(rect.getAttribute('x')) + Number(rect.getAttribute('width')) > left && Number(rect.getAttribute('x')) < left + 5 * 0.58 * 11)) assert.ok(baseline < Number(rect.getAttribute('y')), 'above every bar under it');
+});
+
+test('chart: the selected bar\'s guide starts under its own label, and a lifted label that is not selected has a leader', async () => {
+  // Thirty days of currency: wide labels, so the selected and the latest ones are lifted over taller neighbours.
+  const days = Array.from({ length: 30 }, (_, index) => ({ label: `Oct ${index + 1}`, value: [41200, 38500, 52100, 47800, 45100, 39900, 44300, 49800, 51300, 46200][index % 10], display: `$${[41200, 38500, 52100, 47800, 45100, 39900, 44300, 49800, 51300, 46200][index % 10].toLocaleString('en-US')}` }));
+  days[10] = { label: 'Oct 11', value: 68722, display: '$68,722' };
+  days[28] = { label: 'Oct 29', value: 60000, display: '$60,000' };
+  days[29] = { label: 'Oct 30', value: 30113, display: '$30,113' };
+  const view = await mount(h(mobile.MobileChart, { points: days, variant: 'bars', scrub: true, label: 'Revenue by day' }));
+  const guide = () => view.container.querySelector('svg > line[stroke-opacity="0.3"]:not(.curv-mobile-chart-leader)');
+  const labelOf = text => [...view.container.querySelectorAll('.curv-mobile-chart-label')].find(node => node.textContent === text);
+  const leaders = () => [...view.container.querySelectorAll('.curv-mobile-chart-leader')];
+  assert.equal(guide(), null, 'no guide until a bar is selected');
+  assert.equal(leaders().length, 1, 'the latest label is lifted over the 60,000 day, so it has its leader');
+  const input = view.container.querySelector('input[type="range"]');
+  const setValue = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value').set;
+  // Select the day before the latest: its label is lifted too (it is as wide as any other).
+  await act(async () => { setValue.call(input, '27'); input.dispatchEvent(new Event('input', { bubbles: true })); });
+  const selected = labelOf('$49,800');
+  assert.ok(selected, 'the selected bar is labelled');
+  const baseline = Number(selected.getAttribute('y'));
+  const line = guide();
+  assert.ok(line, 'the guide is drawn');
+  assert.ok(Math.abs(Number(line.getAttribute('y1')) - (baseline + 3)) < 0.01, 'it starts under the label, not at the top of the plot where it would run through the text');
+  assert.ok(Number(line.getAttribute('y1')) > baseline, 'below the text baseline');
+  const selectedX = Number(line.getAttribute('x1'));
+  assert.ok(leaders().every(leader => Math.abs(Number(leader.getAttribute('x1')) - selectedX) > 0.5), 'the selected bar has the guide, not a second leader');
+});

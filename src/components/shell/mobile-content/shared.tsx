@@ -40,3 +40,4 @@ export const FilterIcon = ({ size = 22 }: IconProps) => <svg {...svg(size)}><pat
 export const BoxIcon = ({ size = 22 }: IconProps) => <svg {...svg(size)}><path d="m12 3 8 4.2v9.6L12 21l-8-4.2V7.2L12 3Z" /><path d="m4 7.2 8 4.3 8-4.3M12 11.5V21" /></svg>;
 export const ChevronIcon = ({ size = 16 }: IconProps) => <svg {...svg(size)} strokeWidth={2}><path d="m9 5 7 7-7 7" /></svg>;
 export const DotsIcon = ({ size = 20 }: IconProps) => <svg aria-hidden="true" focusable="false" viewBox="0 0 24 24" width={size} height={size} fill="currentColor"><circle cx="5.5" cy="12" r="1.9" /><circle cx="12" cy="12" r="1.9" /><circle cx="18.5" cy="12" r="1.9" /></svg>;
+export const CheckIcon = ({ size = 20 }: IconProps) => <svg aria-hidden="true" focusable="false" viewBox="0 0 24 24" width={size} height={size} fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m5 12.5 4.5 4.5L19 7.5" /></svg>;

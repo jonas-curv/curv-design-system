@@ -14,8 +14,10 @@ test('the content components are exported from the mobile entry', () => {
   for (const name of [
     'MobileFlatList', 'MobileListSection', 'MobileListRow', 'MobileException', 'MobileListToolbar', 'MobileViewChips',
     'MobileSwipeRow', 'MobileActivityCards', 'MobileHeroPanel', 'MobileHeroAction', 'MobileStageBoard', 'MobileKeyValueList', 'MobileGallery',
-    'MobileStatusPill', 'MobileMoveSheet', 'MobileChartCard',
+    'MobileStatusPill', 'MobileMoveSheet', 'MobileChartCard', 'mobileButtonClassName', 'MobileOptionList',
   ]) assert.equal(typeof mobile[name], 'function', name);
+  // Components that forward a ref are React objects, not plain functions.
+  for (const name of ['MobileButton', 'MobileOptionRow']) assert.equal(typeof mobile[name], 'object', name);
 });
 
 test('every class the content components use is styled in mobile.css', () => {
@@ -403,13 +405,14 @@ test('light-only surfaces carry their own ink and the move sheet follows the the
   const css = read('mobile.css');
   const rules = [...css.matchAll(/(^|\n)([^\n{}@/][^\n{]*) \{([^}]*)\}/g)].map(match => ({ selector: match[2], body: match[3] }));
   const light = rules.filter(({ selector, body }) => /background: var\(--curv-mobile-surface,/.test(body) && /^\.curv-mobile-(flat|toolbar|view-chips|swipe|activity|board|kv|chart-card)/.test(selector) && !/::|:active|:hover|:focus/.test(selector));
-  assert.ok(light.length >= 10);
+  assert.ok(light.length >= 9);   // the chips left this list when they took their own grey fill (see the chip test)
   const bare = light.filter(({ body }) => !/(^|[ ;])color: var\(--curv-mobile-ink[^;]*;/.test(body) && !/(^|[ ;])color: var\(--curv-mobile-(chip)/.test(body)).map(({ selector }) => selector);
   assert.deepEqual(bare, []);
-  const option = rules.find(({ selector }) => selector === '.curv-mobile-board-move-option').body;
+  // The move sheet's rows and the option rows are one rule set, so look the rule up by membership of its selector list.
+  const option = rules.find(({ selector }) => selector.split(', ').includes('.curv-mobile-board-move-option')).body;
   assert.match(option, /(^|[ ;])color: inherit;/);
   assert.doesNotMatch(option, /#1b1b1b/);
-  assert.match(rules.find(({ selector }) => selector === '.curv-mobile-board-move-option .curv-mobile-board-chip-count').body, /color: var\(--muted-foreground, #6b6b6f\)/);
+  assert.match(rules.find(({ selector }) => selector.split(', ').includes('.curv-mobile-board-move-option .curv-mobile-board-chip-count')).body, /color: var\(--muted-foreground, #6b6b6f\)/);
 });
 
 test('the warning pill is the board\'s amber, so "At risk" looks the same in a list and on a card', () => {
@@ -562,4 +565,346 @@ test('a move option that cannot be chosen is dimmed, and the current one keeps f
   assert.match(cssRule('.curv-mobile-board-move-option:disabled')[3], /opacity: 0\.45/);
   assert.match(cssRule('.curv-mobile-board-move-option[aria-current="true"]:disabled')[3], /opacity: 1/);
   assert.match(cssRule('.curv-mobile-board-move-check')[3], /color: var\(--curv-mobile-accent, #1764c0\)/);
+});
+
+// ── Refinement round 1 (0.3.2): chips, charts, hero, headings ───────────────
+
+test('saved-view chips and board stage chips are one chip: the same class, 44px, 15px, grey, dark when chosen', () => {
+  const views = render(h(mobile.MobileViewChips, { label: 'Views', items: [{ id: 'a', label: 'All', count: 3, active: true }, { id: 'b', label: 'Low' }], onSelect() {} }));
+  const links = render(h(mobile.MobileViewChips, { label: 'Views', items: [{ id: 'a', label: 'All', href: '/a', active: true }] }));
+  const board = render(h(mobile.MobileStageBoard, { label: 'Board', columns, activeColumnId: 'todo' }));
+  assert.equal(count(views, /class="curv-mobile-chip curv-mobile-view-chip"/g), 2);
+  assert.equal(count(links, /class="curv-mobile-chip curv-mobile-view-chip"/g), 1);
+  assert.equal(count(board, /class="curv-mobile-chip curv-mobile-board-chip"/g), 3);
+  const chip = cssRule('.curv-mobile-chip')[3];
+  assert.match(chip, /height: 44px/);
+  assert.match(chip, /font-size: 15px/);
+  assert.match(chip, /background: var\(--curv-mobile-chip-fill, #e8e8ec\)/);
+  assert.match(chip, /border-radius: 22px/);
+  const chosen = read('mobile.css').match(/\n\.curv-mobile-chip:is\(\[aria-pressed="true"\], \[aria-current\], :has\(> \[data-active="true"\]\)\) \{([^}]*)\}/);
+  assert.ok(chosen, 'a rule for the chosen chip');
+  assert.match(chosen[1], /background: var\(--curv-mobile-ink, #1b1b1b\)/);
+  assert.match(chosen[1], /color: #fff/);
+  // Neither component styles its own chip any more: no second size, font or fill to drift.
+  const css = read('mobile.css');
+  assert.doesNotMatch(css, /\.curv-mobile-(view|board)-chip \{/);
+  assert.doesNotMatch(css, /\.curv-mobile-(view|board)-chip[^{,]*\{[^}]*(height: (36|40)px|font-size: 14px)/);
+  // The 44px is the element itself, not a pseudo-element's reach around a smaller chip.
+  assert.doesNotMatch(css, /\.curv-mobile-(view|board)?-?chip::before/);
+  // Text on the fill stays readable: ink on grey and the count on grey are both dark enough to clear 4.5:1.
+  assert.match(chip, /color: var\(--curv-mobile-chip, var\(--curv-mobile-ink-2, #3a3a3d\)\)/);
+  assert.match(cssRule('.curv-mobile-chip :is(.curv-mobile-view-chip-count, .curv-mobile-board-chip-count)')[3], /color: var\(--curv-mobile-chip-count, var\(--curv-mobile-chip, #5f5f64\)\)/);
+  for (const token of ['--curv-mobile-chip ', '--curv-mobile-chip-fill', '--curv-mobile-chip-count']) assert.ok(css.slice(0, css.indexOf('/* ── Shared')).includes(token), `${token.trim()} is in the token list`);
+});
+
+// Geometry of a chart's markup, read back from the SVG: what is drawn where, in viewBox units.
+const W = 260;
+const chartLabels = html => [...html.matchAll(/<text class="curv-mobile-chart-label" x="([\d.]+)" y="([\d.]+)" text-anchor="(\w+)"[^>]*>([^<]*)<\/text>/g)]
+  .map(([, x, y, anchor, text]) => {
+    const width = text.length * 11 * 0.58;
+    const at = Number(x);
+    const left = anchor === 'start' ? at : anchor === 'end' ? at - width : at - width / 2;
+    return { text, baseline: Number(y), left, right: left + width };
+  });
+const chartBars = html => [...html.matchAll(/<rect x="([\d.]+)" y="([\d.]+)" width="([\d.]+)"/g)].map(([, x, y, width]) => ({ left: Number(x), right: Number(x) + Number(width), top: Number(y) }));
+const barWeeks = (values, display) => values.map((value, index) => ({ label: `W${index + 1}`, value: value * 1000, display: display?.[index] ?? `$${value}K` }));
+
+test('a bar label never sits across a neighbouring bar and never leaves the plot', () => {
+  const { MobileChart } = mobile;
+  // The latest bar is short and its label is wide: it reaches over the tall bar before it.
+  const values = [90, 120, 100, 190, 150, 160, 190, 80, 90, 110, 190, 60];
+  const html = render(h(MobileChart, { points: barWeeks(values, values.map((v, i) => (i === 11 ? '$174.5K' : `$${v}K`))), variant: 'bars', label: 'Revenue by week' }));
+  const labels = chartLabels(html);
+  const bars = chartBars(html);
+  assert.ok(labels.some(label => label.text === '$174.5K'), 'the latest value is labelled');
+  for (const label of labels) {
+    assert.ok(label.left >= 0 && label.right <= W, `${label.text} stays inside the plot (${label.left.toFixed(1)}..${label.right.toFixed(1)})`);
+    assert.ok(label.baseline >= 11, `${label.text} stays below the top edge`);
+    for (const bar of bars.filter(bar => bar.right > label.left - 1 && bar.left < label.right + 1)) assert.ok(label.baseline < bar.top, `${label.text} is above every bar under it`);
+  }
+});
+
+test('a label that fits its own band keeps the place it always had, just above its bar', () => {
+  const { MobileChart } = mobile;
+  const html = render(h(MobileChart, { points: [{ label: 'Mon', value: 12 }, { label: 'Tue', value: 20 }, { label: 'Wed', value: 7 }], variant: 'bars', label: 'Orders' }));
+  const labels = chartLabels(html).sort((a, b) => a.left - b.left);
+  const bars = chartBars(html).sort((a, b) => a.left - b.left);
+  assert.equal(labels.length, 3);
+  labels.forEach((label, index) => assert.ok(Math.abs(label.baseline - (bars[index].top - 6)) < 0.01, `${label.text} sits 6 above its bar`));
+});
+
+test('the latest value of a line sits beside its end when there is room, and above it, clear of the line, when there is not', () => {
+  const { MobileChart } = mobile;
+  const falling = [2100, 2400, 3100, 2900, 2700, 1200].map((value, index) => ({ label: `Oct ${index + 1}`, value, ...(index === 5 ? { partial: true, display: '24 so far' } : {}) }));
+  const month = render(h(MobileChart, { points: falling, variant: 'line', tone: 'dark', futureSlots: 25, endLabel: 'Oct 31', label: 'Orders' }));
+  const dot = month.match(/curv-mobile-chart-dot-partial" cx="([\d.]+)" cy="([\d.]+)"/);
+  const [label] = chartLabels(month);
+  assert.equal(label.text, '24 so far');
+  assert.match(month, /text-anchor="start"[^>]*>24 so far</);
+  assert.ok(label.left > Number(dot[1]), 'beside the end point, to its right, where no segment of the series reaches');
+  assert.ok(label.right <= W - 6, 'inside the plot');
+  // A line that ends at the right edge has no room beside it: the label goes above the highest part of the line under it.
+  const week = render(h(MobileChart, { points: falling.map((point, index) => (index === 5 ? { ...point, display: '24 so far' } : point)), variant: 'line', label: 'Orders' }));
+  const [above] = chartLabels(week);
+  const segment = week.match(/d="M ([\d.]+) ([\d.]+) L ([\d.]+) ([\d.]+)" fill="none" stroke="currentColor" stroke-width="2.25" stroke-dasharray/);
+  assert.ok(segment, 'the dashed partial segment is drawn');
+  const [x0, y0, x1, y1] = segment.slice(1).map(Number);
+  for (const x of [Math.max(x0, above.left), Math.min(x1, above.right)]) {
+    if (x < x0 || x > x1) continue;
+    const lineY = y0 + ((y1 - y0) * (x - x0)) / (x1 - x0);
+    assert.ok(above.baseline < lineY - 2, `the dashed segment passes below the label at x=${x.toFixed(1)}`);
+  }
+  assert.ok(above.right <= W && above.left >= 0);
+});
+
+test('hero KPI chips shrink and wrap before the row scrolls, and the hero paints a pixel under the bar', () => {
+  const kpi = cssRule('.curv-mobile-hero-kpi')[3];
+  assert.match(kpi, /flex: 0 1 auto/);
+  // `max(min-content, ...)` is not valid CSS (intrinsic keywords are not allowed in max()), so a chip's floor is its body's min-width.
+  assert.doesNotMatch(read('mobile.css'), /min-width: max\([^)]*min-content/);
+  assert.doesNotMatch(kpi, /min-width|flex: none/);
+  assert.match(cssRule('.curv-mobile-hero-kpi-body')[3], /min-width: 80px/);
+  assert.doesNotMatch(cssRule('.curv-mobile-hero-kpi-label')[3], /white-space: nowrap/);
+  assert.doesNotMatch(cssRule('.curv-mobile-hero-kpi-delta')[3], /white-space: nowrap/);
+  assert.match(cssRule('.curv-mobile-hero-kpi-value')[3], /white-space: nowrap/, 'a figure is never split');
+  assert.match(cssRule('.curv-mobile-hero-kpis')[3], /overflow-x: auto/);
+  assert.match(cssRule('.curv-mobile-hero-kpis')[3], /scroll-snap-type: x proximity/);
+  // The seam: one pixel of the panel's own colour above its top edge, with no margin that could move the sheet.
+  const hero = cssRule('.curv-mobile-hero')[3];
+  assert.match(hero, /box-shadow: 0 -1px 0 0 var\(--curv-mobile-hero-bg, var\(--curv-mobile-topbar, #1b1b1b\)\)/);
+  assert.doesNotMatch(hero, /margin-top/);
+});
+
+test('a section heading keeps its label whole: a long trailing note shrinks first, to a floor, cut with an ellipsis', () => {
+  const title = cssRule('.curv-mobile-kv-head h2')[3];
+  // The label can shrink only after the note has, because the note's shrink factor dwarfs its own; it then wraps at spaces.
+  assert.match(title, /flex: 0 1 auto/);
+  assert.doesNotMatch(title, /nowrap|overflow-wrap: (anywhere|break-word)|word-break/);
+  const trailing = cssRule('.curv-mobile-kv-trailing')[3];
+  const shrink = Number(trailing.match(/flex: 0 (\d+) auto/)[1]);
+  assert.ok(shrink >= 50, `the note's shrink factor (${shrink}) outweighs the label's 1`);
+  for (const pinned of [/min-width: 5em/, /overflow: hidden/, /text-overflow: ellipsis/, /white-space: nowrap/]) assert.match(trailing, pinned);
+  assert.doesNotMatch(trailing, /min-width: 0/, 'a floor, so a long label can never squeeze the note out');
+  for (const selector of ['.curv-mobile-flat-section-head h2', '.curv-mobile-chart-card-head h2']) assert.ok(cssRule(selector)[2].includes('.curv-mobile-kv-head h2'), `${selector} shares it`);
+});
+
+test('a sheet title starts at the body edge, so title, headings and rows share one x', () => {
+  assert.match(cssRule('.curv-mobile-sheet-heading')[3], /padding: 8px 12px 8px max\(16px, env\(safe-area-inset-left\)\)/);
+  assert.match(cssRule('.curv-mobile-sheet-body')[3], /padding: 4px max\(16px, env\(safe-area-inset-right\)\) 24px max\(16px, env\(safe-area-inset-left\)\)/);
+  assert.match(cssRule('.curv-mobile-option')[3], /padding: 0;/);
+  assert.match(cssRule('.curv-mobile-board-move-option')[3], /padding: 0;/);
+});
+
+// ── MobileButton ────────────────────────────────────────────────────────────
+
+test('MobileButton is a real button that never submits by accident, with its variant and width as classes', () => {
+  const html = render(h(mobile.MobileButton, null, 'Save'));
+  assert.match(html, /^<button type="button" class="curv-mobile-button curv-mobile-button-primary"><span class="curv-mobile-button-label">Save<\/span><\/button><span class="curv-mobile-content-vh" role="status"><\/span>$/);
+  assert.match(render(h(mobile.MobileButton, { type: 'submit', variant: 'secondary', block: true, className: 'extra', id: 'go', 'aria-label': 'Go' }, 'Go')),
+    /<button id="go" aria-label="Go" type="submit" class="curv-mobile-button curv-mobile-button-secondary curv-mobile-button-block extra">/);
+  assert.match(render(h(mobile.MobileButton, { variant: 'plain' }, 'Reset')), /curv-mobile-button-plain/);
+  assert.match(render(h(mobile.MobileButton, { disabled: true }, 'Save')), /<button[^>]*disabled=""/);
+  const busy = render(h(mobile.MobileButton, { pending: true }, 'Save'));
+  assert.match(busy, /aria-busy="true"/);
+  assert.match(busy, /curv-mobile-button-label">Save</, 'the label stays in the markup, so the width does not change');
+  assert.doesNotMatch(render(h(mobile.MobileButton, null, 'Save')), /aria-busy/);
+  // Screen readers are told: an empty live region is always there, and pending fills it (in the app's words if it has them).
+  assert.match(busy, /<span class="curv-mobile-content-vh" role="status">Working…<\/span>$/);
+  assert.match(render(h(mobile.MobileButton, { pending: true, pendingLabel: 'Sender…' }, 'Send')), /role="status">Sender…<\/span>$/);
+  assert.match(render(h(mobile.MobileButton, { pendingLabel: 'Sender…' }, 'Send')), /role="status"><\/span>$/, 'silent until it is pending');
+});
+
+test('mobileButtonClassName styles a link as the same button, and merges the app\'s own classes', () => {
+  assert.equal(mobile.mobileButtonClassName(), 'curv-mobile-button curv-mobile-button-primary');
+  assert.equal(mobile.mobileButtonClassName({ variant: 'secondary', block: true, className: 'mt-4' }), 'curv-mobile-button curv-mobile-button-secondary curv-mobile-button-block mt-4');
+  const link = render(h('a', { href: '/sku-requests', className: mobile.mobileButtonClassName({ variant: 'plain' }) }, 'All requests'));
+  assert.equal(link, '<a href="/sku-requests" class="curv-mobile-button curv-mobile-button-plain">All requests</a>');
+});
+
+test('the phone button is 50px, 17px semibold with 14px corners, the tab bar\'s dark fill for primary, and busy keeps its width', () => {
+  const base = cssRule('.curv-mobile-button')[3];
+  for (const pinned of [/min-height: 50px/, /min-width: 44px/, /font-size: 17px/, /font-weight: 600/, /border-radius: 14px/]) assert.match(base, pinned);
+  assert.match(cssRule('.curv-mobile-button-primary')[3], /background: #111113; color: #ffffff/);
+  assert.match(read('mobile.css'), /\.curv-mobile-tabbar-primary \{[^}]*background: #111113; color: #ffffff/, 'the same fill as the tab bar\'s action');
+  assert.match(cssRule('.curv-mobile-button-secondary')[3], /background: var\(--curv-mobile-fill, #efeff1\)/);
+  assert.match(cssRule('.curv-mobile-button-plain')[3], /background: transparent/);
+  assert.match(cssRule('.curv-mobile-button-block')[3], /width: 100%/);
+  assert.match(cssRule('.curv-mobile-button:disabled')[3], /opacity: 0\.4/);
+  // Busy: the label goes transparent, it is not removed, and the spinner is drawn over it.
+  assert.match(cssRule('.curv-mobile-button[aria-busy="true"] > .curv-mobile-button-label')[3], /opacity: 0/);
+  assert.match(cssRule('.curv-mobile-button[aria-busy="true"]::after')[3], /position: absolute/);
+  // The spinner only turns for people who have not asked for less motion.
+  const css = read('mobile.css');
+  assert.match(css, /@media \(prefers-reduced-motion: no-preference\) \{[^@]*\.curv-mobile-button\[aria-busy="true"\]::after \{ animation: curv-mobile-spin/);
+  assert.doesNotMatch(css.replace(/@media \(prefers-reduced-motion: no-preference\) \{[\s\S]*?\n\}/g, ''), /animation: curv-mobile-spin/);
+});
+
+// ── MobileOptionList ────────────────────────────────────────────────────────
+
+test('a single option list is a radio group: radios say which is chosen, a count is read after the label, a check shows only on the chosen row', () => {
+  const html = render(h(mobile.MobileOptionList, { label: 'Brand', heading: 'Brand' },
+    h(mobile.MobileOptionRow, { selected: true, count: 1182 }, 'Floatie Kings'),
+    h(mobile.MobileOptionRow, { count: '14+' }, 'Nordic Hub'),
+    h(mobile.MobileOptionRow, { disabled: true }, 'Retired')));
+  assert.match(html, /<h3 class="curv-mobile-option-heading">Brand<\/h3>/);
+  assert.match(html, /<div class="curv-mobile-option-list" role="radiogroup" aria-label="Brand">/);
+  assert.equal(count(html, /role="radio"/g), 3);
+  assert.equal(count(html, /aria-checked="true"/g), 1);
+  assert.equal(count(html, /aria-checked="false"/g), 2);
+  assert.doesNotMatch(html, /aria-pressed/);
+  assert.match(html, /<button[^>]*role="radio" aria-checked="true"[^>]*type="button" class="curv-mobile-option" data-selected="true">/);
+  assert.match(html, /Floatie Kings<\/span><span class="curv-mobile-content-vh">, <\/span><span class="curv-mobile-option-count">1,182</);
+  assert.match(html, /curv-mobile-option-count">14\+</);
+  assert.equal(count(html, /curv-mobile-option-count/g), 2, 'no count, none drawn');
+  assert.equal(count(html, /<svg/g), 1, 'one check, on the chosen row');
+  assert.equal(count(html, /curv-mobile-option-check" aria-hidden="true"/g), 3, 'the slot is on every row, so counts line up');
+  assert.match(html, /<button[^>]*disabled=""[^>]*>[^]*Retired/);
+});
+
+test('a multiple option list is a group of toggle buttons: aria-pressed says which are chosen', () => {
+  const html = render(h(mobile.MobileOptionList, { label: 'Status', mode: 'multiple' },
+    h(mobile.MobileOptionRow, { selected: true }, 'At risk'),
+    h(mobile.MobileOptionRow, { selected: true }, 'Late'),
+    h(mobile.MobileOptionRow, null, 'On track')));
+  assert.match(html, /role="group" aria-label="Status"/);
+  assert.doesNotMatch(html, /radiogroup|role="radio"|aria-checked/);
+  assert.equal(count(html, /aria-pressed="true"/g), 2);
+  assert.equal(count(html, /aria-pressed="false"/g), 1);
+  assert.equal(count(html, /<svg/g), 2);
+  assert.doesNotMatch(html, /curv-mobile-option-heading/, 'the heading is optional');
+});
+
+test('option rows are 56px with a 17px label and a 15px tabular count, and share every rule with the move sheet\'s rows', () => {
+  const rule = cssRule('.curv-mobile-option');
+  assert.ok(rule[2].split(',').map(part => part.trim()).includes('.curv-mobile-board-move-option'), 'one rule set, not a copy');
+  for (const pinned of [/min-height: 56px/, /font-size: 17px/, /width: 100%/, /border-bottom: 0\.5px solid/, /color: inherit/]) assert.match(rule[3], pinned);
+  const figure = cssRule('.curv-mobile-option-count');
+  assert.ok(figure[2].includes('.curv-mobile-board-move-option .curv-mobile-board-chip-count'));
+  assert.match(figure[3], /font-size: 15px/);
+  assert.match(figure[3], /font-variant-numeric: tabular-nums/);
+  assert.match(cssRule('.curv-mobile-option-check')[3], /color: var\(--curv-mobile-accent, #1764c0\)/);
+  assert.match(cssRule('.curv-mobile-option:disabled')[3], /opacity: 0\.45/);
+  assert.match(cssRule('.curv-mobile-option:focus-visible')[3], /outline: 2px solid var\(--curv-mobile-accent, #1764c0\)/);
+  assert.match(cssRule('.curv-mobile-option-heading')[3], /font-size: 14px/);
+  assert.match(cssRule('.curv-mobile-option-list > .curv-mobile-option:last-child')[3], /border-bottom: 0/);
+});
+
+// ── Gallery ─────────────────────────────────────────────────────────────────
+
+test('the first gallery photo loads at once unless the app says it sits in a branch that desktop hides', () => {
+  const images = [{ src: '/a.jpg', alt: 'A' }, { src: '/b.jpg', alt: 'B' }];
+  const eager = render(h(mobile.MobileGallery, { images, label: 'Photos' }));
+  assert.match(eager, /<img src="\/a.jpg" alt="A" loading="eager"/);
+  const hidden = render(h(mobile.MobileGallery, { images, label: 'Photos', eagerFirst: false }));
+  assert.equal(count(hidden, /loading="eager"/g), 0);
+  assert.equal(count(hidden, /loading="lazy"/g), 4, 'both photos and both thumbnails are lazy');
+  assert.match(render(h(mobile.MobileGallery, { images, label: 'Photos', eagerFirst: true })), /<img src="\/a.jpg" alt="A" loading="eager"/);
+});
+
+// ── Hero KPI: informational chips ───────────────────────────────────────────
+
+test('a hero KPI with selectable false is plain text: no control, never boxed, whatever the panel does', () => {
+  const four = [
+    { id: 'orders', label: 'Orders', value: '24' },
+    { id: 'rev', label: 'Revenue', value: '$48K' },
+    { id: 'perday', label: 'Per day', value: '$1,606', selectable: false },
+    { id: 'pace', label: 'On pace for', value: '$50K', selectable: false },
+  ];
+  const html = render(h(mobile.MobileHeroPanel, { kpis: four, activeKpiId: 'orders', onKpiChange() {}, chart: null }));
+  assert.equal(count(html, /<button type="button" class="curv-mobile-hero-kpi"/g), 2);
+  assert.equal(count(html, /<div class="curv-mobile-hero-kpi">/g), 2);
+  assert.equal(count(html, /aria-pressed="true"/g), 1);
+  // The active id points at an informational chip: nothing is boxed rather than a chip that does nothing.
+  const none = render(h(mobile.MobileHeroPanel, { kpis: four, activeKpiId: 'perday', onKpiChange() {}, chart: null }));
+  assert.equal(count(none, /aria-pressed="true"/g), 0);
+  assert.equal(count(none, /data-active="true"/g), 0);
+  // A link is ignored too: it stays text.
+  const linked = render(h(mobile.MobileHeroPanel, { kpis: four.map(kpi => ({ ...kpi, href: `/?kpi=${kpi.id}` })), activeKpiId: 'orders', chart: null }));
+  assert.equal(count(linked, /<a /g), 2);
+  assert.equal(count(linked, /<div class="curv-mobile-hero-kpi">/g), 2);
+  // Omitting `selectable` is the old behaviour.
+  assert.equal(count(render(h(mobile.MobileHeroPanel, { kpis, activeKpiId: 'orders', onKpiChange() {}, chart: null })), /<button/g), kpis.length);
+});
+
+test('the new public API is in the type declarations', () => {
+  const declarations = read('dist/mobile.d.ts') + readdirSync(new URL('../dist', import.meta.url)).filter(file => file.endsWith('.d.ts')).map(file => read(`dist/${file}`)).join('\n');
+  for (const name of ['MobileButton', 'mobileButtonClassName', 'MobileButtonProps', 'MobileButtonStyle', 'MobileButtonVariant', 'MobileOptionList', 'MobileOptionRow', 'MobileOptionListProps', 'MobileOptionRowProps', 'eagerFirst', 'selectable']) assert.ok(declarations.includes(name), name);
+});
+
+// ── Audit fixes (0.3.2) ─────────────────────────────────────────────────────
+
+const chartLeaders = html => [...html.matchAll(/<line class="curv-mobile-chart-leader" x1="([\d.]+)" x2="([\d.]+)" y1="([\d.]+)" y2="([\d.]+)"/g)]
+  .map(([, x1, x2, y1, y2]) => ({ x: Number(x1), same: x1 === x2, y1: Number(y1), y2: Number(y2) }));
+
+test('a bar label lifted above a taller neighbour is tied to its own bar by a leader; one that sits on its bar has none', () => {
+  const { MobileChart } = mobile;
+  // 30 days of currency: the latest day is short and its "$30,113" is wider than a band, so it floats over the tall day before it.
+  const days = Array.from({ length: 30 }, (_, index) => ({ label: `Oct ${index + 1}`, value: [41200, 38500, 52100, 47800, 45100, 39900, 44300, 49800, 51300, 46200][index % 10] }));
+  days[10] = { label: 'Oct 11', value: 68722, display: '$68,722' };
+  days[28] = { label: 'Oct 29', value: 60000, display: '$60,000' };
+  days[29] = { label: 'Oct 30', value: 30113, display: '$30,113' };
+  const html = render(h(MobileChart, { points: days, variant: 'bars', label: 'Revenue by day', format: value => `$${value.toLocaleString('en-US')}` }));
+  const bars = chartBars(html).sort((a, b) => a.left - b.left);
+  const lastBar = bars[29];
+  const latest = chartLabels(html).find(label => label.text === '$30,113');
+  assert.ok(latest.baseline < Math.min(...bars.filter(bar => bar.right > latest.left - 1 && bar.left < latest.right + 1).map(bar => bar.top)), 'it floats above the bars it overlaps');
+  assert.ok(latest.baseline < lastBar.top - 6.5, 'so it is no longer sitting on its own bar');
+  const leaders = chartLeaders(html);
+  const leader = leaders.find(item => Math.abs(item.x - (lastBar.left + lastBar.right) / 2) < 0.01);
+  assert.ok(leader, 'a leader at the latest bar\'s centre');
+  assert.ok(leader.same, 'it is vertical');
+  assert.ok(Math.abs(leader.y1 - (latest.baseline + 3)) < 0.01, 'it starts just under the label');
+  assert.ok(Math.abs(leader.y2 - (lastBar.top - 2)) < 0.01, 'and ends just above its own bar');
+  // The peak's label sits on the peak, so it needs none; nor does any label that is still on its own bar.
+  const peak = chartLabels(html).find(label => label.text === '$68,722');
+  const peakBar = bars[10];
+  assert.ok(Math.abs(peak.baseline - (peakBar.top - 6)) < 0.01);
+  assert.equal(leaders.length, 1);
+  // Labels that fit their bands, or that sit on their own bars, draw no leader at all.
+  assert.equal(chartLeaders(render(h(MobileChart, { points: [{ label: 'Mon', value: 12 }, { label: 'Tue', value: 20 }, { label: 'Wed', value: 7 }], variant: 'bars', label: 'Orders' }))).length, 0);
+});
+
+test('the latest line value steps clear of the comparison line and its label', () => {
+  const { MobileChart } = mobile;
+  const series = [2100, 2400, 3100, 2900, 2700, 2500].map((value, index) => ({ label: `Oct ${index + 1}`, value, ...(index === 5 ? { display: '24 so far', partial: true } : {}) }));
+  const lineYOf = html => Number(html.match(/<line class="curv-mobile-chart-ref" x1="[\d.]+" x2="[\d.]+" y1="([\d.]+)"/)[1]);
+  // The comparison sits right at the end value: beside the end point it would be struck through.
+  const onTheLine = render(h(MobileChart, { points: series, variant: 'line', tone: 'dark', futureSlots: 25, endLabel: 'Oct 31', referenceLine: { value: 2520, label: 'Sep avg' }, label: 'Orders' }));
+  const lineY = lineYOf(onTheLine);
+  const [label] = chartLabels(onTheLine);
+  const dotX = Number(onTheLine.match(/curv-mobile-chart-dot-partial" cx="([\d.]+)"/)[1]);
+  assert.ok(label.left <= dotX, 'not beside the end point');
+  assert.ok(label.baseline + 3 < lineY - 1.5 || label.baseline - 9 > lineY + 1.5, `the text (${label.baseline - 9}..${label.baseline + 3}) does not sit on the line at ${lineY}`);
+  assert.ok(label.left >= 0 && label.right <= W && label.baseline >= 11);
+  const refText = onTheLine.match(/<text class="curv-mobile-chart-ref-label" x="([\d.]+)" y="([\d.]+)" text-anchor="end"[^>]*>([^<]*)</);
+  const refRight = Number(refText[1]);
+  const refLeft = refRight - refText[3].length * 10 * 0.58;
+  const refBaseline = Number(refText[2]);
+  if (label.left < refRight && label.right > refLeft) assert.ok(label.baseline + 3 < refBaseline - 10 || label.baseline - 9 > refBaseline + 2, 'and clear of the comparison label too');
+  // With the comparison line far from the end value nothing changes: still beside the end point.
+  const far = render(h(MobileChart, { points: series, variant: 'line', tone: 'dark', futureSlots: 25, endLabel: 'Oct 31', referenceLine: { value: 1500, label: 'Sep avg' }, label: 'Orders' }));
+  assert.match(far, /text-anchor="start"[^>]*>24 so far</);
+  // No future slots: the end value goes above, and the comparison line (here just above the end) is stepped over.
+  const week = render(h(MobileChart, { points: series, variant: 'line', referenceLine: { value: 2650, label: 'Sep avg' }, label: 'Orders' }));
+  const weekLineY = lineYOf(week);
+  const [above] = chartLabels(week);
+  assert.ok(above.baseline + 3 < weekLineY - 1.5 || above.baseline - 9 > weekLineY + 1.5, `above: text ${above.baseline - 9}..${above.baseline + 3} against the line at ${weekLineY}`);
+});
+
+test('a single option list has one tab stop worked out in the markup; an app\'s own tabIndex is kept, and a multiple list has none', () => {
+  const row = (props, text) => h(mobile.MobileOptionRow, props, text);
+  const stops = html => [...html.matchAll(/<button([^>]*)>/g)].map(([, attributes]) => (attributes.match(/tabindex="(-?\d+)"/) || [])[1] ?? null);
+  const chosen = render(h(mobile.MobileOptionList, { label: 'Brand' }, row({}, 'A'), row({ selected: true }, 'B'), row({}, 'C')));
+  assert.deepEqual(stops(chosen), ['-1', '0', '-1'], 'the chosen row');
+  const none = render(h(mobile.MobileOptionList, { label: 'Brand' }, row({ disabled: true }, 'A'), row({}, 'B'), row({}, 'C')));
+  assert.deepEqual(stops(none), ['-1', '0', '-1'], 'the first enabled row when none is chosen; a disabled row is never the stop');
+  const own = render(h(mobile.MobileOptionList, { label: 'Brand' }, row({ tabIndex: 3 }, 'A'), row({ selected: true }, 'B')));
+  assert.deepEqual(stops(own), ['3', '0'], 'an app-passed tabIndex is not overwritten');
+  const multiple = render(h(mobile.MobileOptionList, { label: 'Status', mode: 'multiple' }, row({ selected: true }, 'A'), row({}, 'B')));
+  assert.deepEqual(stops(multiple), [null, null]);
+});
+
+test('the option mode type is exported with the rest of the new API', () => {
+  const declarations = readdirSync(new URL('../dist', import.meta.url)).filter(file => file.endsWith('.d.ts')).map(file => read(`dist/${file}`)).join('\n');
+  for (const name of ['MobileOptionMode', 'pendingLabel']) assert.ok(declarations.includes(name), name);
 });

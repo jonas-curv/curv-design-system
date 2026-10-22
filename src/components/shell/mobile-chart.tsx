@@ -124,6 +124,40 @@ export function MobileChart({
     if (centre + width / 2 > W) return { anchor: "end", at: W };
     return { anchor: "middle", at: centre };
   };
+  const barTop = (index: number) => Math.min(y(points[index].value as number), zeroY);
+
+  // Bar labels. A label wider than its band reaches over the neighbouring bars, so it is lifted above the tallest bar
+  // under it (never drawn across a bar), and the selected bar's label always shows. A lifted label gets a thin leader down
+  // to its own bar, so it is never read as the value of the tall bar beneath it. When two labels would touch, the
+  // selected one wins, then the latest, then the peak.
+  type BarLabel = { index: number; text: string; anchor: "start" | "middle" | "end"; at: number; baseline: number; top: number; lifted: boolean };
+  const barLabels: BarLabel[] = [];
+  if (bars) {
+    const order: number[] = [];
+    const want = (index: number) => { if (index >= 0 && points[index].value !== null && !order.includes(index)) order.push(index); };
+    if (active !== null) want(active);
+    want(lastKnown);
+    if (peak >= 0 && labelled(peak)) want(peak);
+    points.forEach((_, index) => { if (labelled(index)) want(index); });
+    const taken: [number, number][] = [];
+    for (const index of order) {
+      const text = show(points[index], format);
+      const width = textWidth(text);
+      const { anchor, at } = anchorAt(index, width);
+      const left = anchor === "start" ? at : anchor === "end" ? at - width : at - width / 2;
+      const right = left + width;
+      if (taken.some(([from, to]) => left < to + 3 && right > from - 3)) continue;
+      taken.push([left, right]);
+      let ceiling = barTop(index);
+      points.forEach((point, other) => {
+        if (point.value === null) return;
+        if (x(other) + barW / 2 > left - 1 && x(other) - barW / 2 < right + 1) ceiling = Math.min(ceiling, barTop(other));
+      });
+      const baseline = Math.max(FONT, ceiling - 6);
+      // A label that had to rise above a taller neighbour no longer sits on its own bar, so it is tied to it by a leader.
+      barLabels.push({ index, text, anchor, at, baseline, top: barTop(index), lifted: baseline < barTop(index) - 6.5 });
+    }
+  }
 
   const path = (series: (number | null)[]) => {
     let open = false;
@@ -148,8 +182,68 @@ export function MobileChart({
   const plotted = bars ? PAD_X + band * points.length : x(points.length - 1) + PAD_X;
   const scrubWidth = future > 0 ? `${Math.min(100, (plotted / W) * 100).toFixed(2)}%` : undefined;
   const readout = shown ?? points[lastKnown];
+  // The selected bar's guide starts under its own label (it is always drawn), so the line never runs through the text.
+  const activeLabel = bars && active !== null ? barLabels.find(item => item.index === active) : undefined;
   const lineY = referenceLine ? y(referenceLine.value) : 0;
   const endText = endLabel ?? (future > 0 ? undefined : points.length > 1 ? points[points.length - 1].label : undefined);
+
+  // The line's latest value. With room to the right of the end point (future slots leave it empty) it sits beside the point,
+  // where no segment of the series can reach. Otherwise it sits above the point, right-aligned and clamped inside the plot; if
+  // the line falls into its end (the dashed segment of a period still in progress usually does), the label rises above the
+  // highest part of the line under it. Either way no part of the series crosses the text, and neither does the comparison
+  // line or its label: beside is refused when the end point is on that line, and above steps over it.
+  let endValue: { text: string; anchor: "start" | "end"; at: number; baseline: number } | null = null;
+  if (!bars && lastKnown >= 0) {
+    const text = show(points[lastKnown], format);
+    const width = textWidth(text);
+    const endX = x(lastKnown);
+    const endY = y(points[lastKnown].value as number);
+    const besideX = endX + 9;
+    const beside = { text, anchor: "start" as const, at: besideX, baseline: endY + FONT * 0.35 };
+    // The comparison line runs the whole plot; its label (10px) sits above it at its right end, or its left end without future slots.
+    const refWidth = referenceLine ? textWidth(lineText ?? "") * (10 / FONT) : 0;
+    const refBaseline = lineY - 5 < 10 ? lineY + 13 : lineY - 5;
+    const refFrom = future > 0 ? W - PAD_X - refWidth : PAD_X;
+    const refTo = future > 0 ? W - PAD_X : PAD_X + refWidth;
+    const onRefLine = referenceLine !== undefined && Math.abs(endY - lineY) < FONT / 2 + 2;
+    const onRefLabel = referenceLine !== undefined
+      && besideX < refTo && besideX + width > refFrom
+      && beside.baseline - FONT < refBaseline + 2 && beside.baseline + 3 > refBaseline - 10;
+    if (besideX + width <= W - PAD_X && !onRefLine && !onRefLabel) {
+      endValue = beside;
+    } else {
+      const fits = endX + 2 - width >= 0;
+      const right = fits ? Math.min(W, endX + 2) : width;
+      const left = right - width;
+      let ceiling = endY;
+      for (let index = 0; index < lastKnown; index += 1) {
+        const from = points[index].value;
+        const to = points[index + 1].value;
+        if (from === null || to === null) continue;
+        const x0 = x(index);
+        const x1 = x(index + 1);
+        const lo = Math.max(x0, left - 2);
+        const hi = Math.min(x1, right + 2);
+        if (lo > hi || x1 === x0) continue;
+        const at = (px: number) => y(from) + ((y(to) - y(from)) * (px - x0)) / (x1 - x0);
+        ceiling = Math.min(ceiling, at(lo), at(hi));
+      }
+      // What else is in the way, as bands of y: the comparison line, and its label where the text would reach it.
+      const obstacles: [number, number][] = [];
+      if (referenceLine) {
+        obstacles.push([lineY - 1.5, lineY + 1.5]);
+        if (left < refTo && right > refFrom) obstacles.push([refBaseline - 10, refBaseline + 2]);
+      }
+      // The text spans about [baseline - 9, baseline + 3]. A band it touches moves it to just above that band.
+      let baseline = Math.min(endY - 9, ceiling - 7);
+      for (let pass = 0; pass < obstacles.length; pass += 1) {
+        const hit = obstacles.find(([from, to]) => baseline + 3 > from && baseline - 9 < to);
+        if (!hit) break;
+        baseline = hit[0] - 3;
+      }
+      endValue = { text, anchor: fits ? "end" : "start", at: fits ? right : 0, baseline: Math.max(FONT, baseline) };
+    }
+  }
 
   return (
     <figure className={figureClass}>
@@ -206,32 +300,32 @@ export function MobileChart({
 
         {/* The value the reader came for, drawn into the plot. */}
         {variant === "bars"
-          ? points.map((point, index) => {
-              if (point.value === null || !labelled(index)) return null;
-              const text = show(point, format);
-              const { anchor, at } = anchorAt(index, textWidth(text));
-              return (
-                <text key={index} className="curv-mobile-chart-label" x={at} y={Math.min(y(point.value), zeroY) - 6} textAnchor={anchor}
+          ? barLabels.map(({ index, text, anchor, at, baseline, top, lifted }) => (
+              <React.Fragment key={index}>
+                {lifted && index !== active && (
+                  <line className="curv-mobile-chart-leader" x1={x(index)} x2={x(index)} y1={baseline + 3} y2={top - 2} stroke="currentColor" strokeOpacity="0.3" strokeWidth="1" />
+                )}
+                <text className="curv-mobile-chart-label" x={at} y={baseline} textAnchor={anchor}
                   fontSize={FONT} fontWeight="600" fill="currentColor" style={{ fontVariantNumeric: "tabular-nums" }}>
                   {text}
                 </text>
-              );
-            })
-          : lastKnown >= 0 && (
+              </React.Fragment>
+            ))
+          : lastKnown >= 0 && endValue && (
               <>
                 {partialAt === lastKnown
                   ? <circle className="curv-mobile-chart-dot curv-mobile-chart-dot-partial" cx={x(lastKnown)} cy={y(points[lastKnown].value as number)} r="3.5" fill="var(--card, #fff)" stroke="currentColor" strokeWidth="2" />
                   : <circle className="curv-mobile-chart-dot" cx={x(lastKnown)} cy={y(points[lastKnown].value as number)} r="3.5" fill="currentColor" stroke="var(--card, #fff)" strokeWidth="2" />}
-                <text className="curv-mobile-chart-label" x={Math.min(W, x(lastKnown) + 2)} y={Math.max(FONT, y(points[lastKnown].value as number) - 9)} textAnchor="end"
+                <text className="curv-mobile-chart-label" x={endValue.at} y={endValue.baseline} textAnchor={endValue.anchor}
                   fontSize={FONT} fontWeight="600" fill="currentColor" style={{ fontVariantNumeric: "tabular-nums" }}>
-                  {show(points[lastKnown], format)}
+                  {endValue.text}
                 </text>
               </>
             )}
 
         {shown && shown.value !== null && (
           <>
-            <line x1={x(active as number)} x2={x(active as number)} y1={PAD_TOP - 8} y2={H - PAD_BOTTOM + 4} stroke="currentColor" strokeOpacity="0.3" strokeWidth="1" />
+            <line x1={x(active as number)} x2={x(active as number)} y1={activeLabel ? activeLabel.baseline + 3 : PAD_TOP - 8} y2={H - PAD_BOTTOM + 4} stroke="currentColor" strokeOpacity="0.3" strokeWidth="1" />
             <circle className="curv-mobile-chart-dot" cx={x(active as number)} cy={y(shown.value)} r="4" fill="currentColor" stroke="var(--card, #fff)" strokeWidth="2" />
           </>
         )}

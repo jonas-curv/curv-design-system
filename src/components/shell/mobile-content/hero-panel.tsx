@@ -12,11 +12,15 @@ export interface MobileHeroKpi {
   /** A KPI with an href is a link (the URL holds the selection). Without one it is a button when the panel has
    *  `onKpiChange`, and plain text otherwise: an informational chip ("Per day") beside a selectable one. */
   href?: string;
+  /** Default true. False makes this chip plain, non-interactive text in the same chip typography: never boxed as the active
+   *  one, skipped by keyboard focus, and it ignores `href` and `onKpiChange`. Use it for a figure with no series to show
+   *  ("Per day"), beside chips that do select one. */
+  selectable?: boolean;
 }
 export interface MobileHeroPanelProps {
   kpis: MobileHeroKpi[];
   activeKpiId: string;
-  /** Makes every KPI without an href a button that selects its series. */
+  /** Makes every selectable KPI without an href a button that selects its series. */
   onKpiChange?: (id: string) => void;
   /** The app passes a `MobileChart` with `tone="dark"`. */
   chart: React.ReactNode;
@@ -46,7 +50,8 @@ export function MobileHeroPanel({ kpis, activeKpiId, onKpiChange, chart, actions
     <section className={cn("curv-mobile-hero", className)} aria-label={label}>
       <div ref={track} className="curv-mobile-hero-kpis">
         {kpis.map(kpi => {
-          const active = kpi.id === activeKpiId;
+          const selectable = kpi.selectable !== false;
+          const active = selectable && kpi.id === activeKpiId;
           const body = (
             <span className="curv-mobile-hero-kpi-body" data-active={active ? "true" : undefined}>
               <span className="curv-mobile-hero-kpi-label">{kpi.label}</span>
@@ -54,6 +59,8 @@ export function MobileHeroPanel({ kpis, activeKpiId, onKpiChange, chart, actions
               {kpi.delta && <span className="curv-mobile-hero-kpi-delta" data-tone={kpi.delta.tone}>{kpi.delta.label}</span>}
             </span>
           );
+          // Informational by choice: text, never a control, never the boxed chip.
+          if (!selectable) return <div key={kpi.id} className="curv-mobile-hero-kpi">{body}</div>;
           if (kpi.href) return <ContentLink key={kpi.id} href={kpi.href} className="curv-mobile-hero-kpi" aria-current={active ? "true" : undefined} renderLink={renderLink}>{body}</ContentLink>;
           // Nothing to select with: a chip that only informs is text, not a button that does nothing.
           if (!onKpiChange) return <div key={kpi.id} className="curv-mobile-hero-kpi">{body}</div>;

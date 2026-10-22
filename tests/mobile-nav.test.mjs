@@ -382,3 +382,45 @@ test('stylesheet: the unread dot survives forced colours and a late date has a c
   assert.match(forced, /\.curv-mobile-flat-unread \{[^}]*forced-color-adjust: none[^}]*background: Highlight/);
   assert.match(forced, /\.curv-mobile-board-date\[data-late="true"\] \{[^}]*text-decoration: underline/);
 });
+
+// ── Refinement round 1 (0.3.2) ──────────────────────────────────────────────
+
+test('tab bar: the badge is drawn inside the icon\'s box and anchored to its top-right corner, never to a pixel beside the label', () => {
+  const html = render(MobileTabBar, { items: [{ ...items[0], badge: 120 }] });
+  assert.match(html, /<span class="curv-mobile-tabbar-icon" aria-hidden="true"><svg[^>]*><\/svg><span class="curv-mobile-tabbar-badge" aria-hidden="true">99\+<\/span><\/span>/);
+  assert.match(rule('.curv-mobile-tabbar-icon'), /position: relative/);
+  const badge = rule('.curv-mobile-tabbar-badge');
+  assert.match(badge, /position: absolute; top: -\d+px; right: -\d+px/);
+  assert.doesNotMatch(badge, /left:/);
+  // The shrunken bar used to move it to left: 28px, onto the label. It has no rule of its own any more.
+  assert.doesNotMatch(section, /\[data-collapsed\] \.curv-mobile-tabbar-badge/);
+  // Instead a compact item that has a badge opens the gap to its label to more than the badge's overhang.
+  const overhang = Number(badge.match(/right: -(\d+)px/)[1]);
+  const gap = section.match(/\.curv-mobile-tabbar\[data-collapsed\] \.curv-mobile-tabbar-item\[data-compact\]:has\(\.curv-mobile-tabbar-badge\) \{ gap: (\d+)px; \}/);
+  assert.ok(gap, 'a compact item with a badge has its own gap');
+  assert.ok(Number(gap[1]) - overhang >= 6, `the badge (${overhang}px over the icon) clears the label by ${Number(gap[1]) - overhang}px`);
+});
+
+test('tab bar: every target is 44px or taller, the shrunken item included', () => {
+  const compact = rule('.curv-mobile-tabbar[data-collapsed] .curv-mobile-tabbar-item[data-compact]');
+  assert.match(compact, /height: 44px/);
+  assert.match(compact, /border-radius: 22px/);
+  assert.doesNotMatch(compact, /height: 40px/);
+  const pill = rule('.curv-mobile-tabbar[data-collapsed] .curv-mobile-tabbar-pill');
+  assert.match(pill, /height: 48px/, 'and it still fits inside the shrunken pill');
+  for (const selector of ['.curv-mobile-tabbar-item', '.curv-mobile-tabbar-action-button', '.curv-mobile-tabbar-primary', '.curv-mobile-tabbar-circle', '.curv-mobile-tabbar[data-collapsed] .curv-mobile-tabbar-circle', '.curv-mobile-tabbar[data-collapsed] .curv-mobile-tabbar-item[data-compact]']) {
+    const height = Number(rule(selector).match(/(?:^|[ ;{])height: (\d+)px/)[1]);
+    assert.ok(height >= 44, `${selector} is ${height}px`);
+  }
+});
+
+test('top bar: plain titles and switcher titles start at the same x, the 16px content gutter', () => {
+  const row = rule('.curv-mobile-topbar-row');
+  assert.match(row, /padding: 0 max\(12px, env\(safe-area-inset-right\)\) 0 max\(12px, env\(safe-area-inset-left\)\)/);
+  // plain: 12px of row + 4px of its own padding. switcher: 12px of row + 4px of the button's left padding.
+  assert.match(section, /\.curv-mobile-topbar-title > \.curv-mobile-topbar-title-text \{ padding-inline-start: 4px; \}/);
+  assert.match(rule('.curv-mobile-topbar-switch'), /padding: 0 10px 0 4px/);
+  // Both lines are 44px, so the text sits at the same height on every page.
+  assert.match(rule('.curv-mobile-topbar-title-text'), /line-height: 44px/);
+  assert.match(rule('.curv-mobile-topbar-switch'), /min-height: 44px/);
+});

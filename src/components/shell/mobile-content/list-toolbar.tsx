@@ -71,7 +71,7 @@ export interface MobileViewChipsProps {
   className?: string;
 }
 
-/** Saved views as plain text chips that scroll sideways. The active one sits on a grey pill. */
+/** Saved views as chips that scroll sideways: the same 44px chip as the stage board, the active one dark with white text. */
 export function MobileViewChips({ label, items, onSelect, renderLink, className }: MobileViewChipsProps) {
   const track = React.useRef<HTMLDivElement>(null);
   const first = React.useRef(true);
@@ -94,7 +94,8 @@ export function MobileViewChips({ label, items, onSelect, renderLink, className 
     <div ref={track} className={cn("curv-mobile-view-chips", className)} role="group" aria-label={label}>
       {items.map(item => {
         const body = <><span>{item.label}</span>{item.count != null && <span className="curv-mobile-view-chip-count">{formatCount(item.count)}</span>}</>;
-        const chipClass = "curv-mobile-view-chip";
+        // The same chip the stage board draws (.curv-mobile-chip): a list and its board read as one control.
+        const chipClass = "curv-mobile-chip curv-mobile-view-chip";
         return item.href
           ? <ContentLink key={item.id} href={item.href} className={chipClass} aria-current={item.active ? "page" : undefined} renderLink={renderLink}><ChipBody active={item.active}>{body}</ChipBody></ContentLink>
           : <button key={item.id} type="button" className={chipClass} aria-pressed={Boolean(item.active)} onClick={() => onSelect?.(item.id)}><ChipBody active={item.active}>{body}</ChipBody></button>;
