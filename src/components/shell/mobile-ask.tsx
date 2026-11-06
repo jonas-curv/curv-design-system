@@ -65,7 +65,7 @@ export const AskButton = React.forwardRef<HTMLButtonElement, AskButtonProps>(fun
       type="button"
       aria-expanded={open}
       aria-haspopup="dialog"
-      aria-label={circle ? label : props["aria-label"]}
+      aria-label={props["aria-label"] ?? (circle ? label : undefined)}
       data-variant={variant}
       className={cn("curv-ask", circle ? "curv-ask-circle" : "curv-ask-labelled", className)}
     >

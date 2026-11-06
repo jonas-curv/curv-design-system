@@ -9,10 +9,8 @@ export interface MobileShareSegment {
   label: string;
   /** The amount, already formatted: "$12,480.00". */
   value: React.ReactNode;
-  /** The share beside the value, 0 to 100 (a margin, a share of revenue). `null` prints a dash. */
+  /** The share printed beside the value, 0 to 100 (a margin, a share of revenue). `null` prints a dash. Each pair carries its own. */
   percent: number | null;
-  /** Width of this segment relative to the other. Default: `percent`. Pass amounts when the percents are not shares of one whole. */
-  weight?: number;
 }
 
 export interface MobileShareBarProps {
@@ -20,31 +18,29 @@ export interface MobileShareBarProps {
   value: React.ReactNode;
   /** What the readout is: "Revenue". */
   label?: React.ReactNode;
-  /** Exactly two. The first is drawn in the accent, the second in grey, and the pair fills the bar. */
+  /** Exactly two label, value and percent pairs. They are figures: the bar does not divide between them. */
   segments: readonly [MobileShareSegment, MobileShareSegment];
+  /** How much of the readout the bar fills, 0 to 100: the first value over the readout value (gross profit over revenue). Default: the first pair's
+   *  `percent`. Without a number the bar is an empty track, never half full. Clamped to 0 to 100. */
+  share?: number | null;
   className?: string;
 }
 
 const formatPercent = (percent: number | null) => (percent === null || !Number.isFinite(percent) ? "—" : `${Number.isInteger(percent) ? percent : (Math.round(percent * 10) / 10).toString()}%`);
-const weightOf = (segment: MobileShareSegment) => {
-  const raw = segment.weight ?? segment.percent;
-  return typeof raw === "number" && Number.isFinite(raw) && raw > 0 ? raw : 0;
-};
 
 /**
- * A money card for a record: one readout, a two-segment bar, and the two parts each as a label, a value and the percent beside it.
- * It draws what it is given: no balance, no third line. When neither segment has a weight the bar stays an empty track.
+ * A money card for a record: one readout, a bar that fills one share of it, and two label / value / percent pairs. The two pairs are
+ * independent (Total GP contains Product GP, so they are not parts of one whole); only the accent share is drawn, the rest is grey.
+ * No balance, no third line.
  */
-export function MobileShareBar({ value, label, segments, className }: MobileShareBarProps) {
-  const weights = segments.map(weightOf);
-  const sum = weights[0] + weights[1];
-  const widths = sum > 0 ? weights.map(weight => `${((weight / sum) * 100).toFixed(2)}%`) : null;
-  const spoken = segments.map(segment => `${segment.label} ${formatPercent(segment.percent)}`).join(", ");
+export function MobileShareBar({ value, label, segments, share, className }: MobileShareBarProps) {
+  const raw = share === undefined ? segments[0].percent : share;
+  const filled = raw === null || !Number.isFinite(raw) ? null : Math.min(100, Math.max(0, raw));
   return (
     <div className={cn("curv-mobile-share", className)}>
       <MobileFigure value={value} label={label} />
-      <div className="curv-mobile-share-bar" role="img" aria-label={spoken}>
-        {widths && <><i className="curv-mobile-share-a" style={{ width: widths[0] }} /><i className="curv-mobile-share-b" style={{ width: widths[1] }} /></>}
+      <div className="curv-mobile-share-bar" role="img" aria-label={filled === null ? `${segments[0].label} unknown` : `${segments[0].label} ${formatPercent(filled)}`}>
+        {filled !== null && <><i className="curv-mobile-share-a" style={{ width: `${filled}%` }} /><i className="curv-mobile-share-b" /></>}
       </div>
       <dl className="curv-mobile-share-pairs">
         {segments.map((segment, index) => (

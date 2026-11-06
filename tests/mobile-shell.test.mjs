@@ -188,7 +188,12 @@ test('header: a hub title is a caret dropdown (closed it lists nothing), a recor
   const hub = render(mobile.MobileHeader, { title: 'Sales', switcher: pages });
   assert.match(hub, /<button type="button" class="curv-mobile-title-button" aria-expanded="false" aria-controls="[^"]+">/);
   assert.match(hub, /class="curv-mobile-down"/);
-  assert.doesNotMatch(hub, /href="\/orders"/, 'the pages are not in the document until it opens');
+  // The list is in the document, hidden, right after the title (so aria-controls has a target and the list is the next tab stop).
+  const target = hub.match(/aria-controls="([^"]+)"/)[1];
+  assert.match(hub, new RegExp(`<nav id="${target}" class="curv-mobile-header-pages" aria-label="Pages" hidden="">`));
+  assert.ok(hub.indexOf('curv-mobile-header-pages') < hub.indexOf('curv-mobile-header-action') || !hub.includes('curv-mobile-header-action'), 'before the right-hand buttons');
+  const withRight = render(mobile.MobileHeader, { title: 'Sales', switcher: pages, onSearch() {}, ask: h(mobile.AskButton, { onClick() {} }) });
+  assert.ok(withRight.indexOf('curv-mobile-header-pages') < withRight.indexOf('aria-label="Search"'), 'the list comes before search and Ask in tab order');
   const record = render(mobile.MobileHeader, { title: 'Ignored', recordId: 'CICO20142', onBack() {}, backLabel: 'Back to Orders', onMore() {}, moreLabel: 'More about CICO20142' });
   assert.match(record, /data-record="true"/);
   assert.match(record, /aria-label="Back to Orders"/);
@@ -201,7 +206,8 @@ test('header: the right side is the search circle, the Ask slot and (on records)
   const html = render(mobile.MobileHeader, { title: 'Orders', onSearch() {}, ask: h(mobile.AskButton, { onClick() {} }), onMore() {} });
   const order = ['aria-label="Search"', 'aria-label="Ask AI"', 'aria-label="More actions"'].map(needle => html.indexOf(needle));
   assert.ok(order.every(at => at > 0) && order[0] < order[1] && order[1] < order[2], String(order));
-  assert.equal(count(html, /curv-mobile-header-circle/g), 2);
+  assert.equal(count(html, /curv-mobile-header-circle/g), 1, 'the search circle is the one glass circle of its own');
+  assert.match(html, /<button type="button" class="curv-mobile-icon-button" aria-label="More actions">/, 'the ⋯ is a plain 44px icon, not glass');
   assert.match(render(mobile.MobileHeader, { title: 'Orders', onSearch() {}, searchLabel: 'Search orders' }), /aria-label="Search orders"/);
 });
 
@@ -221,7 +227,7 @@ test('stylesheet: the header is 62px black chrome with 40px glass circles that r
 
 test('record row, one amount: the name and one line on the left, the amount and a toned word under it on the right', () => {
   const html = render(mobile.MobileRecordRow, { layout: 'amount', title: 'Acme Freight', meta: 'INV-204 · due Nov 12', value: '$4,210.00', status: 'Overdue', statusTone: 'bad', href: '/bills/204' });
-  assert.match(html, /<a href="\/bills\/204" class="curv-mobile-record" data-layout="amount">/);
+  assert.match(html, /<a href="\/bills\/204" class="curv-mobile-record curv-mobile-record-layout-amount" data-layout="amount">/);
   assert.match(html, /<strong>Acme Freight<\/strong><span class="curv-mobile-record-subtitle">INV-204 · due Nov 12<\/span>/);
   assert.match(html, /<span class="curv-mobile-record-amount"><span class="curv-mobile-record-value">\$4,210\.00<\/span><span class="curv-mobile-record-status" data-tone="bad">Overdue<\/span><\/span>/);
   assert.doesNotMatch(html, /curv-mobile-record-footer|<svg/, 'no footer, no chevron, no second amount');
@@ -234,14 +240,15 @@ test('record row, one amount: the name and one line on the left, the amount and 
 
 test('record row, one line: name, a short meta on the right, the amount, and an exception dot with a name for screen readers', () => {
   const html = render(mobile.MobileRecordRow, { layout: 'oneLine', title: 'Pacific Supply', meta: 'Nov 12', value: '$980.00', exception: 'warn', onClick() {} });
-  assert.match(html, /<button type="button" class="curv-mobile-record" data-layout="oneLine">/);
+  assert.match(html, /<button type="button" class="curv-mobile-record curv-mobile-record-layout-one-line" data-layout="oneLine">/);
   assert.match(html, /<span class="curv-mobile-record-name"><strong>Pacific Supply<\/strong><span class="curv-mobile-record-dot" data-tone="warn" aria-hidden="true"><\/span><span class="curv-mobile-nav-sr">Needs attention<\/span><\/span>/);
   assert.match(html, /<span class="curv-mobile-record-note">Nov 12<\/span><span class="curv-mobile-record-value">\$980\.00<\/span>/);
   assert.match(render(mobile.MobileRecordRow, { layout: 'oneLine', title: 'x', exception: 'info' }), /For information/);
   assert.match(render(mobile.MobileRecordRow, { layout: 'oneLine', title: 'x', exception: 'info', exceptionLabel: 'Needs a PO' }), />Needs a PO</);
   assert.doesNotMatch(render(mobile.MobileRecordRow, { layout: 'oneLine', title: 'x', value: '1' }), /curv-mobile-record-dot/, 'no dot unless there is an exception');
-  assert.match(rule('.curv-mobile-record[data-layout="oneLine"]'), /min-height: 48px/);
-  assert.match(rule('.curv-mobile-record[data-layout="amount"]'), /min-height: 56px/);
+  assert.match(rule('.curv-mobile-record-layout-one-line'), /min-height: 48px/);
+  assert.match(rule('.curv-mobile-record-layout-amount'), /min-height: 56px/);
+  assert.match(rule('.curv-mobile-record-layout-amount, .curv-mobile-record-layout-one-line'), /box-sizing: border-box; display: flex/, 'width 100% and padding do not overflow without a preflight');
   assert.match(rule('.curv-mobile-record-dot'), /width: 8px; height: 8px; border-radius: 50%/);
 });
 
@@ -254,6 +261,14 @@ test('record row, the default layout is untouched, and a link adapter may receiv
   render(mobile.MobileRecordRow, { layout: 'amount', title: 'Acme', href: '/x', renderLink: props => { received = props; return h('a', { href: props.href }, props.children); } });
   assert.equal(received['data-layout'], 'amount');
   assert.equal(received.href, '/x');
+  // An adapter written to the old contract forwards href, className and children and nothing else (Product OS's renderRowLink): the layout survives in the class.
+  const oldAdapter = ({ href, className, children }) => h('a', { href, className }, children);
+  for (const [layout, name] of [['amount', 'curv-mobile-record-layout-amount'], ['oneLine', 'curv-mobile-record-layout-one-line']]) {
+    const html = render(mobile.MobileRecordRow, { layout, title: 'Acme', value: '$1', href: '/x', renderLink: oldAdapter });
+    assert.match(html, new RegExp(`class="curv-mobile-record ${name}"`));
+    assert.doesNotMatch(html, /data-layout/, 'the attribute is gone, the class is not');
+  }
+  assert.match(render(mobile.MobileRecordRow, { title: 'Acme', href: '/x', renderLink: oldAdapter }), /class="curv-mobile-record"/, 'the default layout has no layout class');
 });
 
 test('group row: a label on the left, count and total on the right, never a target', () => {
@@ -302,7 +317,7 @@ test('readout chart: the readout is above the bars and rests on the current peri
   assert.match(html, /^<figure class="curv-mobile-chart curv-mobile-chart-bars"/);
   assert.ok(html.indexOf('curv-mobile-figure') < html.indexOf('curv-mobile-chart-plot'), 'readout first');
   assert.match(html, /curv-mobile-figure-value">\$7k<\/span><span class="curv-mobile-figure-label">Nov so far</, 'the latest period, said as still in progress');
-  assert.match(html, /aria-live="polite"/);
+  assert.doesNotMatch(html, /aria-live/, 'the range input announces a scrub; a live region would say each value twice');
   assert.doesNotMatch(html, /<svg|<text|legend/i);
   assert.equal(count(html, /curv-mobile-chart-compare/g), 1, 'one dashed comparison line');
   assert.match(html, /role="img" aria-label="Spend by month\. Last year 8,000"/);
@@ -310,16 +325,52 @@ test('readout chart: the readout is above the bars and rests on the current peri
   assert.match(html, /<input type="range" class="curv-mobile-chart-scrub"[^>]*max="5"[^>]*value="5"/);
 });
 
-test('readout chart: the bar plan is per bar: fill, the current one highlighted, a partial one hatched', () => {
+const barsOf = html => [...html.matchAll(/<i class="curv-mobile-chart-bar" data-emphasis="(\w+)" data-tone="(\w+)"( data-current="true")?/g)].map(match => [match[1], match[2], Boolean(match[3])]);
+
+test('readout chart: emphasis is per bar: fill, the current one highlighted, a partial one hatched', () => {
   const html = render(mobile.MobileChart, { points: months, readout: true, label: 'Spend' });
-  const bars = [...html.matchAll(/<i class="curv-mobile-chart-bar" data-plan="(\w+)"( data-current="true")?/g)].map(match => [match[1], Boolean(match[2])]);
-  assert.deepEqual(bars, [['fill', false], ['fill', false], ['fill', false], ['fill', false], ['fill', false], ['partial', true]]);
-  const planned = render(mobile.MobileChart, { points: months.map((point, index) => ({ ...point, partial: undefined, bar: index === 1 ? 'current' : index === 5 ? 'partial' : 'fill' })), readout: true, label: 'Spend' });
-  const second = [...planned.matchAll(/<i class="curv-mobile-chart-bar" data-plan="(\w+)"( data-current="true")?/g)].map(match => [match[1], Boolean(match[2])]);
-  assert.deepEqual(second, [['fill', false], ['fill', true], ['fill', false], ['fill', false], ['fill', false], ['partial', false]], 'an explicit current wins over the latest');
+  assert.deepEqual(barsOf(html), [['fill', 'dark', false], ['fill', 'dark', false], ['fill', 'dark', false], ['fill', 'dark', false], ['fill', 'dark', false], ['partial', 'dark', true]]);
+  const planned = render(mobile.MobileChart, { points: months.map((point, index) => ({ ...point, partial: undefined, emphasis: index === 1 ? 'current' : index === 5 ? 'partial' : 'fill' })), readout: true, label: 'Spend' });
+  assert.deepEqual(barsOf(planned).map(([emphasis,, current]) => [emphasis, current]), [['fill', false], ['fill', true], ['fill', false], ['fill', false], ['fill', false], ['partial', false]], 'an explicit current wins over the latest');
   assert.match(planned, /curv-mobile-figure-value">\$96k</, 'and the readout rests on it');
-  assert.match(css, /\.curv-mobile-chart-bar\[data-plan="partial"\] \{ background: repeating-linear-gradient/);
-  assert.match(css, /\.curv-mobile-chart-bar\[data-current\], \.curv-mobile-chart-col\[data-picked\] \.curv-mobile-chart-bar \{ --bar: var\(--curv-mobile-chart-current, #0f7a52\)/);
+  assert.match(css, /\.curv-mobile-chart-bar\[data-emphasis="partial"\] \{ background: repeating-linear-gradient/);
+  assert.match(css, /\.curv-mobile-chart-bar\[data-current\]:not\(\[data-tone="negative"\]\), \.curv-mobile-chart-col\[data-picked\] \.curv-mobile-chart-bar:not\(\[data-tone="negative"\]\) \{ --bar: var\(--curv-mobile-chart-current, #0f7a52\)/);
+  assert.doesNotMatch(read('docs/mobile.md') + read('src/components/shell/mobile-chart.tsx'), /MobileChartBarPlan|bar: "fill"/, 'the paint field is not called a plan');
+});
+
+test('readout chart: a plan is a dashed tick at its own value, above or below the bar, said in the readout and to screen readers', () => {
+  const planned = [{ label: 'Jan', value: 100, plan: 150 }, { label: 'Feb', value: 120, plan: 80 }, { label: 'Mar', value: 90 }, { label: 'Apr', value: 110, plan: null }];
+  const html = render(mobile.MobileChart, { points: planned, readout: true, label: 'Revenue vs plan', format: value => `$${value}` });
+  assert.equal(count(html, /<i class="curv-mobile-chart-plan"/g), 2, 'a tick only where there is a plan');
+  const ticks = [...html.matchAll(/curv-mobile-chart-plan" style="bottom:([\d.]+)%"/g)].map(match => Number(match[1]));
+  const bottoms = [...html.matchAll(/curv-mobile-chart-bar"[^>]*style="bottom:([\d.]+)%;height:([\d.]+)%"/g)].map(match => Number(match[1]) + Number(match[2]));
+  assert.ok(ticks[0] > bottoms[0], `the plan $150 is above its $100 bar (${ticks[0]} over ${bottoms[0]})`);
+  assert.ok(ticks[1] < bottoms[1], `the plan $80 is below its $120 bar (${ticks[1]} under ${bottoms[1]})`);
+  assert.equal(ticks[0], 100, 'the plan counts towards the scale, so the tallest thing fills the plot');
+  assert.match(html, /curv-mobile-figure-label">Apr</, 'a bar with no plan says only its period');
+  const resting = render(mobile.MobileChart, { points: planned.map((point, index) => (index === 1 ? { ...point, emphasis: 'current' } : point)), readout: true, label: 'Revenue vs plan', format: value => `$${value}`, planLabel: 'budget' });
+  assert.match(resting, /curv-mobile-figure-label">Feb · budget \$80</, 'the readout names the plan, in the app\'s word');
+  assert.match(resting, /aria-valuetext="Feb · budget \$80: \$120"/, 'and so does the range input');
+  assert.match(rule('.curv-mobile-chart-plan'), /left: -3px; right: -3px; height: 0; border-top: 2px dashed/);
+});
+
+test('readout chart: tones are dark, muted and red; a negative value is red unless told otherwise; the highlight never repaints a red bar', () => {
+  const html = render(mobile.MobileChart, { points: [{ label: 'A', value: 5, tone: 'muted' }, { label: 'B', value: 7 }, { label: 'C', value: -3 }, { label: 'D', value: -2, tone: 'dark' }], readout: true, label: 'Net' });
+  assert.deepEqual(barsOf(html).map(([, tone]) => tone), ['muted', 'dark', 'negative', 'dark']);
+  assert.match(rule('.curv-mobile-chart-bar[data-tone="muted"]'), /--bar: var\(--curv-mobile-chart-bar-muted, #d4d4d8\)/);
+  assert.match(rule('.curv-mobile-chart-bar[data-tone="negative"]'), /--bar: var\(--curv-mobile-chart-negative, #dc2626\)[^}]*border-radius: 0 0 4px 4px/);
+  assert.match(css, /\.curv-mobile-chart-dark \.curv-mobile-chart-bar\[data-tone="negative"\] \{ --bar: var\(--curv-mobile-chart-negative-dark/);
+});
+
+test('readout chart: a long last label is anchored to its own edge so it grows inward, and the card never cuts it', () => {
+  const series = ['Jun', 'Jul', 'Aug', 'Sep'].map((label, index) => ({ label, value: 10 + index }));
+  const html = render(mobile.MobileChart, { points: series, readout: true, label: 'Revenue', endLabel: 'Sep · $1.59M' });
+  assert.match(html, /<span data-edge="end">Sep · \$1\.59M<\/span>/);
+  assert.doesNotMatch(html, /data-edge="start"/, 'short first label stays centred');
+  assert.doesNotMatch(render(mobile.MobileChart, { points: series, readout: true, label: 'Revenue' }), /data-edge/, 'short labels keep their place under the bars');
+  assert.match(css, /\.curv-mobile-chart-xaxis > span\[data-edge="end"\] \{ justify-content: flex-end; \}/);
+  assert.match(css, /\.curv-mobile-chart-xaxis > span\[data-edge="start"\] \{ justify-content: flex-start; \}/);
+  assert.match(rule('.curv-mobile-chart-xaxis > span'), /display: flex; justify-content: center/);
 });
 
 test('readout chart: a null is a gap with no bar, never a zero, and an all-null series says so', () => {
@@ -334,11 +385,11 @@ test('readout chart: axis labels are 12px real text and thin out to fit; negativ
   assert.match(rule('.curv-mobile-chart-xaxis > span'), /font-size: 12px/);
   const many = Array.from({ length: 24 }, (_, index) => ({ label: `Jan ${index + 1}`, value: index + 1 }));
   const html = render(mobile.MobileChart, { points: many, readout: true, label: 'Daily' });
-  const shown = [...html.matchAll(/<span>([^<]+)<\/span>/g)].map(match => match[1]).filter(text => text.startsWith('Jan'));
+  const shown = [...html.matchAll(/<span[^>]*>([^<]+)<\/span>/g)].map(match => match[1]).filter(text => text.startsWith('Jan'));
   assert.ok(shown.length > 1 && shown.length < 24, `${shown.length} of 24 labels fit`);
   assert.equal(shown[shown.length - 1], 'Jan 24', 'the latest is always one of them');
   const all = render(mobile.MobileChart, { points: months, readout: true, label: 'Monthly' });
-  assert.equal(count(all, /<span>(Jun|Jul|Aug|Sep|Oct|Nov)<\/span>/g), 6, 'six short labels all fit');
+  assert.equal(count(all, /<span[^>]*>(Jun|Jul|Aug|Sep|Oct|Nov)<\/span>/g), 6, 'six short labels all fit');
   assert.match(render(mobile.MobileChart, { points: [{ label: 'A', value: -4 }, { label: 'B', value: 6 }], readout: true, label: 'Net' }), /curv-mobile-chart-zero/);
   assert.match(render(mobile.MobileChart, { points: months, readout: true, tone: 'dark', label: 'x' }), /curv-mobile-chart-dark/);
   assert.match(rule('.curv-mobile-chart-plot'), /touch-action: pan-y pinch-zoom/);
@@ -375,20 +426,77 @@ test('picture: a link or a button when it opens something, plain otherwise', () 
   assert.match(render(mobile.MobilePicture, { src: '/a.jpg', alt: 'x', onClick() {} }), /^<button type="button" class="curv-mobile-picture curv-mobile-picture-link">/);
 });
 
-test('share bar: a readout, a two-segment bar and two label, value and percent pairs', () => {
+test('share bar: a readout, a bar that fills one share of it, and two label, value and percent pairs', () => {
   const html = render(mobile.MobileShareBar, { value: '$44,610.00', label: 'Revenue', segments: [{ label: 'Product GP', value: '$12,490.00', percent: 28 }, { label: 'Total GP', value: '$11,280.40', percent: 25.3 }] });
   assert.match(html, /curv-mobile-figure-value">\$44,610\.00<\/span><span class="curv-mobile-figure-label">Revenue</);
-  assert.match(html, /role="img" aria-label="Product GP 28%, Total GP 25\.3%"/);
-  assert.match(html, /<i class="curv-mobile-share-a" style="width:52\.53%"><\/i><i class="curv-mobile-share-b" style="width:47\.47%"><\/i>/);
+  assert.match(html, /role="img" aria-label="Product GP 28%"/);
+  assert.match(html, /<i class="curv-mobile-share-a" style="width:28%"><\/i><i class="curv-mobile-share-b"><\/i>/);
   assert.match(html, /<dt>Product GP<\/dt><dd><span class="curv-mobile-share-value">\$12,490\.00<\/span><span class="curv-mobile-share-percent">28%<\/span><\/dd>/);
   assert.match(html, /<dt>Total GP<\/dt><dd>[^]*share-percent">25\.3%</);
   assert.equal(count(html, /<dt>/g), 2);
-  const weighted = render(mobile.MobileShareBar, { value: '$100', segments: [{ label: 'GP', value: '$30', percent: 30, weight: 30 }, { label: 'Cost', value: '$70', percent: 70, weight: 70 }] });
-  assert.match(weighted, /width:30\.00%.*width:70\.00%/);
+});
+
+test('share bar: the canvas deal (revenue $800, Product GP $550 at 69%, Total GP $550 at 69%) draws 69% green, not half and half', () => {
+  const html = render(mobile.MobileShareBar, { value: '$800.00', label: 'Revenue', segments: [{ label: 'Product GP', value: '$550.00', percent: 69 }, { label: 'Total GP', value: '$550.00', percent: 69 }] });
+  assert.match(html, /<i class="curv-mobile-share-a" style="width:69%"><\/i>/);
+  assert.equal(count(html, /share-percent">69%</g), 2, 'each pair keeps its own percent');
+  // The pairs do not divide the bar: only the share does.
+  const other = render(mobile.MobileShareBar, { value: '$800.00', segments: [{ label: 'Product GP', value: '$550.00', percent: 69 }, { label: 'Total GP', value: '$100.00', percent: 12 }] });
+  assert.match(other, /style="width:69%"/);
+  // An explicit share wins, and is clamped.
+  assert.match(render(mobile.MobileShareBar, { value: 'x', share: 40, segments: [{ label: 'A', value: '1', percent: 69 }, { label: 'B', value: '2', percent: 12 }] }), /style="width:40%"/);
+  assert.match(render(mobile.MobileShareBar, { value: 'x', share: 140, segments: [{ label: 'A', value: '1', percent: 1 }, { label: 'B', value: '2', percent: 1 }] }), /style="width:100%"/);
+  assert.match(render(mobile.MobileShareBar, { value: 'x', share: -5, segments: [{ label: 'A', value: '1', percent: 1 }, { label: 'B', value: '2', percent: 1 }] }), /style="width:0%"/);
+  assert.doesNotMatch(read('src/components/shell/mobile-content/share-bar.tsx'), /weight/, 'no weights: nothing divides between the pairs');
   const blank = render(mobile.MobileShareBar, { value: '—', segments: [{ label: 'GP', value: '—', percent: null }, { label: 'Cost', value: '—', percent: null }] });
   assert.doesNotMatch(blank, /<i class/, 'nothing known: an empty track, not a half bar');
   assert.match(blank, /share-percent">—</);
   assert.match(rule('.curv-mobile-share-bar'), /height: 10px/);
+});
+
+// ── The review's fixes ──────────────────────────────────────────────────────
+
+test('bar: with the legacy search circle the slots are equal and icon-only, and every slot is at least 44px', () => {
+  const withCircle = render(mobile.MobileTabBar, { items: slots, onSearch() {}, onMenu() {} });
+  assert.match(withCircle, /<nav[^>]*data-tight="true"/);
+  assert.doesNotMatch(render(mobile.MobileTabBar, { items: slots, onMenu() {} }), /data-tight/, 'without it the bar starts with the label');
+  assert.match(rule('.curv-mobile-tabbar-item'), /flex: 1 1 0; min-width: 44px; height: 52px/);
+  assert.match(css, /\.curv-mobile-tabbar-item\[aria-current="page"\] \{ flex: 1\.9 1 0; min-width: max-content;/, 'the active slot is never narrower than its label');
+  assert.match(css, /\.curv-mobile-tabbar\[data-tight\] \.curv-mobile-tabbar-item\[aria-current="page"\] \{ flex: 1 1 0; min-width: 44px; display: grid; padding: 0; \}/);
+  assert.match(css, /\.curv-mobile-tabbar\[data-tight\]:not\(\[data-collapsed\]\) \.curv-mobile-tabbar-label \{ position: absolute; visibility: hidden; pointer-events: none; \}/, 'hidden, but still laid out so the bar can measure it');
+});
+
+test('ask button: a caller\'s aria-label on the circle is kept', () => {
+  assert.match(render(mobile.AskButton, { 'aria-label': 'Ask the CFO' }), /aria-label="Ask the CFO"/);
+  assert.doesNotMatch(render(mobile.AskButton, { 'aria-label': 'Ask the CFO' }), /aria-label="Ask AI"/);
+});
+
+test('header: the labelled Ask button fits the slot, dark on white and 8px round; the page scroll padding follows the new reserve', () => {
+  assert.match(css, /\.curv-mobile-header-action \.curv-ask-labelled \{ min-width: 0; min-height: 0; height: 40px; border-radius: 8px; color: #111; \}/);
+  assert.equal(count(css, /scroll-padding-bottom: calc\(var\(--curv-mobile-dock-height, 76px\) \+ 12px \+ env\(safe-area-inset-bottom\)\)/g), 2);
+  assert.doesNotMatch(css, /scroll-padding-bottom: calc\(110px/);
+});
+
+test('header: a screen has a title or a record id, and a title-only header takes no record props', () => {
+  assert.match(render(mobile.MobileHeader, { recordId: 'CICO20142' }), /curv-mobile-title">CICO20142</);
+  assert.match(render(mobile.MobileHeaderTitle, { title: 'Bills', onTitleClick() {} }), /aria-label="Bills: open navigation"/);
+  assert.doesNotMatch(render(mobile.MobileHeader, { recordId: 'CICO20142', onTitleClick() {} }), /undefined/);
+  assert.match(read('src/components/shell/mobile-command.tsx'), /\| \{ title\?: string; recordId: string \}/, 'the types demand one of them');
+});
+
+test('one switcher: the top bar and the header both use useTitleSwitcher', () => {
+  assert.match(read('src/components/shell/mobile-nav/top-bar.tsx'), /useTitleSwitcher\(pages\)/);
+  assert.match(read('src/components/shell/mobile-command.tsx'), /useTitleSwitcher\(pages\)/);
+  assert.doesNotMatch(read('src/components/shell/mobile-command.tsx'), /addEventListener\("pointerdown"/, 'no second copy of the outside-tap logic');
+});
+
+test('vendor script: it reads the declaration chunk from mobile.d.ts, ships docs and skill, writes the manifest and tarball, and verifies', () => {
+  const script = read('scripts/vendor-payload.sh');
+  for (const needle of [/grep -oE "from '\\\.\/\[\^'\]\+\\\.js'" dist\/mobile\.d\.ts/, /cp docs\/mobile\.md/, /cp skills\/curv-mobile\/SKILL\.md/, /mobile-source\.json/, /git archive --format=tar HEAD docs mobile\.css package\.json package-lock\.json src tests \| gzip -n/, /git rev-parse HEAD/, /version/, /"dist\/mobile\.js": "\$JS_SHA"/, /verify failed/, /git diff --quiet HEAD/]) assert.match(script, needle);
+  assert.doesNotMatch(script, /mobile-command-[A-Za-z0-9_-]+\.d\.ts/, 'no hard-coded chunk name');
+  assert.match(read('package.json'), /"vendor": "bash scripts\/vendor-payload\.sh"/);
+  assert.match(read('docs/mobile.md'), /scripts\/vendor-payload\.sh \/path\/to\/app/);
+  assert.match(read('docs/mobile.md'), /Customs is on 0\.3\.4, Finance on 0\.2\.22 and Sales on 0\.2\.25/);
 });
 
 // ── Release: version, docs, skill ───────────────────────────────────────────

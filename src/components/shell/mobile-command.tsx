@@ -5,6 +5,7 @@ import { Dialog } from "@base-ui/react/dialog";
 import { cn } from "../../lib/cn";
 import { CheckIcon, DotsIcon, SearchIcon } from "./mobile-content/shared";
 import type { MobileNavLinkProps } from "./mobile-nav/types";
+import { useTitleSwitcher } from "./mobile-nav/switcher";
 
 type Breakpoint = "md" | "lg";
 const Chevron = ({ back = false }: { back?: boolean }) => <svg aria-hidden="true" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" strokeWidth="1.7"><path d={back ? "m14 5-7 7 7 7" : "m9 5 7 7-7 7"} /></svg>;
@@ -17,54 +18,43 @@ export interface MobileHeaderSwitcherItem {
   href: string;
   active?: boolean;
 }
-export interface MobileHeaderProps {
-  /** The one title of the screen. A record shows `recordId` in its place. */
-  title?: string;
+interface MobileHeaderBase {
   context?: string;
-  /** The older single trailing slot, drawn after the circles below. Prefer `onSearch`, `ask` and `onMore`. */
+  /** The older single trailing slot, drawn after the controls below. Prefer `onSearch`, `ask` and `onMore`. */
   action?: React.ReactNode;
   onBack?: () => void;
   /** Accessible name of the back chevron. Default "Back"; say where it goes ("Back to Orders"). */
   backLabel?: string;
   /** The app owns the dropdown: the title becomes a button with a caret that calls this. Use `switcher` to have the header own it. */
   onTitleClick?: () => void;
-  /** A hub's pages. The title becomes a caret dropdown that lists them with the current one marked. The list closes on the tap. */
+  /** A hub's pages. The title becomes a caret dropdown that lists them with the current one marked. The list closes on the tap, whatever the
+   *  app's link does with it: the header shares its switcher with `MobileTopBar`. */
   switcher?: MobileHeaderSwitcherItem[];
   switcherLabel?: string;
   renderLink?: (item: MobileHeaderSwitcherItem, props: MobileNavLinkProps) => React.ReactNode;
-  /** A record: a back chevron plus this id ("CICO20142") in place of the title. */
-  recordId?: string;
   /** Shows the 40px glass search circle. Search belongs in the header, never in the bar. */
   onSearch?: () => void;
   searchLabel?: string;
-  /** The Ask slot, right of the search circle: `<AskButton onClick={…} />` (the 40px glass circle with the orb). */
+  /** The Ask slot, right of the search circle: `<AskButton onClick={…} />` (the 40px glass circle with the orb). The labelled variant fits too. */
   ask?: React.ReactNode;
-  /** Records only: the ⋯ button for the actions the page does not show. */
+  /** Records only: the plain ⋯ button (44px, no glass) for the actions the page does not show. */
   onMore?: () => void;
   moreLabel?: string;
   breakpoint?: Breakpoint;
 }
+/** A screen has a title or, on a record, a record id: never neither. */
+export type MobileHeaderProps = MobileHeaderBase & (
+  | { /** The one title of the screen. */ title: string; /** A record: a back chevron plus this id in place of the title. */ recordId?: string }
+  | { title?: string; recordId: string }
+);
 /**
  * The 62px black header: one 20px title (with a caret dropdown for a hub's pages), or a back chevron and a record id; on the right a
  * search circle, the Ask orb and, on records, a ⋯ button. Nothing else. App adapters own history and permissions.
  */
 export function MobileHeader({ title, context, action, onBack, backLabel = "Back", onTitleClick, switcher, switcherLabel = "Pages", renderLink, recordId, onSearch, searchLabel = "Search", ask, onMore, moreLabel = "More actions", breakpoint = "md" }: MobileHeaderProps) {
-  const uid = React.useId();
-  const listId = `${uid}-pages`;
-  const root = React.useRef<HTMLElement>(null);
-  const trigger = React.useRef<HTMLButtonElement>(null);
-  const [open, setOpen] = React.useState(false);
   const pages = switcher && switcher.length > 0 ? switcher : undefined;
-  React.useEffect(() => {
-    if (!open) return;
-    const outside = (event: Event) => { if (event.target instanceof Node && !root.current?.contains(event.target)) setOpen(false); };
-    const escape = (event: KeyboardEvent) => { if (event.key === "Escape") { setOpen(false); trigger.current?.focus(); } };
-    document.addEventListener("pointerdown", outside);
-    document.addEventListener("focusin", outside);
-    document.addEventListener("keydown", escape);
-    return () => { document.removeEventListener("pointerdown", outside); document.removeEventListener("focusin", outside); document.removeEventListener("keydown", escape); };
-  }, [open]);
-  const text = recordId ?? title;
+  const { open, setOpen, listId, root, trigger, choose, pending, isCurrent } = useTitleSwitcher(pages);
+  const text = recordId ?? title ?? "";
   const heading = <><span className="curv-mobile-title">{text}</span>{context && <span className="curv-mobile-context">{context}</span>}</>;
   const caret = <span className="curv-mobile-down" aria-hidden="true"><Chevron /></span>;
   let identity: React.ReactNode = <div className="curv-mobile-title-button">{heading}</div>;
@@ -76,20 +66,22 @@ export function MobileHeader({ title, context, action, onBack, backLabel = "Back
       {onBack && <button type="button" className="curv-mobile-icon-button" aria-label={backLabel} onClick={onBack}><Chevron back /></button>}
       <h1 className="curv-mobile-title-heading">{identity}</h1>
     </div>
-    {hasRight && <div className="curv-mobile-header-action">
-      {onSearch && <button type="button" className="curv-mobile-header-circle" aria-label={searchLabel} onClick={onSearch}><SearchIcon size={20} /></button>}
-      {ask}
-      {onMore && <button type="button" className="curv-mobile-header-circle" aria-label={moreLabel} onClick={onMore}><DotsIcon size={20} /></button>}
-      {action}
-    </div>}
-    {pages && open && <nav id={listId} className="curv-mobile-header-pages" aria-label={switcherLabel}>
+    {/* Right after the title in the document, so the list is the next stop in tab order, not the one after search, Ask and ⋯. Always there, so aria-controls has a target. */}
+    {pages && <nav id={listId} className="curv-mobile-header-pages" aria-label={switcherLabel} hidden={!open} onClickCapture={choose}>
       <ul>
         {pages.map(item => {
-          const props: MobileNavLinkProps = { href: item.href, className: "curv-mobile-header-page", "aria-current": item.active ? "page" : undefined, onClick: () => setOpen(false), children: <><span>{item.label}</span>{item.active && <CheckIcon />}</> };
-          return <li key={item.id}>{renderLink ? renderLink(item, props) : <a {...props} />}</li>;
+          const current = isCurrent(item);
+          const props: MobileNavLinkProps = { href: item.href, className: "curv-mobile-header-page", "aria-current": current ? "page" : undefined, onClick: () => setOpen(false), children: <><span>{item.label}</span>{current && <CheckIcon />}</> };
+          return <li key={item.id} data-page={item.id} data-pending={item.id === pending ? "true" : undefined}>{renderLink ? renderLink(item, props) : <a {...props} />}</li>;
         })}
       </ul>
     </nav>}
+    {hasRight && <div className="curv-mobile-header-action">
+      {onSearch && <button type="button" className="curv-mobile-header-circle" aria-label={searchLabel} onClick={onSearch}><SearchIcon size={20} /></button>}
+      {ask}
+      {onMore && <button type="button" className="curv-mobile-icon-button" aria-label={moreLabel} onClick={onMore}><DotsIcon size={22} /></button>}
+      {action}
+    </div>}
   </header>;
 }
 
@@ -151,7 +143,8 @@ export function MobileRecordRow({ title, subtitle, value, layout = "default", st
   } else {
     children = <><span className="curv-mobile-record-main"><span className="curv-mobile-record-identity"><strong>{title}</strong>{subtitle && <span className="curv-mobile-record-subtitle">{subtitle}</span>}</span>{value != null && <span className="curv-mobile-record-value">{value}</span>}{(href || onClick) && <Chevron />}</span>{(status || meta) && <span className="curv-mobile-record-footer"><span>{status}</span><span>{meta}</span></span>}</>;
   }
-  const className = "curv-mobile-record";
+  // The layout is in the class as well as `data-layout`: a link adapter that forwards only `className` (the old contract) keeps the layout.
+  const className = layout === "amount" ? "curv-mobile-record curv-mobile-record-layout-amount" : layout === "oneLine" ? "curv-mobile-record curv-mobile-record-layout-one-line" : "curv-mobile-record";
   const layoutAttr = layout === "default" ? undefined : layout;
   if (href) return <>{renderLink ? renderLink({ href, className, children, ...(layoutAttr ? { "data-layout": layoutAttr } : {}) }) : <a href={href} className={className} data-layout={layoutAttr}>{children}</a>}</>;
   if (onClick) return <button type="button" className={className} data-layout={layoutAttr} onClick={onClick}>{children}</button>;
@@ -205,7 +198,7 @@ export function MobileSearchSurface({ title, query, onQueryChange, placeholder, 
 }
 
 /** Shared identity slot for existing top bars, preserving a single live notification mount. */
-export function MobileHeaderTitle({ title, context, onBack, onTitleClick, breakpoint = "md" }: Pick<MobileHeaderProps, "title" | "context" | "onBack" | "onTitleClick" | "breakpoint">) {
+export function MobileHeaderTitle({ title, context, onBack, onTitleClick, breakpoint = "md" }: { title: string } & Pick<MobileHeaderBase, "context" | "onBack" | "onTitleClick" | "breakpoint">) {
   return <div className="curv-mobile-header-identity curv-mobile-only" data-breakpoint={breakpoint}>
     {onBack && <button type="button" className="curv-mobile-icon-button" onClick={onBack} aria-label="Back"><Chevron back /></button>}
     <h1 className="curv-mobile-title-heading">{onTitleClick ? <button className="curv-mobile-title-button" type="button" onClick={onTitleClick} aria-label={`${title}: open navigation`}><span className="curv-mobile-title">{title}</span><span className="curv-mobile-down"><Chevron /></span>{context && <span className="curv-mobile-context">{context}</span>}</button> : <span className="curv-mobile-title">{title}</span>}</h1>

@@ -7,7 +7,7 @@ export { MobileHeader, MobileHeaderTitle, MobilePage, MobileSection, MobileMetri
 
 export { useMobileViewportStyle } from "./components/shell/mobile-command";
 
-export { MobileChart, type MobileChartProps, type MobileChartPoint, type MobileChartReadout, type MobileChartBarPlan } from "./components/shell/mobile-chart";
+export { MobileChart, type MobileChartProps, type MobileChartPoint, type MobileChartReadout, type MobileChartEmphasis, type MobileChartBarTone } from "./components/shell/mobile-chart";
 
 // The shared Ask AI orb and its button: the 40px glass circle for the dark top bar, the labelled white button for desktop.
 export { AskOrb, AskButton, type AskOrbProps, type AskOrbState, type AskOrbSize, type AskButtonProps, type AskButtonVariant } from "./components/shell/mobile-ask";

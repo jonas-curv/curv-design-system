@@ -4,16 +4,23 @@ import * as React from "react";
 import { cn } from "../../lib/cn";
 import { MobileReadoutChart } from "./mobile-chart-readout";
 
-/** How a bar is drawn in the readout chart: `fill` is a plain bar, `current` the highlighted one, `partial` a period still in progress (hatched). */
-export type MobileChartBarPlan = "fill" | "current" | "partial";
+/** How a bar stands out in the readout chart: `fill` is a plain bar, `current` the highlighted one, `partial` a period still in progress (hatched). */
+export type MobileChartEmphasis = "fill" | "current" | "partial";
+/** The ink of a bar in the readout chart: `dark` (the default), `muted` (earlier periods, grey) or `negative` (red; a value below zero is this unless told otherwise). */
+export type MobileChartBarTone = "dark" | "muted" | "negative";
 export type MobileChartPoint = {
   label: string;
   value: number | null;
   display?: string;
   /** The period is not over ("so far today"). Drawn dashed with a hollow end point so it is never read as final. */
   partial?: boolean;
-  /** Readout chart only: how this bar is drawn. Default `fill`, `partial` when `partial` is set, and the latest known bar is the `current` one unless a point says so. */
-  bar?: MobileChartBarPlan;
+  /** Readout chart only: what this bar was planned to be (a budget, a target, last year), drawn as a dashed tick across the bar's slot at this value, above
+   *  or below the bar, and said in the readout and to screen readers as "plan $X". `null` or absent draws no tick. */
+  plan?: number | null;
+  /** Readout chart only: the bar's ink. Default `dark`, or `negative` for a value below zero. */
+  tone?: MobileChartBarTone;
+  /** Readout chart only: how the bar stands out. Default `fill`, `partial` when `partial` is set, and the latest known bar is the `current` one unless a point says so. */
+  emphasis?: MobileChartEmphasis;
 };
 
 export interface MobileChartProps {
@@ -56,10 +63,12 @@ export interface MobileChartProps {
   /** Said after the label of a partial point in the readout and the screen-reader text. Default "so far". */
   partialLabel?: string;
   /** The readout chart: a 24px value and its period ABOVE a single series of bars (`variant` is ignored), scrubbed by touch so the readout
-   *  follows the finger. Bars take a plan per point (`bar`), `referenceLine` is the one dashed comparison, axis labels are 12px and
+   *  follows the finger. Each bar can carry a `plan` tick, a `tone` and an `emphasis`; `referenceLine` is the one dashed comparison, axis labels are 12px and
    *  thinned to fit, and there is no second axis and no legend. `true` rests on the latest known period; an object replaces what it
    *  says at rest. It needs 2 or more points. */
   readout?: boolean | MobileChartReadout;
+  /** Readout chart only: the word before a bar's plan in the readout and for screen readers ("plan $12k"). Default "plan". */
+  planLabel?: string;
 }
 export interface MobileChartReadout {
   /** What the readout says at rest, instead of the current bar's value: the period total, say. */

@@ -33,33 +33,62 @@ const is = (actual, expected, message) => assert.ok(actual === expected, message
 
 const pages = [{ id: 'orders', label: 'Orders', href: '/orders', active: true }, { id: 'quotes', label: 'Quotes', href: '/quotes' }];
 
+const listOf = container => container.querySelector('nav.curv-mobile-header-pages');
+const isOpen = container => !listOf(container).hasAttribute('hidden');
+
 test('header: the title dropdown opens the hub\'s pages, marks the current one, and closes on a tap, Escape and a tap outside', async () => {
   const view = await mount(h('div', null, h(mobile.MobileHeader, { title: 'Sales', switcher: pages }), h('button', { id: 'elsewhere', type: 'button' }, 'Elsewhere')));
   const trigger = view.container.querySelector('button.curv-mobile-title-button');
   assert.equal(trigger.getAttribute('aria-expanded'), 'false');
-  assert.equal(view.container.querySelector('nav'), null);
+  assert.equal(isOpen(view.container), false);
+  assert.equal(trigger.getAttribute('aria-controls'), listOf(view.container).id, 'aria-controls has a target while the list is closed');
   await click(trigger);
   assert.equal(trigger.getAttribute('aria-expanded'), 'true');
+  assert.equal(isOpen(view.container), true);
   const links = [...view.container.querySelectorAll('nav a')];
   assert.deepEqual(links.map(link => link.textContent), ['Orders', 'Quotes']);
   assert.equal(links[0].getAttribute('aria-current'), 'page');
   assert.equal(links[1].getAttribute('aria-current'), null);
-  assert.equal(trigger.getAttribute('aria-controls'), view.container.querySelector('nav').id);
-  // A tap on a page closes the list (the app's router does the rest).
+  // A tap on a page closes the list (the app's router does the rest), and the tapped row is the current one at once.
   links[1].addEventListener('click', event => event.preventDefault());
   await click(links[1]);
-  assert.equal(view.container.querySelector('nav'), null);
+  assert.equal(isOpen(view.container), false);
   assert.equal(trigger.getAttribute('aria-expanded'), 'false');
+  assert.equal(links[1].getAttribute('aria-current'), 'page', 'the tapped page is current until the route reports its own');
+  assert.equal(links[0].getAttribute('aria-current'), null);
   // Escape closes it and puts focus back on the title.
   await click(trigger);
   trigger.focus();
   await key(document, 'Escape');
-  assert.equal(view.container.querySelector('nav'), null);
+  assert.equal(isOpen(view.container), false);
   is(document.activeElement, trigger, 'focus goes back to the title');
   // So does a press outside the header.
   await click(trigger);
   await pointer(view.container.querySelector('#elsewhere'), 'pointerdown', { pointerType: 'mouse', button: 0 });
-  assert.equal(view.container.querySelector('nav'), null);
+  assert.equal(isOpen(view.container), false);
+});
+
+test('header: an adapter that drops onClick still closes the list on the tap, because the header closes it itself', async () => {
+  // Written to the old link contract: href, className, children and aria-current only, no onClick (what a Next.js adapter that spreads selectively does).
+  const view = await mount(h(mobile.MobileHeader, { title: 'Sales', switcher: pages, renderLink: (item, props) => h('a', { href: props.href, className: props.className, 'aria-current': props['aria-current'] }, props.children) }));
+  const trigger = view.container.querySelector('button.curv-mobile-title-button');
+  await click(trigger);
+  assert.equal(isOpen(view.container), true);
+  const quotes = [...view.container.querySelectorAll('nav a')][1];
+  quotes.addEventListener('click', event => event.preventDefault());
+  await click(quotes);
+  assert.equal(isOpen(view.container), false, 'closed by the capture-phase handler, not by the adapter');
+  assert.equal(quotes.getAttribute('aria-current'), 'page');
+});
+
+test('header: a modified click opens somewhere else, so this page stays the current one (the list still closes)', async () => {
+  const view = await mount(h(mobile.MobileHeader, { title: 'Sales', switcher: pages }));
+  await click(view.container.querySelector('button.curv-mobile-title-button'));
+  const quotes = [...view.container.querySelectorAll('nav a')][1];
+  quotes.addEventListener('click', event => event.preventDefault());
+  await click(quotes, { metaKey: true });
+  assert.equal(isOpen(view.container), false);
+  assert.equal(quotes.getAttribute('aria-current'), null);
 });
 
 test('header: the search circle, the Ask slot and the more button call their own handlers', async () => {
@@ -237,4 +266,47 @@ test('picture: an image that fails to load becomes the neutral box and keeps its
   assert.equal(view.container.querySelector('.curv-mobile-picture-title').textContent, 'Canvas tote');
   await view.render(h(mobile.MobilePicture, { src: OTHER, alt: 'Render', title: 'Canvas tote' }));
   assert.ok(view.container.querySelector('img'), 'a picture given another address tries it');
+});
+
+// ── The review's fixes ──────────────────────────────────────────────────────
+
+test('bar: when the active label would not fit beside 44px slots it falls back to equal icon-only slots, and comes back when there is room', async () => {
+  const items = [
+    { id: 'home', label: 'Transactions', href: '/', icon: 'h', active: true },
+    { id: 'a', label: 'A', href: '/a', icon: 'a' }, { id: 'b', label: 'B', href: '/b', icon: 'b' }, { id: 'c', label: 'C', href: '/c', icon: 'c' },
+  ];
+  // happy-dom has no layout: the label is 200px wide, and the pill is as wide as the test says.
+  let pillWidth = 300;
+  const proto = window.HTMLElement.prototype;
+  const originals = { scrollWidth: Object.getOwnPropertyDescriptor(proto, 'scrollWidth'), clientWidth: Object.getOwnPropertyDescriptor(proto, 'clientWidth') };
+  Object.defineProperty(proto, 'scrollWidth', { configurable: true, get() { return this.classList?.contains('curv-mobile-tabbar-label') ? 200 : 0; } });
+  Object.defineProperty(proto, 'clientWidth', { configurable: true, get() { return this.classList?.contains('curv-mobile-tabbar-pill') ? pillWidth : 0; } });
+  try {
+    const view = await mount(h(mobile.MobileTabBar, { items, onMenu() {} }));
+    const bar = () => view.container.querySelector('nav');
+    // 24 + 8 + 200 + 24 + 4 x 44 = 432 needed, 288 there.
+    assert.equal(bar().getAttribute('data-tight'), 'true');
+    pillWidth = 500;
+    await view.render(h(mobile.MobileTabBar, { items: [{ ...items[0], label: 'Transactions.' }, ...items.slice(1)], onMenu() {} }));
+    assert.equal(bar().getAttribute('data-tight'), null, '432 fits in 488: the label is back');
+  } finally {
+    for (const name of Object.keys(originals)) Reflect.deleteProperty(proto, name);
+    for (const [name, original] of Object.entries(originals)) if (original) Object.defineProperty(proto, name, original);
+  }
+});
+
+test('readout chart: scrubbing to a bar with a plan reads its plan, and a bar without one reads only its period', async () => {
+  const planned = [{ label: 'Jan', value: 100, plan: 150 }, { label: 'Feb', value: 120, plan: 80 }, { label: 'Mar', value: 90 }].map(point => ({ ...point, display: `$${point.value}` }));
+  const view = await mount(h(mobile.MobileChart, { points: planned, readout: true, label: 'Revenue vs plan', format: value => `$${value}` }));
+  const plot = view.container.querySelector('.curv-mobile-chart-plot');
+  plot.getBoundingClientRect = () => ({ left: 0, top: 0, right: 300, bottom: 125, width: 300, height: 125, x: 0, y: 0 });
+  const text = () => [view.container.querySelector('.curv-mobile-figure-value').textContent, view.container.querySelector('.curv-mobile-figure-label').textContent];
+  assert.deepEqual(text(), ['$90', 'Mar']);
+  await pointer(plot, 'pointerdown', { clientX: 50, clientY: 60, pointerType: 'mouse', button: 0 });
+  assert.deepEqual(text(), ['$100', 'Jan · plan $150']);
+  assert.equal(view.container.querySelector('input[type="range"]').getAttribute('aria-valuetext'), 'Jan · plan $150: $100');
+  await pointer(plot, 'pointermove', { clientX: 150, clientY: 60, pointerType: 'mouse' });
+  assert.deepEqual(text(), ['$120', 'Feb · plan $80']);
+  await pointer(plot, 'pointerup', { clientX: 150, clientY: 60, pointerType: 'mouse' });
+  assert.equal(view.container.querySelector('.curv-mobile-figure').getAttribute('aria-live'), null, 'the range input announces; the readout does not');
 });

@@ -360,7 +360,7 @@ test('stylesheet: one critical red, 5.97:1 under white, in the badges and in the
 });
 
 test('stylesheet: focus stays clear of the fixed bars', () => {
-  assert.match(css, /@media \(max-width: 767px\) \{[^@]*html:has\(\.curv-mobile-tabbar\[data-breakpoint="md"\]:not\(\[hidden\]\)\) \{ scroll-padding-bottom: calc\(110px \+ env\(safe-area-inset-bottom\)\); \}/);
+  assert.match(css, /@media \(max-width: 767px\) \{[^@]*html:has\(\.curv-mobile-tabbar\[data-breakpoint="md"\]:not\(\[hidden\]\)\) \{ scroll-padding-bottom: calc\(var\(--curv-mobile-dock-height, 76px\) \+ 12px \+ env\(safe-area-inset-bottom\)\); \}/);
   assert.match(css, /html:has\(\.curv-mobile-topbar\[data-breakpoint="md"\]\) \{ scroll-padding-top: calc\(76px \+ env\(safe-area-inset-top\)\); \}/);
   assert.match(css, /@media \(max-width: 1023px\) \{[^@]*html:has\(\.curv-mobile-tabbar\[data-breakpoint="lg"\]:not\(\[hidden\]\)\) \{ scroll-padding-bottom/);
 });

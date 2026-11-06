@@ -5,6 +5,7 @@ import { MobileConnectionNotice, useConnectionStatus, useKeyboardInset, useScrol
 import { isDevelopment } from "./dev";
 import { CloseIcon, MenuIcon, SearchIcon } from "./icons";
 import { idPart } from "./id-part";
+import { useIsomorphicLayoutEffect } from "../mobile-content/shared";
 import type { MobileBreakpoint, MobileNavLinkProps, MobileNavRenderLink } from "./types";
 
 export interface MobileTabBarItem {
@@ -102,6 +103,28 @@ export function MobileTabBar({ items = [], renderLink, onSearch, searchLabel = "
   const [scrolled, expand] = useScrollCollapse(collapseOnScroll && mode === "tabs" && destinations.length > 0);
   const collapsed = scrolled && !menuOpen;
   const lifted = mode !== "tabs" && keyboardInset > 0;
+  // The label of the active slot is never cut: while the legacy search circle takes room, or when the slots could not keep 44px beside the
+  // label, the bar goes back to equal icon-only slots (the label is still the accessible name, and the black pill still marks the page).
+  const pill = React.useRef<HTMLDivElement>(null);
+  const [crowded, setCrowded] = React.useState(false);
+  const activeLabel = mode === "tabs" ? destinations.find(item => item.active && !menuOpen)?.label : undefined;
+  const slotCount = destinations.length + Number(Boolean(onMenu));
+  useIsomorphicLayoutEffect(() => {
+    const element = pill.current;
+    if (!element || mode !== "tabs") return;
+    const measure = () => {
+      const label = element.querySelector<HTMLElement>(".curv-mobile-tabbar-item[aria-current=\"page\"] .curv-mobile-tabbar-label");
+      // 6px of padding each side of the pill; the active slot is its icon, 8px, the label and 12px each side; the others are 44px at the least.
+      setCrowded(Boolean(label && label.scrollWidth > 0 && 24 + 8 + label.scrollWidth + 24 + (slotCount - 1) * 44 > element.clientWidth - 12));
+    };
+    measure();
+    // The pill's own size, and the window's (a rotation or a browser that reports one and not the other).
+    window.addEventListener("resize", measure);
+    const observer = typeof ResizeObserver === "undefined" ? null : new ResizeObserver(measure);
+    observer?.observe(element);
+    return () => { window.removeEventListener("resize", measure); observer?.disconnect(); };
+  }, [mode, activeLabel, slotCount]);
+  const tight = mode === "tabs" && (crowded || Boolean(onSearch));
   const field = React.useRef<HTMLInputElement>(null);
   const searchCircle = React.useRef<HTMLButtonElement>(null);
   const previousMode = React.useRef(mode);
@@ -151,6 +174,7 @@ export function MobileTabBar({ items = [], renderLink, onSearch, searchLabel = "
     data-breakpoint={breakpoint}
     data-mode={mode}
     data-collapsed={collapsed || undefined}
+    data-tight={tight || undefined}
     data-lifted={lifted || undefined}
     style={lifted ? { "--curv-mobile-keyboard-inset": `${keyboardInset}px` } as React.CSSProperties : undefined}
     hidden={hidden || (keyboard && mode === "tabs")}
@@ -165,7 +189,7 @@ export function MobileTabBar({ items = [], renderLink, onSearch, searchLabel = "
         "aria-label": leading.label,
         children: <span className="curv-mobile-tabbar-icon" aria-hidden="true">{leading.icon}</span>,
       })}</>}
-      {mode === "tabs" && <div className="curv-mobile-tabbar-pill curv-mobile-tabbar-glass" onClickCapture={restore}>
+      {mode === "tabs" && <div ref={pill} className="curv-mobile-tabbar-pill curv-mobile-tabbar-glass" onClickCapture={restore}>
         {destinations.map(renderItem)}
         {onMenu && <button type="button" className="curv-mobile-tabbar-item" aria-label={menuLabel} aria-expanded={menuOpen} aria-haspopup="dialog" onClick={onMenu}><span className="curv-mobile-tabbar-icon" aria-hidden="true"><MenuIcon /></span></button>}
       </div>}
