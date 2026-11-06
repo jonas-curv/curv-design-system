@@ -17,7 +17,7 @@ export type MobileChartPoint = {
   /** Readout chart only: what this bar was planned to be (a budget, a target, last year), drawn as a dashed tick across the bar's slot at this value, above
    *  or below the bar, and said in the readout and to screen readers as "plan $X". `null` or absent draws no tick. */
   plan?: number | null;
-  /** Readout chart only: the bar's ink. Default `dark`, or `negative` for a value below zero. */
+  /** Readout chart only: the bar's ink. Default `dark`, or `negative` for a value below zero. A tone you set wins over the current bar's highlight, so `tone: "dark"` on the current bar draws a dark current bar. */
   tone?: MobileChartBarTone;
   /** Readout chart only: how the bar stands out. Default `fill`, `partial` when `partial` is set, and the latest known bar is the `current` one unless a point says so. */
   emphasis?: MobileChartEmphasis;

@@ -334,7 +334,7 @@ test('readout chart: emphasis is per bar: fill, the current one highlighted, a p
   assert.deepEqual(barsOf(planned).map(([emphasis,, current]) => [emphasis, current]), [['fill', false], ['fill', true], ['fill', false], ['fill', false], ['fill', false], ['partial', false]], 'an explicit current wins over the latest');
   assert.match(planned, /curv-mobile-figure-value">\$96k</, 'and the readout rests on it');
   assert.match(css, /\.curv-mobile-chart-bar\[data-emphasis="partial"\] \{ background: repeating-linear-gradient/);
-  assert.match(css, /\.curv-mobile-chart-bar\[data-current\]:not\(\[data-tone="negative"\]\), \.curv-mobile-chart-col\[data-picked\] \.curv-mobile-chart-bar:not\(\[data-tone="negative"\]\) \{ --bar: var\(--curv-mobile-chart-current, #0f7a52\)/);
+  assert.match(css, /\.curv-mobile-chart-bar\[data-current\]:not\(\[data-tone="negative"\], \[data-tone-set\]\), \.curv-mobile-chart-col\[data-picked\] \.curv-mobile-chart-bar:not\(\[data-tone="negative"\]\) \{ --bar: var\(--curv-mobile-chart-current, #0f7a52\)/);
   assert.doesNotMatch(read('docs/mobile.md') + read('src/components/shell/mobile-chart.tsx'), /MobileChartBarPlan|bar: "fill"/, 'the paint field is not called a plan');
 });
 
@@ -360,6 +360,20 @@ test('readout chart: tones are dark, muted and red; a negative value is red unle
   assert.match(rule('.curv-mobile-chart-bar[data-tone="muted"]'), /--bar: var\(--curv-mobile-chart-bar-muted, #d4d4d8\)/);
   assert.match(rule('.curv-mobile-chart-bar[data-tone="negative"]'), /--bar: var\(--curv-mobile-chart-negative, #dc2626\)[^}]*border-radius: 0 0 4px 4px/);
   assert.match(css, /\.curv-mobile-chart-dark \.curv-mobile-chart-bar\[data-tone="negative"\] \{ --bar: var\(--curv-mobile-chart-negative-dark/);
+});
+
+test('readout chart: a tone the point sets wins over the current highlight, so a dark current bar and muted earlier bars are possible', () => {
+  const html = render(mobile.MobileChart, { points: [{ label: 'A', value: 5, tone: 'muted' }, { label: 'B', value: 7, tone: 'dark' }, { label: 'C', value: 9 }], readout: true, label: 'Year' });
+  const bars = [...html.matchAll(/<i class="curv-mobile-chart-bar"([^>]*)>/g)].map(match => match[1]);
+  assert.match(bars[1], /data-tone="dark" data-tone-set="true"/);
+  assert.doesNotMatch(bars[2], /data-tone-set/, 'a tone nobody set is not an explicit one: the latest bar takes the highlight');
+  assert.match(bars[2], /data-current="true"/);
+  const dark = render(mobile.MobileChart, { points: [{ label: 'A', value: 5 }, { label: 'B', value: 7, tone: 'dark', emphasis: 'current' }], readout: true, label: 'Year' });
+  assert.match(dark, /data-tone="dark" data-tone-set="true" data-current="true"/, 'an explicit tone on the current bar');
+  assert.match(css, /\.curv-mobile-chart-dark \.curv-mobile-chart-bar\[data-current\]:not\(\[data-tone="negative"\], \[data-tone-set\]\)/);
+  const docs = read('docs/mobile.md');
+  assert.match(docs, /`--curv-mobile-chart-current`/);
+  assert.match(docs, /`tone` you set on a point wins over it/);
 });
 
 test('readout chart: a long last label is anchored to its own edge so it grows inward, and the card never cuts it', () => {

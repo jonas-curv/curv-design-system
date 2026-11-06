@@ -128,7 +128,7 @@ export function MobileReadoutChart({
             <span key={index} className="curv-mobile-chart-col" style={{ left: `${(index / count) * 100}%`, width: `${100 / count}%` }}
               data-picked={active === index || undefined} data-dim={active !== null && active !== index ? true : undefined}>
               {point.value !== null && (
-                <i className="curv-mobile-chart-bar" data-emphasis={emphasis === "current" ? "fill" : emphasis} data-tone={barTone} data-current={isCurrent || undefined} style={{ bottom: `${barBottom}%`, height: `${barHeight}%` }} />
+                <i className="curv-mobile-chart-bar" data-emphasis={emphasis === "current" ? "fill" : emphasis} data-tone={barTone} data-tone-set={point.tone ? "true" : undefined} data-current={isCurrent || undefined} style={{ bottom: `${barBottom}%`, height: `${barHeight}%` }} />
               )}
               {point.plan != null && <i className="curv-mobile-chart-plan" style={{ bottom: `${pct(point.plan)}%` }} />}
             </span>

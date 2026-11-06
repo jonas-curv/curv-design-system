@@ -1077,10 +1077,10 @@ div.curv-mobile-count-row { cursor: default; }
 .curv-mobile-chart-plot { position: relative; width: 100%; touch-action: pan-y pinch-zoom; -webkit-user-select: none; user-select: none; -webkit-touch-callout: none; -webkit-tap-highlight-color: transparent; }
 .curv-mobile-chart-col { position: absolute; top: 0; bottom: 0; }
 .curv-mobile-chart-bar { --bar: var(--curv-mobile-chart-bar, #2b3033); position: absolute; left: 50%; width: 62%; max-width: 26px; min-height: 2px; transform: translateX(-50%); border-radius: 4px 4px 0 0; background: var(--bar); }
-/* Tone is the bar's ink: muted for earlier periods, red for a negative one. The highlighted (current or picked) bar takes the highlight, except a negative one, which stays red. */
+/* Tone is the bar's ink: muted for earlier periods, red for a negative one. The current bar takes the highlight (--curv-mobile-chart-current, green by default) unless the point sets a tone itself, which then wins: a dark current bar is `tone: "dark"`. A picked bar takes the highlight, except a negative one, which stays red. */
 .curv-mobile-chart-bar[data-tone="muted"] { --bar: var(--curv-mobile-chart-bar-muted, #d4d4d8); }
 .curv-mobile-chart-bar[data-tone="negative"] { --bar: var(--curv-mobile-chart-negative, #dc2626); border-radius: 0 0 4px 4px; }
-.curv-mobile-chart-bar[data-current]:not([data-tone="negative"]), .curv-mobile-chart-col[data-picked] .curv-mobile-chart-bar:not([data-tone="negative"]) { --bar: var(--curv-mobile-chart-current, #0f7a52); }
+.curv-mobile-chart-bar[data-current]:not([data-tone="negative"], [data-tone-set]), .curv-mobile-chart-col[data-picked] .curv-mobile-chart-bar:not([data-tone="negative"]) { --bar: var(--curv-mobile-chart-current, #0f7a52); }
 /* The plan: a dashed tick across the bar's slot (3px wider than the slot each side), above or below the bar. */
 .curv-mobile-chart-plan { position: absolute; z-index: 1; left: -3px; right: -3px; height: 0; border-top: 2px dashed var(--curv-mobile-chart-plan, #71717a); pointer-events: none; }
 /* A period still in progress is hatched, never a solid bar that reads as final. */
@@ -1098,7 +1098,7 @@ div.curv-mobile-count-row { cursor: default; }
 .curv-mobile-chart-dark .curv-mobile-chart-bar { --bar: var(--curv-mobile-chart-bar-dark, rgb(255 255 255 / 0.3)); }
 .curv-mobile-chart-dark .curv-mobile-chart-bar[data-tone="muted"] { --bar: var(--curv-mobile-chart-bar-muted-dark, rgb(255 255 255 / 0.16)); }
 .curv-mobile-chart-dark .curv-mobile-chart-bar[data-tone="negative"] { --bar: var(--curv-mobile-chart-negative-dark, #f87171); }
-.curv-mobile-chart-dark .curv-mobile-chart-bar[data-current]:not([data-tone="negative"]), .curv-mobile-chart-dark .curv-mobile-chart-col[data-picked] .curv-mobile-chart-bar:not([data-tone="negative"]) { --bar: var(--curv-mobile-chart-current-dark, #f8fafb); }
+.curv-mobile-chart-dark .curv-mobile-chart-bar[data-current]:not([data-tone="negative"], [data-tone-set]), .curv-mobile-chart-dark .curv-mobile-chart-col[data-picked] .curv-mobile-chart-bar:not([data-tone="negative"]) { --bar: var(--curv-mobile-chart-current-dark, #f8fafb); }
 .curv-mobile-chart-dark .curv-mobile-chart-plan { border-top-color: rgb(255 255 255 / 0.6); }
 .curv-mobile-chart-dark .curv-mobile-chart-compare { border-top-color: rgb(255 255 255 / 0.5); }
 .curv-mobile-chart-dark .curv-mobile-chart-xaxis > span { color: rgb(255 255 255 / 0.7); }
