@@ -1,5 +1,8 @@
 /* Approved Curv mobile command center. Tokens are scoped to the shared mobile surfaces. */
-:root { --curv-mobile-chrome: #171b1d; --curv-mobile-chrome-text: #f8fafb; --curv-mobile-radius: 18px; --curv-mobile-dock-height: 88px; }
+:root { --curv-mobile-chrome: #171b1d; --curv-mobile-chrome-text: #f8fafb; --curv-mobile-radius: 18px;
+  /* The room the shared glass bar takes at the bottom of the screen: 64px of bar and 12px under it. Reserve it, plus the bottom safe area and 12px to breathe,
+     so the last row clears the bar: calc(var(--curv-mobile-dock-height) + 12px + env(safe-area-inset-bottom)) (88px and the safe area). MobileSurface and MobilePage already do. */
+  --curv-mobile-dock-height: 76px; }
 .curv-mobile-only { display: none; }
 .curv-mobile-header, .curv-mobile-page, .curv-mobile-dock, .curv-mobile-sheet { font-family: inherit; font-feature-settings: 'tnum'; box-sizing: border-box; }
 @media (max-width: 767px) { .curv-mobile-only[data-breakpoint="md"] { display: block; } .curv-mobile-header[data-breakpoint="md"] { display: flex; } }
@@ -10,11 +13,30 @@
 .curv-mobile-title { font-size: 20px; line-height: 1.15; font-weight: 600; letter-spacing: -.035em; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .curv-mobile-context { font-size: 11px; opacity: .72; white-space: nowrap; }
 .curv-mobile-down { transform: rotate(90deg); opacity: .7; }
-.curv-mobile-header-action { flex-shrink: 0; display: flex; align-items: center; margin-left: 8px; }
+.curv-mobile-header-action { flex-shrink: 0; display: flex; align-items: center; gap: 8px; margin-left: 8px; }
+/* The 40px glass circles of the black header (search, more). The target is 44px: the pseudo-element reaches 2px past the circle on every side. */
+.curv-mobile-header-circle { position: relative; flex: none; display: grid; place-items: center; width: 40px; height: 40px; padding: 0; border: 0; border-radius: 50%; background: rgba(255, 255, 255, .12); box-shadow: inset 0 1px 0 rgba(255, 255, 255, .18); color: var(--curv-mobile-chrome-text); cursor: pointer; -webkit-tap-highlight-color: transparent; touch-action: manipulation; }
+.curv-mobile-header-circle::after { content: ""; position: absolute; inset: -2px; border-radius: 50%; }
+.curv-mobile-header-circle svg { display: block; width: 20px; height: 20px; }
+.curv-mobile-header-circle:focus-visible { outline: 2px solid var(--curv-mobile-chrome-text); outline-offset: 2px; }
+/* The older rule above gives every button in the action slot a 44px box and 12px corners; the circles keep 40px and round, and reach 44px through ::after. */
+.curv-mobile-header-action :is(.curv-mobile-header-circle, .curv-ask-circle) { min-width: 0; min-height: 0; width: 40px; height: 40px; border-radius: 50%; }
+/* A title that is a button looks like the title, with or without the app's own button reset. */
+.curv-mobile-header .curv-mobile-title-button { appearance: none; margin: 0; padding: 0; border: 0; background: none; color: inherit; font: inherit; cursor: pointer; }
+.curv-mobile-header div.curv-mobile-title-button { cursor: default; }
+.curv-mobile-header[data-record] .curv-mobile-title { font-variant-numeric: tabular-nums; letter-spacing: -.01em; }
+.curv-mobile-header-identity { gap: 2px; }
+/* A hub's pages, listed under the title: a light card hanging from the bar. */
+.curv-mobile-header-pages { position: absolute; z-index: 1; top: calc(100% - 4px); left: max(12px, env(safe-area-inset-left)); width: min(320px, calc(100% - 24px)); padding: 6px; border-radius: 18px; background: var(--curv-mobile-surface, #fff); color: var(--curv-mobile-ink, #1b1b1b); box-shadow: 0 12px 36px rgba(17, 17, 26, .28), 0 2px 6px rgba(17, 17, 26, .12); }
+.curv-mobile-header-pages ul { list-style: none; margin: 0; padding: 0; }
+.curv-mobile-header-page { display: flex; align-items: center; justify-content: space-between; gap: 12px; min-height: 48px; padding: 0 14px; border-radius: 12px; font-size: 17px; font-weight: 500; color: inherit; text-decoration: none; }
+.curv-mobile-header-page[aria-current="page"] { font-weight: 600; background: var(--curv-mobile-fill, #efeff1); }
+.curv-mobile-header-page:focus-visible { outline: 2px solid var(--curv-mobile-accent, #1764c0); outline-offset: -2px; }
+.curv-mobile-header[data-open] .curv-mobile-down { transform: rotate(-90deg); }
 .curv-mobile-header-action button, .curv-mobile-icon-button { display: inline-flex; min-width: 44px; min-height: 44px; justify-content: center; align-items: center; border-radius: 12px; flex-shrink: 0; }
 .curv-mobile-header button { color: inherit; }
 .curv-mobile-icon-button:focus-visible, .curv-mobile-title-button:focus-visible, .curv-mobile-record:focus-visible, .curv-mobile-dock :is(a,button):focus-visible { outline: 2px solid currentColor; outline-offset: -3px; }
-.curv-mobile-page { min-width: 0; padding: 16px max(16px, env(safe-area-inset-right)) calc(var(--curv-mobile-dock-height) + env(safe-area-inset-bottom)) max(16px, env(safe-area-inset-left)); background: var(--muted, #f3f4f5); color: var(--foreground, #1b1b1b); }
+.curv-mobile-page { min-width: 0; padding: 16px max(16px, env(safe-area-inset-right)) calc(var(--curv-mobile-dock-height) + 12px + env(safe-area-inset-bottom)) max(16px, env(safe-area-inset-left)); background: var(--muted, #f3f4f5); color: var(--foreground, #1b1b1b); }
 .curv-mobile-card, .curv-mobile-list { border: 1px solid var(--border, #e1e5e8); border-radius: var(--curv-mobile-radius); background: var(--card, white); overflow: hidden; }
 .curv-mobile-card { padding: 16px; }
 .curv-mobile-metric-heading { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; color: var(--muted-foreground, #667780); font-size: 12px; }
@@ -95,7 +117,7 @@
 .curv-mobile-metric-heading > :only-child { text-align: left; }
 
 /* Home command centers: one overview, followed by the work that earns attention. */
-.curv-mobile-page.curv-mobile-home { padding: 0 0 calc(var(--curv-mobile-dock-height) + env(safe-area-inset-bottom)); background: var(--curv-mobile-chrome); }
+.curv-mobile-page.curv-mobile-home { padding: 0 0 calc(var(--curv-mobile-dock-height) + 12px + env(safe-area-inset-bottom)); background: var(--curv-mobile-chrome); }
 .curv-mobile-home-overview { padding: 4px 4px 20px; color: var(--curv-mobile-chrome-text); }
 .curv-mobile-home-overview .curv-mobile-metric { padding: 20px; }
 .curv-mobile-home-activity { border-radius: 28px 28px 0 0; padding: 8px 16px 24px; background: var(--muted); color: var(--foreground); min-height: 380px; }
@@ -330,7 +352,7 @@
 /* ── MobileSurface ─────────────────────────────────────────────────────────
    The sheet. Its own 18px corners are what the bar's lip is cut to match. The
    bottom padding keeps the last row clear of the tab bar. */
-.curv-mobile-surface { --curv-surface: var(--curv-mobile-ground, var(--curv-mobile-surface-grouped, #f4f4f5)); position: relative; min-height: calc(100dvh - 58px - env(safe-area-inset-top)); padding-bottom: calc(110px + env(safe-area-inset-bottom)); border-radius: 18px 18px 0 0; background: var(--curv-surface); color: var(--curv-mobile-ink, #1b1b1b); }
+.curv-mobile-surface { --curv-surface: var(--curv-mobile-ground, var(--curv-mobile-surface-grouped, #f4f4f5)); position: relative; min-height: calc(100dvh - 58px - env(safe-area-inset-top)); padding-bottom: calc(var(--curv-mobile-dock-height, 76px) + 12px + env(safe-area-inset-bottom)); border-radius: 18px 18px 0 0; background: var(--curv-surface); color: var(--curv-mobile-ink, #1b1b1b); }
 .curv-mobile-surface[data-tone="plain"] { --curv-surface: var(--curv-mobile-surface, var(--curv-mobile-surface-plain, #ffffff)); }
 
 /* ── MobileViewToggle ──────────────────────────────────────────────────── */
@@ -348,11 +370,14 @@
 .curv-mobile-viewtoggle[data-tone="light"] .curv-mobile-viewtoggle-option:is([aria-pressed="true"], [aria-current="page"]) { background: #1b1b1b; color: #ffffff; }
 .curv-mobile-viewtoggle[data-tone="light"] .curv-mobile-viewtoggle-option:focus-visible { outline-color: #111113; }
 
-/* ── MobileTabBar ──────────────────────────────────────────────────────────
-   24px above the bottom safe area with 12px gutters. The bar itself never takes
-   a tap (pointer-events: none); the circles and the pill do. A bar that holds a
-   text field rides above the keyboard; a bar of destinations hides behind it. */
-.curv-mobile-tabbar { position: fixed; z-index: 40; left: 0; right: 0; bottom: calc(24px + env(safe-area-inset-bottom)); padding: 0 max(12px, env(safe-area-inset-right)) 0 max(12px, env(safe-area-inset-left)); pointer-events: none; }
+/* ── MobileTabBar: the one glass bar ───────────────────────────────────────
+   64px tall, 12px from the left, right and bottom edges plus the safe area, 6px of
+   padding inside. Five slots: the active one is a black pill with its label, the
+   others are 24px icons. The bar itself never takes a tap (pointer-events: none);
+   the circles and the pill do. A bar that holds a text field rides above the
+   keyboard; a bar of destinations hides behind it. Its footprint is
+   --curv-mobile-dock-height (76px) plus the safe area. */
+.curv-mobile-tabbar { position: fixed; z-index: 40; left: 0; right: 0; bottom: calc(12px + env(safe-area-inset-bottom)); padding: 0 max(12px, env(safe-area-inset-right)) 0 max(12px, env(safe-area-inset-left)); pointer-events: none; }
 .curv-mobile-tabbar[data-lifted] { bottom: calc(var(--curv-mobile-keyboard-inset, 0px) + 12px); }
 .curv-mobile-tabbar[hidden] { display: none !important; }
 .curv-mobile-tabbar .curv-mobile-connection { pointer-events: auto; left: max(12px, env(safe-area-inset-left)); right: max(12px, env(safe-area-inset-right)); }
@@ -366,35 +391,49 @@
     background: var(--curv-mobile-glass, rgba(250, 250, 251, .62));
     -webkit-backdrop-filter: blur(24px) saturate(190%);
     backdrop-filter: blur(24px) saturate(190%);
-    border-color: rgba(255, 255, 255, .75);
-    box-shadow: inset 0 1px 0 rgba(255, 255, 255, .9), inset 0 -1px 0 rgba(0, 0, 0, .04), 0 12px 36px rgba(17, 17, 26, .18), 0 2px 6px rgba(17, 17, 26, .08);
+    border-color: var(--curv-mobile-glass-edge-lit, rgba(255, 255, 255, .75));
+    box-shadow: inset 0 1px 0 var(--curv-mobile-glass-hi, rgba(255, 255, 255, .9)), inset 0 -1px 0 rgba(0, 0, 0, .04), 0 12px 36px rgba(17, 17, 26, .18), 0 2px 6px rgba(17, 17, 26, .08);
   }
+}
+/* Dark chrome: a dark lens, light icons, and the active pill turns white so it still stands out. */
+:is(.dark, [data-theme="dark"]) .curv-mobile-tabbar {
+  --curv-mobile-glass: rgba(34, 40, 43, .62);
+  --curv-mobile-glass-solid: #20272a;
+  --curv-mobile-glass-edge: #3a4448;
+  --curv-mobile-glass-edge-lit: rgba(255, 255, 255, .14);
+  --curv-mobile-glass-hi: rgba(255, 255, 255, .2);
+  --curv-mobile-tabbar-ink: #cdd5d9;
+  --curv-mobile-tabbar-ink-active: #f8fafb;
+  --curv-mobile-tabbar-pill: #f8fafb;
+  --curv-mobile-tabbar-pill-ink: #171b1d;
 }
 @media (prefers-reduced-transparency: reduce), (prefers-contrast: more), (forced-colors: active) {
   .curv-mobile-tabbar-glass { background: var(--curv-mobile-glass-solid, #fafafb); -webkit-backdrop-filter: none; backdrop-filter: none; box-shadow: none; border-color: var(--curv-mobile-glass-edge, #c4c4ca); }
 }
 
-.curv-mobile-tabbar-circle { flex: none; display: grid; place-items: center; width: 62px; height: 62px; padding: 0; border-radius: 50%; color: var(--curv-mobile-tabbar-ink-active, #111113); }
+.curv-mobile-tabbar-circle { flex: none; display: grid; place-items: center; width: 64px; height: 64px; padding: 0; border-radius: 50%; color: var(--curv-mobile-tabbar-ink-active, #111113); }
 .curv-mobile-tabbar-circle svg { display: block; width: 24px; height: 24px; }
-.curv-mobile-tabbar-pill { flex: 1 1 0; min-width: 0; height: 62px; padding: 0 5px; border-radius: 31px; display: flex; align-items: center; }
+.curv-mobile-tabbar-pill { flex: 1 1 0; min-width: 0; height: 64px; padding: 0 6px; border-radius: 32px; display: flex; align-items: center; }
 .curv-mobile-tabbar-item { position: relative; flex: 1 1 0; min-width: 0; height: 52px; padding: 0; border-radius: 26px; display: grid; place-items: center; color: var(--curv-mobile-tabbar-ink, #3a3a3d); }
 .curv-mobile-tabbar-icon { position: relative; display: grid; place-items: center; }
 .curv-mobile-tabbar-item svg { display: block; width: 24px; height: 24px; }
-.curv-mobile-tabbar-item:is([aria-current="page"], [aria-expanded="true"]) { background: rgba(0, 0, 0, .08); color: var(--curv-mobile-tabbar-ink-active, #111113); }
-.curv-mobile-tabbar-item:is([aria-current="page"], [aria-expanded="true"]) svg { stroke-width: 2.3; }
-.curv-mobile-tabbar-badge { position: absolute; top: -7px; right: -6px; min-width: 17px; height: 17px; padding: 0 5px; border-radius: 9px; background: var(--curv-mobile-critical, var(--curv-critical, #b5352f)); color: #ffffff; font-size: 10px; line-height: 17px; font-weight: 600; text-align: center; font-variant-numeric: tabular-nums; pointer-events: none; }
+.curv-mobile-tabbar-item:is([aria-current="page"], [aria-expanded="true"]) { background: var(--curv-mobile-tabbar-pill, #171b1d); color: var(--curv-mobile-tabbar-pill-ink, #ffffff); box-shadow: 0 4px 12px rgba(17, 17, 26, .25); }
+/* The page you are on is wider than the icon slots: icon, 8px, label (about 1.9 slots, as in the canvas). */
+.curv-mobile-tabbar-item[aria-current="page"] { flex: 1.9 1 0; display: flex; align-items: center; justify-content: center; gap: 8px; padding: 0 12px; }
+.curv-mobile-tabbar-item[aria-current="page"] .curv-mobile-tabbar-icon { flex: none; }
+.curv-mobile-tabbar-badge { position: absolute; top: -7px; right: -6px; min-width: 17px; height: 17px; padding: 0 5px; border-radius: 9px; background: var(--curv-mobile-critical, var(--curv-critical, #b5352f)); color: #ffffff; font-size: 10px; line-height: 17px; font-weight: 600; text-align: center; font-variant-numeric: tabular-nums; pointer-events: none; box-shadow: 0 0 0 2px var(--curv-mobile-glass-solid, #fafafb); }
 .curv-mobile-tabbar :is(a, button):focus-visible { outline: 2px solid currentColor; outline-offset: -3px; }
 
-/* Scrolled down: only the current destination and Search remain. */
+/* Opt-in (`collapseOnScroll`): scrolled down, only the current destination and the legacy search circle remain. */
 .curv-mobile-tabbar[data-collapsed] .curv-mobile-tabbar-circle { width: 48px; height: 48px; }
 .curv-mobile-tabbar[data-collapsed] .curv-mobile-tabbar-circle svg { width: 22px; height: 22px; }
 .curv-mobile-tabbar[data-collapsed] .curv-mobile-tabbar-pill { flex: 0 0 auto; height: 48px; padding: 0 4px; border-radius: 24px; }
 .curv-mobile-tabbar[data-collapsed] .curv-mobile-tabbar-item:not([data-compact]) { display: none; }
-.curv-mobile-tabbar[data-collapsed] .curv-mobile-tabbar-item[data-compact] { flex: 0 0 auto; display: flex; align-items: center; gap: 8px; height: 44px; padding: 0 16px 0 12px; border-radius: 22px; background: transparent; color: var(--curv-mobile-tabbar-ink-active, #111113); }
+.curv-mobile-tabbar[data-collapsed] .curv-mobile-tabbar-item[data-compact] { flex: 0 0 auto; display: flex; align-items: center; gap: 8px; height: 44px; padding: 0 16px 0 12px; border-radius: 22px; background: transparent; box-shadow: none; color: var(--curv-mobile-tabbar-ink-active, #111113); }
 .curv-mobile-tabbar[data-collapsed] .curv-mobile-tabbar-item[data-compact] svg { width: 22px; height: 22px; }
 /* The badge overhangs the icon by 6px, so a compact item that has one opens the gap to its label: the badge never touches the text. */
 .curv-mobile-tabbar[data-collapsed] .curv-mobile-tabbar-item[data-compact]:has(.curv-mobile-tabbar-badge) { gap: 14px; }
-.curv-mobile-tabbar-label { font-size: 15px; line-height: 1; font-weight: 600; letter-spacing: -.005em; white-space: nowrap; }
+.curv-mobile-tabbar-label { min-width: 0; overflow: hidden; text-overflow: ellipsis; font-size: 13px; line-height: 1; font-weight: 600; letter-spacing: 0; white-space: nowrap; }
 
 /* Record mode: the pill holds the page's one action. The classes are for the app's own controls. */
 .curv-mobile-tabbar-action { display: flex; align-items: center; gap: 6px; flex: 1; min-width: 0; height: 52px; }
@@ -897,6 +936,191 @@
 @media (prefers-reduced-motion: reduce) {
   .curv-mobile-swipe-surface, .curv-mobile-swipe-actions, .curv-mobile-board-card, .curv-mobile-gallery-dot { transition: none; }
 }
+/* ═══════════════════════════════════════════════════════════════════════════
+   Shared phone shell (0.4.0): the Ask orb, the glass bar's companions and the
+   phone's rows and figures. Colours are --curv-mobile-* tokens with fallbacks.
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+/* ── Ask AI: the orb and its button ─────────────────────────────────────────
+   Ported from Customs OS (components/ask-ai). The button always sits on a dark
+   bar, so its colours are fixed and do not follow the app theme. */
+/* The orb: Pool Water, light moving through a pool. Calm at rest. While working it follows the agent:
+   searching (faster swirl, a white sheen sweeping inside), reading (a gentle beat, a slower fainter sheen),
+   writing (a slower swirl, an inner glow that breathes). Everything stays inside the sphere. */
+.curv-orb { position: relative; display: block; flex: 0 0 auto; border-radius: 50%; overflow: hidden; background: #dffaff; isolation: isolate; }
+.curv-orb.curv-orb-s88 { width: 88px; height: 88px; box-shadow: 0 10px 24px -6px rgba(8, 118, 168, 0.34); }
+.curv-orb.curv-orb-s24 { width: 24px; height: 24px; box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.05); }
+.curv-orb.curv-orb-s20 { width: 20px; height: 20px; box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.06); }
+.curv-orb.curv-orb-s18 { width: 18px; height: 18px; box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.06); }
+:is(.dark, [data-theme="dark"]) :is(.curv-orb-s18, .curv-orb-s20, .curv-orb-s24) { box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.12); }
+.curv-orb i { position: absolute; inset: -34%; display: block; border-radius: 50%; filter: blur(13px) saturate(1.25); animation: curv-orb-a 15s linear infinite; background: conic-gradient(from 90deg, #d6fbff, #27c4e0, #8ff0e4, #0a7fb5, #b9f5ff, #2fd6c8, #d6fbff); }
+.curv-orb i:nth-child(2) { inset: -10%; mix-blend-mode: screen; filter: blur(9px); background: radial-gradient(circle at 26% 64%, #fff 0 10%, transparent 34%), radial-gradient(circle at 68% 40%, #e9ffff 0 9%, transparent 32%), radial-gradient(circle at 54% 78%, #fff 0 7%, transparent 26%); animation: curv-orb-b 9s ease-in-out infinite alternate; }
+/* The sheen: a white wedge of light turning inside the sphere. Hidden at rest. */
+.curv-orb i:nth-child(3) { inset: -10%; mix-blend-mode: screen; filter: blur(7px); opacity: 0; animation: curv-orb-sheen 1.2s linear infinite; animation-play-state: paused; background: conic-gradient(from 0deg, transparent 0 58%, rgba(255, 255, 255, 0.95) 76%, transparent 92%); }
+.curv-orb::after { content: ""; position: absolute; inset: 0; border-radius: 50%; z-index: 2; background: radial-gradient(circle at 33% 26%, rgba(255, 255, 255, 0.96), rgba(255, 255, 255, 0.34) 24%, rgba(255, 255, 255, 0) 50%), radial-gradient(circle at 70% 80%, rgba(255, 255, 255, 0.3), rgba(255, 255, 255, 0) 42%); box-shadow: inset -7px -9px 20px rgba(6, 84, 128, 0.24), inset 5px 5px 12px rgba(255, 255, 255, 0.7); }
+.curv-orb.curv-orb-s24 i, .curv-orb.curv-orb-s18 i, .curv-orb.curv-orb-s20 i { filter: blur(3.5px) saturate(1.3); }
+.curv-orb.curv-orb-s24 i:nth-child(2), .curv-orb.curv-orb-s18 i:nth-child(2), .curv-orb.curv-orb-s20 i:nth-child(2) { filter: blur(2.5px); }
+.curv-orb.curv-orb-s24 i:nth-child(3), .curv-orb.curv-orb-s18 i:nth-child(3), .curv-orb.curv-orb-s20 i:nth-child(3) { filter: blur(2.5px); }
+.curv-orb.curv-orb-s24::after, .curv-orb.curv-orb-s18::after, .curv-orb.curv-orb-s20::after { box-shadow: inset -2px -3px 6px rgba(6, 84, 128, 0.24), inset 1px 1px 3px rgba(255, 255, 255, 0.7); }
+
+/* Working: deeper water, and the sheen wakes. */
+.curv-orb-searching i:nth-child(1), .curv-orb-reading i:nth-child(1), .curv-orb-writing i:nth-child(1) { filter: blur(8px) saturate(1.6) contrast(1.2); background: conic-gradient(from 90deg, #8feaff, #0a7fb5, #2fd6c8, #063f78, #6fe6ff, #0a7fb5, #8feaff); }
+.curv-orb-s24.curv-orb-searching i:nth-child(1), .curv-orb-s18.curv-orb-searching i:nth-child(1), .curv-orb-s20.curv-orb-searching i:nth-child(1), .curv-orb-s24.curv-orb-reading i:nth-child(1), .curv-orb-s18.curv-orb-reading i:nth-child(1), .curv-orb-s20.curv-orb-reading i:nth-child(1), .curv-orb-s24.curv-orb-writing i:nth-child(1), .curv-orb-s18.curv-orb-writing i:nth-child(1), .curv-orb-s20.curv-orb-writing i:nth-child(1) { filter: blur(3px) saturate(1.7) contrast(1.15); }
+.curv-orb-searching i:nth-child(3), .curv-orb-reading i:nth-child(3) { animation-play-state: running; }
+
+/* Searching: a faster swirl and the full sheen, turning every 1.2s. */
+.curv-orb-searching i:nth-child(1) { animation-duration: 3.2s; }
+.curv-orb-searching i:nth-child(2) { animation-duration: 2.2s; }
+.curv-orb-searching i:nth-child(3) { opacity: 1; }
+.curv-orb-s24.curv-orb-searching i:nth-child(1), .curv-orb-s18.curv-orb-searching i:nth-child(1), .curv-orb-s20.curv-orb-searching i:nth-child(1) { animation-duration: 1.8s; }
+.curv-orb-s24.curv-orb-searching i:nth-child(2), .curv-orb-s18.curv-orb-searching i:nth-child(2), .curv-orb-s20.curv-orb-searching i:nth-child(2) { animation-duration: 1.4s; }
+
+/* Reading: a gentle beat, the sheen fainter and slower. */
+.curv-orb-reading { animation: curv-orb-beat 0.9s ease-in-out infinite; }
+.curv-orb-reading i:nth-child(1) { animation-duration: 6s; }
+.curv-orb-reading i:nth-child(2) { animation-duration: 5s; }
+.curv-orb-reading i:nth-child(3) { opacity: 0.45; animation-duration: 2.4s; }
+
+/* Writing: a slower swirl, the inner glow stronger and breathing. */
+.curv-orb-writing { --wb: 8px; }
+.curv-orb-s24.curv-orb-writing, .curv-orb-s18.curv-orb-writing, .curv-orb-s20.curv-orb-writing { --wb: 3px; }
+.curv-orb-writing i:nth-child(1) { animation: curv-orb-a 10s linear infinite, curv-orb-glow 1.8s ease-in-out infinite alternate; }
+.curv-orb-writing i:nth-child(2) { animation-duration: 7s; }
+
+@keyframes curv-orb-a { to { transform: rotate(360deg); } }
+@keyframes curv-orb-b { from { transform: translate(-9%, 6%) rotate(0); } to { transform: translate(9%, -7%) rotate(160deg); } }
+@keyframes curv-orb-sheen { to { transform: rotate(360deg); } }
+@keyframes curv-orb-beat { 50% { transform: scale(1.05); } }
+@keyframes curv-orb-glow {
+  from { filter: blur(var(--wb)) saturate(1.6) contrast(1.2) brightness(1); }
+  to { filter: blur(var(--wb)) saturate(1.8) contrast(1.2) brightness(1.2); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .curv-orb, .curv-orb i, .curv-orb-searching, .curv-orb-reading, .curv-orb-writing { animation: none !important; }
+  /* Still tell the states apart without motion: the sheen stays, parked. */
+  .curv-orb-searching i:nth-child(3), .curv-orb-reading i:nth-child(3) { transform: rotate(40deg); }
+}
+
+
+.curv-ask { position: relative; flex: none; display: inline-flex; align-items: center; margin: 0; border: 0; font-family: inherit; cursor: pointer; -webkit-tap-highlight-color: transparent; touch-action: manipulation; }
+/* The labelled white button, the desktop variant: 40px tall, 8px corners. */
+.curv-ask-labelled { height: 40px; padding: 0 13px 0 9px; gap: 7px; border-radius: 8px; background: #fff; color: #111; font-size: 13.5px; font-weight: 600; line-height: 1; letter-spacing: -.01em; white-space: nowrap; }
+.curv-ask-labelled[aria-expanded="true"] { background: #2d2d2c; color: #fff; box-shadow: inset 0 0 0 1px #4a4845; }
+/* The phone variant: a 40px glass circle holding a 20px orb, no label. The target is 44px: the pseudo-element reaches 2px past the circle. */
+.curv-ask-circle { justify-content: center; width: 40px; height: 40px; padding: 0; border-radius: 50%; background: rgba(255, 255, 255, .12); box-shadow: inset 0 1px 0 rgba(255, 255, 255, .18); color: #fff; }
+.curv-ask-circle::after { content: ""; position: absolute; inset: -2px; border-radius: 50%; }
+.curv-ask-circle[aria-expanded="true"] { background: rgba(255, 255, 255, .22); }
+.curv-ask:focus-visible { outline: 0; box-shadow: 0 0 0 2px #1b1b1b, 0 0 0 4px #6fe6ff; }
+.curv-ask-circle:focus-visible { box-shadow: inset 0 1px 0 rgba(255, 255, 255, .18), 0 0 0 2px #1b1b1b, 0 0 0 4px #6fe6ff; }
+.curv-ask-labelled[aria-expanded="true"]:focus-visible { box-shadow: 0 0 0 2px #1b1b1b, 0 0 0 4px #6fe6ff; }
+@media (hover: hover) { .curv-ask-labelled:hover:not([aria-expanded="true"]) { background: #ecebe9; } .curv-ask-circle:hover { background: rgba(255, 255, 255, .18); } }
+@media (forced-colors: active) { .curv-ask { border: 1px solid ButtonText; } .curv-ask:focus-visible { outline: 2px solid Highlight; } }
+
+/* ── Record rows: the one-amount and one-line layouts ──────────────────────── */
+.curv-mobile-record[data-layout] { display: flex; align-items: center; gap: 12px; }
+.curv-mobile-record[data-layout="amount"] { min-height: 56px; padding: 8px 16px; }
+.curv-mobile-record[data-layout="oneLine"] { min-height: 48px; padding: 6px 16px; gap: 10px; }
+.curv-mobile-record[data-layout] strong { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; overflow-wrap: normal; }
+.curv-mobile-record[data-layout] .curv-mobile-record-subtitle { margin-top: 2px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 12.5px; line-height: 1.3; }
+.curv-mobile-record-amount { flex: none; display: flex; flex-direction: column; align-items: flex-end; gap: 3px; text-align: right; }
+.curv-mobile-record-status { font-size: 12.5px; line-height: 1.2; font-weight: 600; color: var(--curv-mobile-ink-3, #6b6b6f); font-variant-numeric: tabular-nums; }
+.curv-mobile-record-status[data-tone="good"] { color: var(--curv-mobile-positive-fg, #1f6b30); }
+.curv-mobile-record-status[data-tone="warn"] { color: var(--curv-mobile-board-warning-fg, #8a4e00); }
+.curv-mobile-record-status[data-tone="info"] { color: var(--curv-mobile-info-fg, #1d4f91); }
+.curv-mobile-record-status[data-tone="bad"] { color: var(--curv-mobile-critical-fg, #a9302a); }
+.curv-mobile-record-name { flex: 1; min-width: 0; display: flex; align-items: center; gap: 8px; }
+.curv-mobile-record-name > strong { flex: 0 1 auto; min-width: 0; font-size: 15px; line-height: 1.3; font-weight: 600; }
+.curv-mobile-record-dot { flex: none; width: 8px; height: 8px; border-radius: 50%; background: var(--curv-mobile-dot-warn, #b97a00); }
+.curv-mobile-record-dot[data-tone="info"] { background: var(--curv-mobile-dot-info, #2f6fc4); }
+.curv-mobile-record-note { flex: none; min-width: 52px; text-align: right; font-size: 12.5px; line-height: 1.2; color: var(--curv-mobile-ink-3, #6b6b6f); font-variant-numeric: tabular-nums; white-space: nowrap; }
+.curv-mobile-record[data-layout="oneLine"] .curv-mobile-record-value { min-width: 64px; text-align: right; }
+
+/* ── Group row, count row, figure ─────────────────────────────────────────── */
+.curv-mobile-group-row { display: flex; align-items: center; justify-content: space-between; gap: 12px; min-height: 36px; padding: 8px 16px 6px; background: var(--curv-mobile-ground, #f4f4f5); color: var(--curv-mobile-ink-3, #6b6b6f); font-size: 12.5px; line-height: 1.3; font-weight: 600; }
+.curv-mobile-group-label { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.curv-mobile-group-figures { flex: none; display: flex; align-items: baseline; gap: 8px; font-weight: 500; font-variant-numeric: tabular-nums; }
+.curv-mobile-group-count { color: var(--curv-mobile-ink-3, #6b6b6f); }
+.curv-mobile-group-total { color: var(--curv-mobile-ink-2, #3a3a3d); font-weight: 600; }
+
+.curv-mobile-count-row { box-sizing: border-box; display: flex; align-items: center; gap: 12px; width: 100%; min-height: 56px; margin: 0; padding: 11px 14px 11px 16px; border: 0; background: transparent; color: var(--curv-mobile-ink, #1b1b1b); font: inherit; text-align: left; text-decoration: none; cursor: pointer; -webkit-tap-highlight-color: transparent; touch-action: manipulation; }
+div.curv-mobile-count-row { cursor: default; }
+.curv-mobile-count-row:is(a, button):active { background: rgb(0 0 0 / 0.045); }
+.curv-mobile-count-row:focus-visible { outline: 2px solid var(--curv-mobile-accent, #1764c0); outline-offset: -2px; }
+.curv-mobile-count-tile { flex: none; display: grid; place-items: center; min-width: 34px; height: 34px; padding: 0 6px; border-radius: 11px; background: var(--curv-mobile-fill, #efeff1); color: var(--curv-mobile-ink, #1b1b1b); font-size: 16px; line-height: 1; font-weight: 700; font-variant-numeric: tabular-nums; }
+.curv-mobile-count-tile[data-tone="bad"] { background: var(--curv-mobile-critical-bg, #fde4e2); color: var(--curv-mobile-critical-fg, #a9302a); }
+.curv-mobile-count-tile[data-tone="warn"] { background: var(--curv-mobile-board-warning-bg, #fdf1dc); color: var(--curv-mobile-board-warning-fg, #8a4e00); }
+.curv-mobile-count-tile[data-tone="good"] { background: var(--curv-mobile-positive-bg, #d9f5df); color: var(--curv-mobile-positive-fg, #1f6b30); }
+.curv-mobile-count-tile[data-tone="info"] { background: var(--curv-mobile-info-bg, #e3eefd); color: var(--curv-mobile-info-fg, #1d4f91); }
+/* Zero is dim, not hidden: the list keeps its shape. The grey is still the 5:1 meta ink. */
+.curv-mobile-count-tile[data-zero] { background: transparent; box-shadow: inset 0 0 0 1px var(--curv-mobile-hairline, #e3e3e6); color: var(--curv-mobile-ink-3, #6b6b6f); font-weight: 600; }
+.curv-mobile-count-row:has(.curv-mobile-count-tile[data-zero]) .curv-mobile-count-title { color: var(--curv-mobile-ink-3, #6b6b6f); font-weight: 500; }
+.curv-mobile-count-text { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+.curv-mobile-count-title { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 15px; line-height: 1.3; font-weight: 600; }
+.curv-mobile-count-meta { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 12.5px; line-height: 1.3; color: var(--curv-mobile-ink-3, #6b6b6f); font-variant-numeric: tabular-nums; }
+.curv-mobile-count-chevron { flex: none; display: grid; place-items: center; color: var(--curv-mobile-chevron, #8a8a90); }
+
+.curv-mobile-figure { display: flex; align-items: baseline; justify-content: space-between; gap: 10px; color: inherit; }
+.curv-mobile-figure[data-layout="stacked"] { flex-direction: column; align-items: flex-start; justify-content: flex-start; gap: 2px; }
+.curv-mobile-figure-value { font-size: 24px; line-height: 1.15; font-weight: 600; letter-spacing: -.03em; font-variant-numeric: tabular-nums; }
+.curv-mobile-figure-label { font-size: 13px; line-height: 1.3; color: var(--curv-mobile-ink-3, #6b6b6f); font-variant-numeric: tabular-nums; }
+.curv-mobile-figure[data-layout="inline"] .curv-mobile-figure-label { min-width: 0; text-align: right; }
+.curv-mobile-chart-dark .curv-mobile-figure-label { color: rgb(255 255 255 / 0.72); }
+
+/* ── The readout chart: a readout over scrubbable bars ─────────────────────── */
+.curv-mobile-chart-bars > .curv-mobile-figure { margin-bottom: 14px; }
+.curv-mobile-chart-plot { position: relative; width: 100%; touch-action: pan-y pinch-zoom; -webkit-user-select: none; user-select: none; -webkit-touch-callout: none; -webkit-tap-highlight-color: transparent; }
+.curv-mobile-chart-col { position: absolute; top: 0; bottom: 0; }
+.curv-mobile-chart-bar { --bar: var(--curv-mobile-chart-bar, #2b3033); position: absolute; left: 50%; width: 62%; max-width: 26px; min-height: 2px; transform: translateX(-50%); border-radius: 4px 4px 0 0; background: var(--bar); }
+.curv-mobile-chart-bar[data-current], .curv-mobile-chart-col[data-picked] .curv-mobile-chart-bar { --bar: var(--curv-mobile-chart-current, #0f7a52); }
+/* A period still in progress is hatched, never a solid bar that reads as final. */
+.curv-mobile-chart-bar[data-plan="partial"] { background: repeating-linear-gradient(0deg, var(--bar) 0 3px, transparent 3px 6px); box-shadow: inset 0 2px 0 var(--bar); }
+.curv-mobile-chart-col[data-dim] .curv-mobile-chart-bar { opacity: .35; }
+.curv-mobile-chart-compare { position: absolute; z-index: 1; left: 0; right: 0; height: 0; border-top: 1.5px dashed var(--curv-mobile-chart-compare, #6b767c); pointer-events: none; }
+.curv-mobile-chart-zero { position: absolute; left: 0; right: 0; height: 1px; background: currentColor; opacity: .16; pointer-events: none; }
+.curv-mobile-chart-xaxis { display: flex; margin-top: 6px; }
+.curv-mobile-chart-xaxis > span { flex: 1 1 0; min-width: 0; min-height: 1.2em; text-align: center; font-size: 12px; line-height: 1.2; color: var(--curv-mobile-ink-3, #6b6b6f); font-variant-numeric: tabular-nums; white-space: nowrap; overflow: visible; }
+.curv-mobile-chart-xaxis > span[data-picked] { color: var(--curv-mobile-ink, #1b1b1b); font-weight: 600; }
+.curv-mobile-chart-bars:has(.curv-mobile-chart-scrub:focus-visible) > .curv-mobile-chart-plot { outline: 2px solid var(--ring, currentColor); outline-offset: 6px; border-radius: 12px; }
+.curv-mobile-chart-dark .curv-mobile-chart-bar { --bar: var(--curv-mobile-chart-bar-dark, rgb(255 255 255 / 0.3)); }
+.curv-mobile-chart-dark .curv-mobile-chart-bar[data-current], .curv-mobile-chart-dark .curv-mobile-chart-col[data-picked] .curv-mobile-chart-bar { --bar: var(--curv-mobile-chart-current-dark, #f8fafb); }
+.curv-mobile-chart-dark .curv-mobile-chart-compare { border-top-color: rgb(255 255 255 / 0.5); }
+.curv-mobile-chart-dark .curv-mobile-chart-xaxis > span { color: rgb(255 255 255 / 0.7); }
+.curv-mobile-chart-dark .curv-mobile-chart-xaxis > span[data-picked] { color: #f8fafb; }
+@media (forced-colors: active) { .curv-mobile-chart-bar { background: CanvasText; forced-color-adjust: none; } .curv-mobile-chart-bar[data-current] { background: Highlight; } }
+
+/* ── Picture and share bar (a record's picture and its money card) ─────────── */
+.curv-mobile-picture { position: relative; display: block; box-sizing: border-box; width: 100%; aspect-ratio: 16 / 10; margin: 0; padding: 0; overflow: hidden; border: 0; border-radius: 18px; background: var(--curv-mobile-thumb, #f4f4f5); color: #fff; font: inherit; text-align: left; text-decoration: none; -webkit-tap-highlight-color: transparent; }
+.curv-mobile-picture::after { content: ""; position: absolute; inset: 0; border-radius: inherit; box-shadow: inset 0 0 0 1px rgb(0 0 0 / 0.08); pointer-events: none; }
+.curv-mobile-picture:has(.curv-mobile-picture-empty) { background: #2b3033; }
+.curv-mobile-picture-link { cursor: pointer; }
+.curv-mobile-picture-link:focus-visible { outline: 2px solid var(--curv-mobile-accent, #1764c0); outline-offset: 2px; }
+.curv-mobile-picture-image { position: absolute; inset: 0; display: block; width: 100%; height: 100%; object-fit: cover; }
+.curv-mobile-picture-empty { position: absolute; inset: 0; display: grid; place-items: center; color: #bac5ca; }
+.curv-mobile-picture-chip { position: absolute; z-index: 1; left: 12px; top: 12px; display: block; box-sizing: border-box; max-width: calc(100% - 24px); padding: 4px 10px; overflow: hidden; border-radius: 999px; background: rgb(255 255 255 / 0.88); color: #1b1b1b; font-size: 12px; line-height: 1.25; font-weight: 600; text-overflow: ellipsis; white-space: nowrap; }
+.curv-mobile-picture-caption { position: absolute; z-index: 1; left: 0; right: 0; bottom: 0; display: flex; flex-direction: column; gap: 2px; padding: 36px 16px 12px; background: linear-gradient(180deg, transparent, rgb(0 0 0 / 0.62)); }
+.curv-mobile-picture-title { display: block; overflow: hidden; font-size: 17px; line-height: 1.25; font-weight: 600; text-overflow: ellipsis; white-space: nowrap; }
+.curv-mobile-picture-line { display: block; overflow: hidden; font-size: 13px; line-height: 1.3; color: rgb(255 255 255 / 0.92); text-overflow: ellipsis; white-space: nowrap; }
+
+.curv-mobile-share { color: var(--curv-mobile-ink, #1b1b1b); }
+.curv-mobile-share-bar { display: flex; height: 10px; margin-top: 12px; overflow: hidden; border-radius: 5px; background: var(--curv-mobile-fill, #efeff1); }
+.curv-mobile-share-bar > i { display: block; height: 100%; }
+.curv-mobile-share-a { background: var(--curv-mobile-share-a, #0f7a52); }
+.curv-mobile-share-b { background: var(--curv-mobile-share-b, #c9d1d6); }
+.curv-mobile-share-pairs { display: grid; grid-template-columns: 1fr 1fr; gap: 12px 16px; margin: 14px 0 0; }
+.curv-mobile-share-pair { min-width: 0; }
+.curv-mobile-share-pair dt { font-size: 12.5px; line-height: 1.3; color: var(--curv-mobile-ink-3, #6b6b6f); }
+.curv-mobile-share-pair dd { display: flex; align-items: baseline; flex-wrap: wrap; gap: 2px 6px; margin: 2px 0 0; font-variant-numeric: tabular-nums; }
+.curv-mobile-share-value { font-size: 15px; line-height: 1.3; font-weight: 600; }
+.curv-mobile-share-percent { font-size: 13px; line-height: 1.3; font-weight: 600; color: var(--curv-mobile-ink-3, #6b6b6f); }
+.curv-mobile-share-pair[data-segment="a"] .curv-mobile-share-percent { color: var(--curv-mobile-positive-fg, #1f6b30); }
+
+@media (prefers-reduced-motion: no-preference) {
+  .curv-ask-circle, .curv-ask-labelled { transition: background-color .15s ease-out, transform .12s ease-out; }
+  .curv-ask:active { transform: scale(.97); }
+  .curv-mobile-chart-bar { transition: opacity .12s ease-out; }
+}
+
+
 @media (forced-colors: active) {
   .curv-mobile-chip:is([aria-pressed="true"], [aria-current], :has(> [data-active="true"])),
   .curv-mobile-hero-kpi:is([aria-pressed="true"], [aria-current], :has(> [data-active="true"])) { outline: 2px solid Highlight; outline-offset: -2px; }

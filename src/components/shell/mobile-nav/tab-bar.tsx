@@ -37,13 +37,16 @@ export interface MobileTabBarSearch {
   closeLabel?: string;
 }
 export interface MobileTabBarProps {
-  /** Already permission-filtered destinations. Up to 5 including the menu button; extra items are dropped (a console warning says which, outside production). */
+  /** Already permission-filtered destinations, in the shared slot order: Home, work, report, inbox, then the menu. Up to 5
+   *  including the menu button; extra items are dropped (a console warning says which, outside production). The active one is
+   *  the black pill with its label; the others are icons. */
   items?: MobileTabBarItem[];
   renderLink?: MobileNavRenderLink<MobileTabBarItem>;
-  /** Shows the 62px search circle on the left. */
+  /** @deprecated Search lives in `MobileHeader` (`onSearch`), not in the bar. Still shows the legacy 64px circle on the left when
+   *  passed, so an app moving to the shared shell can drop it in its own time. */
   onSearch?: () => void;
   searchLabel?: string;
-  /** Shows the menu button as the last item in the pill. */
+  /** Shows the hamburger as the last slot of the pill. The app opens `MobileMenu` (or `MobileMoreMenu`) from it and reports `menuOpen`. */
   onMenu?: () => void;
   menuOpen?: boolean;
   menuLabel?: string;
@@ -55,10 +58,13 @@ export interface MobileTabBarProps {
   action?: React.ReactNode;
   /** mode "search": the field and its close circle. */
   search?: MobileTabBarSearch;
-  /** Shrink to the current destination and Search while the page is read downwards. Default true. */
+  /** Shrink to the current destination (and the legacy search circle) while the page is read downwards. Default false: the shared bar keeps
+   *  all five slots on screen. */
   collapseOnScroll?: boolean;
   /** Explicit read refresh, owned by the authenticated app router. Never replay writes. */
   onRefresh?: () => void;
+  /** Hide the bar (a search surface or sheet is covering the page). The software keyboard hides it on its own. */
+  hidden?: boolean;
   breakpoint?: MobileBreakpoint;
   className?: string;
 }
@@ -76,12 +82,12 @@ const tabLabels = { tabs: "Mobile navigation", record: "Record actions" } as con
 const CAP = 5;
 
 /**
- * The floating glass bar (docs/mobile.md rule 5). Three modes share one position:
- * `tabs` (search circle, icon pill, menu), `record` (hub circle, the page's one
- * action) and `search` (the field, down where the thumb is). It hides behind the
- * keyboard in `tabs` mode and rides above it in the two modes that hold a field.
+ * The one glass bar (docs/mobile.md rule 5): 64px tall, 12px from the edges, five slots in the same order in every OS. The
+ * active slot is a black pill with its label; the other four are 24px icons. Three modes share one position: `tabs`, `record`
+ * (hub circle, the page's one action) and `search` (the field, down where the thumb is). It hides behind the keyboard in
+ * `tabs` mode and rides above it in the two modes that hold a field. Reserve its room with `--curv-mobile-dock-height`.
  */
-export function MobileTabBar({ items = [], renderLink, onSearch, searchLabel = "Search", onMenu, menuOpen = false, menuLabel = "Menu", mode: requestedMode = "tabs", leading, action, search, collapseOnScroll = true, onRefresh, breakpoint = "md", className }: MobileTabBarProps) {
+export function MobileTabBar({ items = [], renderLink, onSearch, searchLabel = "Search", onMenu, menuOpen = false, menuLabel = "Menu", mode: requestedMode = "tabs", leading, action, search, collapseOnScroll = false, onRefresh, hidden = false, breakpoint = "md", className }: MobileTabBarProps) {
   const uid = React.useId();
   const keyboard = useSoftwareKeyboard();
   const keyboardInset = useKeyboardInset();
@@ -117,17 +123,18 @@ export function MobileTabBar({ items = [], renderLink, onSearch, searchLabel = "
     const badge = badgeText(item.badge);
     const badgeId = badge ? `${uid}-badge-${idPart(item.id)}` : undefined;
     const compact = collapsed && item.id === compactId;
+    const current = Boolean(item.active) && !menuOpen;
     return <React.Fragment key={item.id}>{link(item, {
       href: item.href,
       className: "curv-mobile-tabbar-item",
       "aria-label": item.label,
-      "aria-current": item.active && !menuOpen ? "page" : undefined,
+      "aria-current": current ? "page" : undefined,
       "aria-describedby": badgeId,
       "data-compact": compact ? "true" : undefined,
       children: <>
         {/* The badge lives in the icon's box, so it sits on the icon's corner in the full bar and the shrunken one alike and never reaches the label. */}
         <span className="curv-mobile-tabbar-icon" aria-hidden="true">{item.icon}{badge && <span className="curv-mobile-tabbar-badge" aria-hidden="true">{badge}</span>}</span>
-        {compact && <span className="curv-mobile-tabbar-label" aria-hidden="true">{item.label}</span>}
+        {(current || compact) && <span className="curv-mobile-tabbar-label" aria-hidden="true">{item.label}</span>}
         {badge && <span id={badgeId} className="curv-mobile-nav-sr">{badgeDescription(item)}</span>}
       </>,
     })}</React.Fragment>;
@@ -146,7 +153,7 @@ export function MobileTabBar({ items = [], renderLink, onSearch, searchLabel = "
     data-collapsed={collapsed || undefined}
     data-lifted={lifted || undefined}
     style={lifted ? { "--curv-mobile-keyboard-inset": `${keyboardInset}px` } as React.CSSProperties : undefined}
-    hidden={keyboard && mode === "tabs"}
+    hidden={hidden || (keyboard && mode === "tabs")}
     onFocusCapture={restoreOnKeyboardFocus}
   >
     <MobileConnectionNotice connection={connection} onRefresh={onRefresh} onDismiss={dismissConnection} />

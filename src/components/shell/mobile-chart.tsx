@@ -2,13 +2,18 @@
 
 import * as React from "react";
 import { cn } from "../../lib/cn";
+import { MobileReadoutChart } from "./mobile-chart-readout";
 
+/** How a bar is drawn in the readout chart: `fill` is a plain bar, `current` the highlighted one, `partial` a period still in progress (hatched). */
+export type MobileChartBarPlan = "fill" | "current" | "partial";
 export type MobileChartPoint = {
   label: string;
   value: number | null;
   display?: string;
   /** The period is not over ("so far today"). Drawn dashed with a hollow end point so it is never read as final. */
   partial?: boolean;
+  /** Readout chart only: how this bar is drawn. Default `fill`, `partial` when `partial` is set, and the latest known bar is the `current` one unless a point says so. */
+  bar?: MobileChartBarPlan;
 };
 
 export interface MobileChartProps {
@@ -50,6 +55,17 @@ export interface MobileChartProps {
   grid?: boolean;
   /** Said after the label of a partial point in the readout and the screen-reader text. Default "so far". */
   partialLabel?: string;
+  /** The readout chart: a 24px value and its period ABOVE a single series of bars (`variant` is ignored), scrubbed by touch so the readout
+   *  follows the finger. Bars take a plan per point (`bar`), `referenceLine` is the one dashed comparison, axis labels are 12px and
+   *  thinned to fit, and there is no second axis and no legend. `true` rests on the latest known period; an object replaces what it
+   *  says at rest. It needs 2 or more points. */
+  readout?: boolean | MobileChartReadout;
+}
+export interface MobileChartReadout {
+  /** What the readout says at rest, instead of the current bar's value: the period total, say. */
+  value?: React.ReactNode;
+  /** What it says at rest under the value's label, instead of the current bar's label: "Last 30 days". */
+  period?: React.ReactNode;
 }
 
 const W = 260;
@@ -68,7 +84,11 @@ const show = (point: MobileChartPoint, format: (value: number) => string) =>
  * the phone instead of pushing the headline off screen. Values are drawn into
  * the plot because a finger cannot hover a tooltip.
  */
-export function MobileChart({
+export function MobileChart(props: MobileChartProps) {
+  return props.readout && props.points.length > 1 ? <MobileReadoutChart {...props} /> : <MobileChartPlot {...props} />;
+}
+
+function MobileChartPlot({
   points, variant = "bars", reference, referenceLabel, headline, delta, deltaTone = "flat",
   format = defaultFormat, label, caption, ratio = 2.4, scrub, emptyMessage = "No data for this period.",
   className, tone = "light", referenceLine, futureSlots = 0, endLabel, grid, partialLabel = "so far",

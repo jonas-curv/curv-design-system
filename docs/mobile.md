@@ -10,7 +10,66 @@ Import components from `@curvgroup/design-system/mobile` and import `@curvgroup/
 
 The mobile entry is a client module (it ships with `"use client"`), so the top bar and tab bar can be mounted from a layout. For the same reason a function imported from it cannot be called in a **server component** (Next hands it over as a client reference and it throws). Two of its exports are pure functions with no React, `mobileAvatarColor` and `mobileButtonClassName`, and the main entry `@curvgroup/design-system` (no `"use client"`) exports them too: import them from there when a server component needs them (`import { mobileButtonClassName } from "@curvgroup/design-system"`); from a client component either import works. Navigation components take `renderLink(item, props)` and content components take `renderLink(props)`; both prop objects carry `href`, so one adapter body serves both: spread the props onto the app's router link (`<Link {...props} />`), including `aria-current`.
 
-## The rules
+## The phone shell
+
+One shell for every Curv OS (approved on the "Curv Phone Before & After" canvas, 5 Nov 2026): the same top bar, the same glass bar with the same slots, the same Ask orb. An app does not draw its own dock or its own Ask button; it passes destinations to these.
+
+### Anatomy
+
+| Piece | Component | Spec |
+| --- | --- | --- |
+| Top bar | `MobileHeader` | 62px black chrome plus the top safe area. **One** 20px title, with an optional caret dropdown (`switcher`) that lists a hub's pages; or a back chevron plus the record's id (`recordId`). On the right a 40px glass **search circle** (`onSearch`) and the **Ask orb** (`ask`); on records optionally a ⋯ button (`onMore`). Nothing else: no bell, no stats line, no menu button, no page heading under it. `MobileHeaderTitle` still works for an app that keeps its own bar. |
+| Bar | `MobileTabBar` | The one glass dock. 64px tall, radius 32, 12px from the left, right and bottom edges plus the safe area, 6px of inner padding. Five slots in the same order everywhere: **Home, work, report, inbox, ☰**. The active slot is a black (`#171b1d`) pill 52px tall (radius 26) with a white 24px icon and a 13px semibold label; the other four are 24px icons with no label. A badge may sit on any slot. The last slot is the hamburger (`onMenu`) and opens `MobileMenu` (or `MobileMoreMenu`). No search circle in the bar. It hides while the software keyboard is open. |
+| Glass | `.curv-mobile-tabbar-glass` | Fill `rgba(250,250,251,.62)`, `backdrop-filter: blur(24px) saturate(1.9)`, 1px `rgba(255,255,255,.75)` border, inset highlights, and a two-layer drop shadow (`0 12px 36px` and `0 2px 6px`). Dark chrome (under `.dark` or `[data-theme="dark"]`) gets a dark lens and a white active pill. Reduced transparency, increased contrast and forced colours make it opaque. |
+| Ask | `AskButton`, `AskOrb` | The Customs orb. `AskButton` is a 40px glass circle holding a 20px orb, no label, for the dark top bar (`variant="circle"`, the default); `variant="labelled"` is the white 40px button with the word, for desktop. `AskOrb` is the sphere alone: sizes 18, 20, 24 and 88, states `idle`, `searching`, `reading` and `writing` (`busy` alone means searching). With reduced motion nothing animates and the sheen is parked, so the states still differ. |
+
+**Content reserve.** The bar and the 12px under it take `--curv-mobile-dock-height`, **76px**, plus the bottom safe area. A scrolling page reserves that plus 12px to breathe: `calc(var(--curv-mobile-dock-height) + 12px + env(safe-area-inset-bottom))`, which is 88px and the safe area. `MobileSurface` and `MobilePage` already do; a page that lays out its own bottom edge uses the same calculation, never a number of its own.
+
+```tsx
+import { MobileHeader, MobileTabBar, MobileSurface, AskButton } from "@curvgroup/design-system/mobile";
+
+<MobileHeader
+  title="Orders"
+  switcher={hubPages}                       // optional: the title becomes a dropdown
+  onSearch={openSearch}
+  ask={<AskButton open={askOpen} busy={asking} onClick={toggleAsk} />}
+/>
+<MobileSurface>{/* the page: no heading that repeats the title */}</MobileSurface>
+<MobileTabBar items={[home, work, report, inbox]} onMenu={openMenu} menuOpen={menuOpen} />
+```
+
+### The rules
+
+These eleven rules come with the shell. They sit above the component recipes below (numbered 1 to 11 for the code comments that cite them) and win where the two differ.
+
+1. **One title per screen.** The bar carries it and a page never repeats it. A hub's tabs become a dropdown on the title.
+2. **One glass bar, same slots everywhere.** Home, work, report, inbox, ☰. The active slot is a black pill with its label and the others are icons. The top bar holds the title, the search circle and the orb. Lists reserve 88px plus the safe area.
+3. **No explainer headings.** If the rows do not say what they are, fix the rows. A section label survives only where a list changes kind mid-page.
+4. **Home is one number, count rows, one chart, one list,** with no headings between them. `MobileFigure` for the number, `MobileCountRow` for what needs you, `MobileChart` with `readout`, then a short list. Nothing on Home depends on a sign-in somewhere else; a zero count renders dim, never hidden.
+5. **Lists open with search, one Filter button with a badge count, and one chip row.** Everything else (scope, period, team, view, sort) is in a sheet with Apply and Reset; the badge counts what is set. The total is a figure (`MobileFigure`) at the top of the list, not subtext. The first record starts above the fold.
+6. **A row is identity, one amount, meta and one exception.** 56px (48px as `oneLine`), the whole row taps, the status is a word under the amount, and there are no balances, no "More details" and no "Open ›". A row that needs a fifth value is a different list.
+7. **A chart is a readout over scrubbable bars.** One series, the comparison dashed, no axis text under 12px, no second axis and no legend of line styles.
+8. **A matrix is a list of lines.** A line opens its months (a `MobileChart` with a readout), never a sideways-scrolling grid.
+9. **A record is back plus id, name plus status, stage, picture, money with margins, two actions, sections.** Tabs and side rails become sections; margins sit beside the dollars (`MobilePicture`, `MobileShareBar`); everything past two actions is behind ⋯.
+10. **44px targets, 16px inputs, tabular numbers, nothing on hover.** Anything a hover reveals on desktop is a button or in a sheet on a phone.
+11. **Honest states.** Skeletons while loading, "showing data from 3:12 PM" when a read is stale, "couldn't load" (`MobileNotice`) and never a zero for a failed read.
+
+### Rows and figures
+
+| Component | Use |
+| --- | --- |
+| `MobileRecordRow` `layout="amount"` | The 56px row: name and one line of meta on the left; one amount on the right with `status` as a word under it, toned `good`, `warn`, `info` or `bad` (`statusTone`). No second amount. |
+| `MobileRecordRow` `layout="oneLine"` | The 48px row: name, a short right-aligned `meta` (a due date), the amount, and an optional `exception` dot, amber (`warn`) or blue (`info`), with a screen-reader name (`exceptionLabel`). |
+| `MobileGroupRow` | A separator row in a list: a label on the left, the count and the total on the right. |
+| `MobileCountRow` | A 34px number tile (tone `good`, `warn`, `info`, `bad`), a title, one line of meta and a chevron. Zero is dim, never hidden. |
+| `MobileFigure` | A 24px tabular value with a muted label: a list's total, or a chart's readout (`live` announces the change). |
+| `MobileChart` `readout` | The readout (value plus period) above one series of bars. Per-bar plan: `bar: "fill" \| "current" \| "partial"` (the latest known bar is `current` by default, a `partial` one is hatched), `referenceLine` for the one dashed comparison, touch-scrub updates the readout and a tap on the picked bar clears it, axis labels are 12px and thin out to fit. |
+| `MobilePicture` | A 16:10 image card: a label chip top-left, a gradient caption with a title and one line. A missing or failed image keeps the caption on a neutral box. |
+| `MobileShareBar` | A record's money card: a readout, a two-segment bar, and two label/value pairs each with a percent beside the value. |
+
+## Recipes
+
+The numbered recipes below are what Product OS's first pass taught us. Where one contradicts the shell above, the shell wins; the contradictions are marked.
 
 ### 1. Every screen earns its place, or it goes
 
@@ -32,6 +91,8 @@ Mockups and builds use the OS's real records, photos and numbers. A phone layer 
 
 ### 4. One quiet black header
 
+> The shell's header is `MobileHeader` (see above): the title or back plus record id, a search circle and the Ask orb. `MobileTopBar` below is the fixed variant with the sheet's rounded lip and the title switcher; the same rules apply to it. Where this recipe says a record shows a back chevron only, the shell wins: back plus the record's id.
+
 `MobileTopBar`: the fixed black top bar holds the page title and at most one trailing control (for example the List | Board toggle, or a text action such as "Mark all read", which is `MobileTopBarTextAction`: 44px, 17px, white on the bar, its text ending on the 16px gutter; never a hand-rolled button). Nothing else: no stats line, no bell, no menu button.
 
 - **The title is the switcher.** A hub with several pages shows its own name, `Development ⌄` or `Products ⌄`, on every one of those pages; tapping it lists the hub's pages with the current one marked. Each page keeps its own route. This replaces tab strips on phones. The list closes the moment a page is tapped, before the route has changed, whatever the app's link does with the tap, and the tapped row is the current one at once (until the route reports its own). A page with no phone layout yet is left out of the switcher and dimmed in the menu (rule 6) instead of opening a desktop screen inside the phone frame.
@@ -41,14 +102,14 @@ Mockups and builds use the OS's real records, photos and numbers. A phone layer 
 
 ### 5. One bar, always in the same place
 
-`MobileTabBar` is a floating glass bar 24px above the bottom safe area, with 12px gutters:
+`MobileTabBar` is the one glass bar (spec in "The phone shell"): 64px, 12px from the edges plus the safe area, five slots (Home, work, report, inbox, ☰), the active one a black pill with its label.
 
-- **Search** is its own 62px circle on the left.
-- **The pill** holds at most five icon-only destinations: Home, up to two core jobs, Inbox, Menu. A sixth would shrink targets below 44px at 360px wide, so the component keeps five and warns in development about the rest; everything else lives in the menu. Labels live in `aria-label`. The active item gets a soft bubble and a heavier icon. Inbox carries the unread badge. Notifications live in Inbox; there is no bell.
+- **No search circle.** Search is the header's circle. `onSearch` on the bar still draws the old 64px circle but is deprecated; drop it when the header has `onSearch`.
+- **Destinations**: at most five slots including ☰, so four destinations. A sixth would shrink targets below 44px at 360px wide, so the component keeps five and warns in development about the rest; everything else lives in the menu. Labels live in `aria-label` (the active one also shows). Any slot can carry a badge (Inbox usually does). Notifications live in Inbox; there is no bell.
 - **Records swap the pill** for the one thing that page is for: a composer ("Add an update") with a camera button on a project, "Request a SKU" on a product, "Reply" and "Done" on an inbox item. The left circle becomes the hub's icon and goes back.
 - **Search mode** turns the pill into the search field, down where the thumb is, with a close circle. The circle is the only clear control: the browser's own clear button in a search field is hidden.
 - **Sheets cover the bar.** The sheet's one primary button does the work; the close control and Escape dismiss it.
-- **Scrolling down** shrinks the bar to the current hub and Search; scrolling up or a tap restores it. The shrunken bar keeps 44px targets, and the unread badge sits on the icon's corner in both sizes, never on the label. **The keyboard** hides it.
+- **The keyboard** hides it. It no longer shrinks while the page scrolls; `collapseOnScroll` brings the old shrink back for an app that wants it.
 - Glass is a web treatment (backdrop blur), not the iOS API. Reduced transparency, increased contrast and forced colors get the solid surface.
 
 ### 6. The menu shows everything, dims what the phone can't do
@@ -75,6 +136,8 @@ Project or record name and time on the first line, the first line of the real me
 A primary record (a project, a product Line) is one long page with sections, never a tab strip. A secondary record reached from it (a SKU from its Line) opens as `MobileSheet` over the page. Section order on a product page: photos you can swipe (`MobileGallery`), sales history, money for the period, unit cost (FOB, last paid, landed), factory and open POs, then children. Key figures use `MobileKeyValueList`; the period is in the section header.
 
 ### 10. Home: the story, then what needs you
+
+> The shell's Home is one number, count rows, one chart and one list (rule 4 of "The rules" above). `MobileHeroPanel`'s KPI chips below stay for a hub that needs to switch the series; they are not the default Home.
 
 The landing screen (`/` on a phone) continues the black header into `MobileHeroPanel`: KPI chips that select the series, one chart with its comparison as a dashed line, and at most two dark buttons. A chip that has no series to show (a "Per day" figure) sets `selectable: false` on its `MobileHeroKpi`: it stays plain text in the same chip type, is never boxed as the active one and is skipped by the keyboard, while the others remain buttons (`onKpiChange` is only called for selectable ones). The chips shrink and wrap their labels and deltas to about two lines (never below 104px wide, or their widest figure) before the row scrolls (snapping chip by chip), and a figure is never clipped. The chart puts the latest value beside the end of the line, never under the dashed segment of a period still in progress. Below it, `MobileActivityCards` ("Here's what needs you": counts that are jobs, each a link), then one insight card that names a real record. The desktop KPI wall stays on desktop.
 
@@ -115,7 +178,7 @@ The landing screen (`/` on a phone) continues the black header into `MobileHeroP
 | --- | --- |
 | `MobileTopBar`, `MobileTopBarTextAction` | Black header: title switcher, back, one trailing control; the text action ("Mark all read") for that slot |
 | `MobileSurface` | The content sheet under the top bar: rounded top, room for the tab bar |
-| `MobileTabBar` | The glass bar: search circle, icon pill, record actions, search mode, shrink on scroll |
+| `MobileTabBar` | The one glass bar: five slots with a black active pill, record actions, search mode (a search circle only through the deprecated `onSearch`) |
 | `MobileMenu`, `MobileMenuBody` | Full-screen dark menu: groups, dimmed rows, account and close at the bottom (the body without the dialog, for tests and embedding) |
 | `MobileViewToggle` | List / Board switch for the top bar: two 44 × 44 options |
 | `MobileFlatList`, `MobileListSection`, `MobileListRow`, `MobileException` | Flat lists with thumbnail, one meta line, one status pill; section headings (`headingSize="title"` for the 20px main heading); red problem text inside the meta line; `gutter` |
@@ -138,8 +201,27 @@ The landing screen (`/` on a phone) continues the black header into `MobileHeroP
 | `MobileStageBoard` | One-column board with peek, stage chips (`chipsTrailing` holds a Filter button) and move; avatars take `mobileAvatarColor` by default |
 | `MobileKeyValueList` | Settings-style figures with sub-lines; `gutter` |
 | `MobileGallery` | Swipeable photos with pager and thumbnails (`eagerFirst={false}` inside a branch that is hidden on desktop, so desktop never fetches the first photo); `gutter` |
-| `MobileSheet`, `MobileSearchSurface`, `MobileNotice`, `MobileChart` | Existing: sheets, search, visible failures, charts |
-| `MobileBottomNav`, `MobileMoreMenu`, `MobileHeader` | Earlier dock, More sheet and header; kept for OSes not yet moved |
+| `MobileSheet`, `MobileSearchSurface`, `MobileNotice`, `MobileChart` | Sheets, search, visible failures, charts (`MobileChart` takes `readout` for the phone's readout-over-bars chart) |
+| `MobileHeader` | The 62px black header of the shell: title with caret dropdown or back plus record id, search circle, `ask` slot, ⋯ |
+| `AskButton`, `AskOrb` | The shared Ask AI control: 40px glass circle with a 20px orb (phone), or the labelled white button (desktop); the sphere alone with its states and sizes |
+| `MobileRecordRow` | Existing, now with `layout="amount"` and `layout="oneLine"` |
+| `MobileGroupRow`, `MobileCountRow`, `MobileFigure` | Separator row with count and total; 34px count tile row; 24px tabular figure |
+| `MobilePicture`, `MobileShareBar` | 16:10 picture card; readout, two-segment bar and two label/value/percent pairs |
+| `MobileBottomNav` (deprecated), `MobileMoreMenu` | The old dock, now an alias that renders `MobileTabBar`; the More sheet |
+
+## Upgrading to 0.4.0
+
+The shared shell. Every existing export still works; the visible changes are the bar's and the header's, and the reserve under the page.
+
+- **New exports** from `@curvgroup/design-system/mobile`: `AskOrb`, `AskButton`, `MobileGroupRow`, `MobileCountRow`, `MobileFigure`, `MobilePicture`, `MobileShareBar`, plus the types `AskOrbProps`, `AskOrbState`, `AskOrbSize`, `AskButtonProps`, `AskButtonVariant`, `MobileGroupRowProps`, `MobileCountRowProps`, `MobileFigureProps`, `MobileRowTone`, `MobilePictureProps`, `MobileShareBarProps`, `MobileShareSegment`, `MobileHeaderSwitcherItem`, `MobileRecordTone`, `MobileChartReadout` and `MobileChartBarPlan`.
+- **`MobileBottomNav` is deprecated.** It renders `MobileTabBar` with the props it always took (a search handler still takes one of the five slots). Import `MobileTabBar` and move search into `MobileHeader`.
+- **`MobileTabBar` tabs mode** is the new dock: 64px (the pill and the circles were 62px), 12px above the safe area (it was 24px, in every mode), five slots with the active one a black pill with a 13px label (it was a soft bubble, icon only). It no longer shrinks on scroll unless `collapseOnScroll` is passed (the default was true). `onSearch` is deprecated; a new `hidden` prop hides it while a surface covers the page. Dark chrome has its own lens.
+- **`--curv-mobile-dock-height`** is 76px (it was 88px). `MobilePage` and `MobileSurface` reserve it plus 12px and the safe area: 88px (`MobileSurface` reserved 110px). A page that read the variable for its own padding gets 12px less; add the 12px.
+- **`MobileHeader`**: new optional props `switcher` (+ `switcherLabel`, `renderLink`), `recordId`, `onSearch`, `ask`, `onMore`, `backLabel`; `title` is optional (a record shows `recordId`). With none of them it draws what it drew, and `action` still renders (after the circles). The header's right side now has an 8px gap.
+- **`MobileRecordRow`** gains `layout` (`"default"` unchanged), `statusTone` and `exception`. A link row's `renderLink` props may carry `data-layout`; spread them like the rest.
+- **`MobileChart`** gains `readout`, and `MobileChartPoint` gains `bar`. Without `readout` it is unchanged.
+- **Dark theme**: the bar follows `.dark` and `[data-theme="dark"]` (a dark lens and a white active pill); the header and everything else are unchanged.
+- **Vendoring**: rebuild, then copy `dist/mobile.js`, `dist/mobile.d.ts`, the shared declaration chunk it imports, `mobile.css`, `docs/mobile.md` and `mobile-source.*` into `vendor/curv-design-system/` as before (the payload folder's `apply.sh` does the first five). Import `AskButton` from `/mobile`, not the main entry: the orb is styled by `mobile.css`.
 
 ## Upgrading to 0.3.4
 
@@ -166,4 +248,4 @@ Appearance and behaviour fixes from the Product OS iPhone review; no prop change
 
 ## Glass navigation
 
-The bar uses a restrained translucent surface with native CSS backdrop blur. This is a web treatment, not the iOS Liquid Glass API. Content cards, forms, sheets and financial figures remain opaque. Browsers without backdrop-filter receive the solid surface; reduced transparency, increased contrast and forced colors disable the effect. No animated filters or additional rendering dependencies.
+The bar (`MobileTabBar`, and `MobileBottomNav` which renders it) uses a restrained translucent surface with native CSS backdrop blur. This is a web treatment, not the iOS Liquid Glass API. Content cards, forms, sheets and financial figures remain opaque. Browsers without backdrop-filter receive the solid surface; reduced transparency, increased contrast and forced colors disable the effect. No animated filters or additional rendering dependencies.

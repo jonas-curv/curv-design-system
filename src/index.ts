@@ -102,7 +102,7 @@ export {
 export { MobileBottomNav, type MobileBottomNavProps, type MobileNavItem } from "./components/shell/mobile-bottom-nav";
 export type { MobilePriority } from "./components/data-table/data-table";
 
-export { MobileHeader, MobileHeaderTitle, MobilePage, MobileSection, MobileMetricCard, MobileSupportingMetrics, MobileList, MobileRecordRow, MobileDetailSection, MobileNotice, MobileSheet, MobileMoreMenu, MobileSearchSurface, type MobileHeaderProps, type MobileRecordRowProps, type MobileSheetProps } from "./components/shell/mobile-command";
+export { MobileHeader, MobileHeaderTitle, MobilePage, MobileSection, MobileMetricCard, MobileSupportingMetrics, MobileList, MobileRecordRow, MobileDetailSection, MobileNotice, MobileSheet, MobileMoreMenu, MobileSearchSurface, type MobileHeaderProps, type MobileHeaderSwitcherItem, type MobileRecordRowProps, type MobileRecordTone, type MobileSheetProps } from "./components/shell/mobile-command";
 
 export { useMobileViewportStyle } from "./components/shell/mobile-command";
 

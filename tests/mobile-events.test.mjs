@@ -661,8 +661,9 @@ test('tab bar: scrolled down, the compact item keeps its badge in the icon\'s bo
     { id: 'home', label: 'Home', href: '/', icon: icon('home') },
     { id: 'inbox', label: 'Inbox', href: '/inbox', icon: icon('inbox'), badge: 794, active: true },
   ];
-  const view = await mount(h(mobile.MobileTabBar, { items, onSearch() {}, onMenu() {} }));
-  assert.equal(view.container.querySelector('.curv-mobile-tabbar-label'), null, 'icons only while the bar is full');
+  const view = await mount(h(mobile.MobileTabBar, { items, onSearch() {}, onMenu() {}, collapseOnScroll: true }));
+  assert.equal(view.container.querySelectorAll('.curv-mobile-tabbar-label').length, 1, 'only the active slot has its label while the bar is full');
+  assert.equal(view.container.querySelector('[data-collapsed]'), null);
   let scrollY = 0;
   const original = Object.getOwnPropertyDescriptor(window, 'scrollY');
   Object.defineProperty(window, 'scrollY', { configurable: true, get: () => scrollY });

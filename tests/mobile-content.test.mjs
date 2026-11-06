@@ -23,7 +23,7 @@ test('the content components are exported from the mobile entry', () => {
 test('every class the content components use is styled in mobile.css', () => {
   const dir = 'src/components/shell/mobile-content';
   const source = readdirSync(new URL(`../${dir}`, import.meta.url)).filter(file => file.endsWith('.tsx')).map(file => read(`${dir}/${file}`)).join('\n')
-    + read('src/components/shell/mobile-chart.tsx');
+    + read('src/components/shell/mobile-chart.tsx') + read('src/components/shell/mobile-chart-readout.tsx') + read('src/components/shell/mobile-command.tsx');
   const css = read('mobile.css');
   // Classes built from a template (`...-pill-${tone}`) end in a dash here and are covered by the tone tests below.
   // A custom property (`--curv-mobile-gutter`, named in a comment) is not a class.
@@ -1695,12 +1695,12 @@ test('a text area does not resize: iOS draws no grip and a desktop one looked wr
 
 // ── 0.3.4: version and docs ─────────────────────────────────────────────────
 
-test('the package is 0.3.4 in package.json and in the lockfile, twice there', () => {
+test('the package is 0.4.0 in package.json and in the lockfile, twice there', () => {
   const pkg = JSON.parse(read('package.json'));
   const lock = JSON.parse(read('package-lock.json'));
-  assert.equal(pkg.version, '0.3.4');
-  assert.equal(lock.version, '0.3.4');
-  assert.equal(lock.packages[''].version, '0.3.4');
+  assert.equal(pkg.version, '0.4.0');
+  assert.equal(lock.version, '0.4.0');
+  assert.equal(lock.packages[''].version, '0.4.0');
 });
 
 test('the docs and the skill say what 0.3.4 changed: one gutter, type sizes, touch scrubbing, the board, the switcher and the search field', () => {

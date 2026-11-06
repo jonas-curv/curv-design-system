@@ -17,3 +17,6 @@ export { MobileTextField, MobileTextArea, MobileDateField, type MobileTextFieldP
 export { MobileSwitchRow, type MobileSwitchRowProps } from "./switch-row";
 export { mobileAvatarColor } from "./avatar";
 export type { MobileContentRenderLink, MobileContentLinkProps, MobileGutter } from "./shared";
+export { MobileGroupRow, MobileCountRow, MobileFigure, type MobileGroupRowProps, type MobileCountRowProps, type MobileFigureProps, type MobileRowTone } from "./rows";
+export { MobilePicture, type MobilePictureProps } from "./picture";
+export { MobileShareBar, type MobileShareBarProps, type MobileShareSegment } from "./share-bar";
