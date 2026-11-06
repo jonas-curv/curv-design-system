@@ -23,7 +23,7 @@ test('tab bar: a search circle, icon-only destinations named by aria-label, capp
   assert.match(html, /aria-label="Menu"[^>]*aria-expanded="false"/);
   assert.equal(count(html, /aria-current="page"/g), 1);
   assert.match(html, /<a href="\/1"[^>]*aria-label="Page 1" aria-current="page"/);
-  assert.doesNotMatch(html, /curv-mobile-tabbar-label/);      // labels are icon-only until the bar shrinks
+  assert.equal(count(html, /curv-mobile-tabbar-label/g), 1);  // only the active slot says its name; the other four are icons
   assert.match(html, /aria-label="Mobile navigation"/);
   assert.match(html, /curv-mobile-only/);
   assert.match(html, /data-mode="tabs"/);
@@ -253,11 +253,11 @@ test('stylesheet: top bar, surface and bar carry the approved geometry', () => {
   assert.match(rule('.curv-mobile-topbar'), /height: calc\(76px \+ env\(safe-area-inset-top\)\)/);
   assert.match(rule('.curv-mobile-topbar'), /--curv-bar: var\(--curv-mobile-topbar, #1b1b1b\)/);
   assert.match(rule('.curv-mobile-topbar-title'), /font-size: 24px[^}]*font-weight: 600[^}]*letter-spacing: -\.01em/);
-  assert.match(rule('.curv-mobile-surface'), /calc\(110px \+ env\(safe-area-inset-bottom\)\)/);
+  assert.match(rule('.curv-mobile-surface'), /calc\(var\(--curv-mobile-dock-height, 76px\) \+ 12px \+ env\(safe-area-inset-bottom\)\)/);
   assert.match(rule('.curv-mobile-surface'), /border-radius: 18px 18px 0 0/);
-  assert.match(rule('.curv-mobile-tabbar'), /bottom: calc\(24px \+ env\(safe-area-inset-bottom\)\)/);
-  assert.match(rule('.curv-mobile-tabbar-circle'), /width: 62px; height: 62px/);
-  assert.match(rule('.curv-mobile-tabbar-pill'), /height: 62px[^}]*border-radius: 31px/);
+  assert.match(rule('.curv-mobile-tabbar'), /bottom: calc\(12px \+ env\(safe-area-inset-bottom\)\)/);
+  assert.match(rule('.curv-mobile-tabbar-circle'), /width: 64px; height: 64px/);
+  assert.match(rule('.curv-mobile-tabbar-pill'), /height: 64px[^}]*padding: 0 6px[^}]*border-radius: 32px/);
   assert.match(rule('.curv-mobile-tabbar-item'), /height: 52px[^}]*border-radius: 26px/);
   assert.match(rule('.curv-mobile-tabbar-badge'), /var\(--curv-mobile-critical, var\(--curv-critical, #b5352f\)\)/);
   assert.match(rule('.curv-mobile-menu-badge'), /var\(--curv-mobile-critical, var\(--curv-critical, #b5352f\)\)/);
@@ -360,7 +360,7 @@ test('stylesheet: one critical red, 5.97:1 under white, in the badges and in the
 });
 
 test('stylesheet: focus stays clear of the fixed bars', () => {
-  assert.match(css, /@media \(max-width: 767px\) \{[^@]*html:has\(\.curv-mobile-tabbar\[data-breakpoint="md"\]:not\(\[hidden\]\)\) \{ scroll-padding-bottom: calc\(110px \+ env\(safe-area-inset-bottom\)\); \}/);
+  assert.match(css, /@media \(max-width: 767px\) \{[^@]*html:has\(\.curv-mobile-tabbar\[data-breakpoint="md"\]:not\(\[hidden\]\)\) \{ scroll-padding-bottom: calc\(var\(--curv-mobile-dock-height, 76px\) \+ 12px \+ env\(safe-area-inset-bottom\)\); \}/);
   assert.match(css, /html:has\(\.curv-mobile-topbar\[data-breakpoint="md"\]\) \{ scroll-padding-top: calc\(76px \+ env\(safe-area-inset-top\)\); \}/);
   assert.match(css, /@media \(max-width: 1023px\) \{[^@]*html:has\(\.curv-mobile-tabbar\[data-breakpoint="lg"\]:not\(\[hidden\]\)\) \{ scroll-padding-bottom/);
 });
