@@ -160,6 +160,22 @@ test('stylesheet: the orb is the Customs orb in every size and state, calm under
   assert.match(css, /:is\(\.dark, \[data-theme="dark"\]\) :is\(\.curv-orb-s18, \.curv-orb-s20, \.curv-orb-s24\) \{ box-shadow: 0 0 0 1px rgba\(255, 255, 255, 0\.12\); \}/);
 });
 
+test('stylesheet: the orb moves at rest (0.4.1), and the working states keep their own motion', () => {
+  assert.match(rule('.curv-orb'), /animation: curv-orb-breathe 4\.6s ease-in-out infinite/);
+  assert.match(css, /@keyframes curv-orb-breathe \{ 50% \{ transform: scale\(1\.045\); \} \}/);
+  assert.match(rule('.curv-orb i'), /animation: curv-orb-a 7s linear infinite/);
+  assert.match(rule('.curv-orb i:nth-child(2)'), /animation: curv-orb-b-rest 4\.2s ease-in-out infinite alternate/);
+  assert.match(css, /@keyframes curv-orb-b-rest \{ from \{ transform: translate\(-11%, 7%\) rotate\(0\); \} to \{ transform: translate\(11%, -8%\) rotate\(160deg\); \} \}/);
+  // Working: the highlights go back to the travel they had, and the root rules come after the breath so they win.
+  assert.match(css, /\.curv-orb-searching i:nth-child\(2\), \.curv-orb-reading i:nth-child\(2\), \.curv-orb-writing i:nth-child\(2\) \{ animation-name: curv-orb-b; \}/);
+  assert.match(css, /@keyframes curv-orb-b \{ from \{ transform: translate\(-9%, 6%\) rotate\(0\); \} to \{ transform: translate\(9%, -7%\) rotate\(160deg\); \} \}/);
+  const breath = css.indexOf('\n.curv-orb {');
+  assert.ok(css.indexOf('\n.curv-orb-reading { animation: curv-orb-beat') > breath, 'the beat replaces the breath');
+  assert.ok(css.indexOf('\n.curv-orb-writing { --wb: 8px; animation: none; }') > breath, 'writing breathes with its glow only');
+  assert.doesNotMatch(css, /\n\.curv-orb-searching \{/, 'searching keeps the breath');
+  assert.match(read('docs/mobile.md'), /## Upgrading to 0\.4\.1\n\nThe Ask orb moves at rest/);
+});
+
 test('stylesheet: the circle is 40px glass, the labelled button is the 40px white one, both reach a 44px target', () => {
   const circle = rule('.curv-ask-circle');
   assert.match(circle, /width: 40px; height: 40px[^}]*border-radius: 50%[^}]*background: rgba\(255, 255, 255, \.12\)[^}]*inset 0 1px 0 rgba\(255, 255, 255, \.18\)/);
