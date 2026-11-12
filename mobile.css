@@ -949,17 +949,17 @@
 /* ── Ask AI: the orb and its button ─────────────────────────────────────────
    Ported from Customs OS (components/ask-ai). The button always sits on a dark
    bar, so its colours are fixed and do not follow the app theme. */
-/* The orb: Pool Water, light moving through a pool. Calm at rest. While working it follows the agent:
+/* The orb: Pool Water, light moving through a pool. At rest it breathes slowly over a steady swirl. While working it follows the agent:
    searching (faster swirl, a white sheen sweeping inside), reading (a gentle beat, a slower fainter sheen),
-   writing (a slower swirl, an inner glow that breathes). Everything stays inside the sphere. */
-.curv-orb { position: relative; display: block; flex: 0 0 auto; border-radius: 50%; overflow: hidden; background: #dffaff; isolation: isolate; }
+   writing (a slower swirl, an inner glow that breathes in place of the rest breath). Everything stays inside the sphere. */
+.curv-orb { position: relative; display: block; flex: 0 0 auto; border-radius: 50%; overflow: hidden; background: #dffaff; isolation: isolate; animation: curv-orb-breathe 4.6s ease-in-out infinite; }
 .curv-orb.curv-orb-s88 { width: 88px; height: 88px; box-shadow: 0 10px 24px -6px rgba(8, 118, 168, 0.34); }
 .curv-orb.curv-orb-s24 { width: 24px; height: 24px; box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.05); }
 .curv-orb.curv-orb-s20 { width: 20px; height: 20px; box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.06); }
 .curv-orb.curv-orb-s18 { width: 18px; height: 18px; box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.06); }
 :is(.dark, [data-theme="dark"]) :is(.curv-orb-s18, .curv-orb-s20, .curv-orb-s24) { box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.12); }
-.curv-orb i { position: absolute; inset: -34%; display: block; border-radius: 50%; filter: blur(13px) saturate(1.25); animation: curv-orb-a 15s linear infinite; background: conic-gradient(from 90deg, #d6fbff, #27c4e0, #8ff0e4, #0a7fb5, #b9f5ff, #2fd6c8, #d6fbff); }
-.curv-orb i:nth-child(2) { inset: -10%; mix-blend-mode: screen; filter: blur(9px); background: radial-gradient(circle at 26% 64%, #fff 0 10%, transparent 34%), radial-gradient(circle at 68% 40%, #e9ffff 0 9%, transparent 32%), radial-gradient(circle at 54% 78%, #fff 0 7%, transparent 26%); animation: curv-orb-b 9s ease-in-out infinite alternate; }
+.curv-orb i { position: absolute; inset: -34%; display: block; border-radius: 50%; filter: blur(13px) saturate(1.25); animation: curv-orb-a 7s linear infinite; background: conic-gradient(from 90deg, #d6fbff, #27c4e0, #8ff0e4, #0a7fb5, #b9f5ff, #2fd6c8, #d6fbff); }
+.curv-orb i:nth-child(2) { inset: -10%; mix-blend-mode: screen; filter: blur(9px); background: radial-gradient(circle at 26% 64%, #fff 0 10%, transparent 34%), radial-gradient(circle at 68% 40%, #e9ffff 0 9%, transparent 32%), radial-gradient(circle at 54% 78%, #fff 0 7%, transparent 26%); animation: curv-orb-b-rest 4.2s ease-in-out infinite alternate; }
 /* The sheen: a white wedge of light turning inside the sphere. Hidden at rest. */
 .curv-orb i:nth-child(3) { inset: -10%; mix-blend-mode: screen; filter: blur(7px); opacity: 0; animation: curv-orb-sheen 1.2s linear infinite; animation-play-state: paused; background: conic-gradient(from 0deg, transparent 0 58%, rgba(255, 255, 255, 0.95) 76%, transparent 92%); }
 .curv-orb::after { content: ""; position: absolute; inset: 0; border-radius: 50%; z-index: 2; background: radial-gradient(circle at 33% 26%, rgba(255, 255, 255, 0.96), rgba(255, 255, 255, 0.34) 24%, rgba(255, 255, 255, 0) 50%), radial-gradient(circle at 70% 80%, rgba(255, 255, 255, 0.3), rgba(255, 255, 255, 0) 42%); box-shadow: inset -7px -9px 20px rgba(6, 84, 128, 0.24), inset 5px 5px 12px rgba(255, 255, 255, 0.7); }
@@ -971,6 +971,8 @@
 /* Working: deeper water, and the sheen wakes. */
 .curv-orb-searching i:nth-child(1), .curv-orb-reading i:nth-child(1), .curv-orb-writing i:nth-child(1) { filter: blur(8px) saturate(1.6) contrast(1.2); background: conic-gradient(from 90deg, #8feaff, #0a7fb5, #2fd6c8, #063f78, #6fe6ff, #0a7fb5, #8feaff); }
 .curv-orb-s24.curv-orb-searching i:nth-child(1), .curv-orb-s18.curv-orb-searching i:nth-child(1), .curv-orb-s20.curv-orb-searching i:nth-child(1), .curv-orb-s24.curv-orb-reading i:nth-child(1), .curv-orb-s18.curv-orb-reading i:nth-child(1), .curv-orb-s20.curv-orb-reading i:nth-child(1), .curv-orb-s24.curv-orb-writing i:nth-child(1), .curv-orb-s18.curv-orb-writing i:nth-child(1), .curv-orb-s20.curv-orb-writing i:nth-child(1) { filter: blur(3px) saturate(1.7) contrast(1.15); }
+/* The highlights keep their own, narrower travel while working; the wider one is for rest. */
+.curv-orb-searching i:nth-child(2), .curv-orb-reading i:nth-child(2), .curv-orb-writing i:nth-child(2) { animation-name: curv-orb-b; }
 .curv-orb-searching i:nth-child(3), .curv-orb-reading i:nth-child(3) { animation-play-state: running; }
 
 /* Searching: a faster swirl and the full sheen, turning every 1.2s. */
@@ -986,14 +988,16 @@
 .curv-orb-reading i:nth-child(2) { animation-duration: 5s; }
 .curv-orb-reading i:nth-child(3) { opacity: 0.45; animation-duration: 2.4s; }
 
-/* Writing: a slower swirl, the inner glow stronger and breathing. */
-.curv-orb-writing { --wb: 8px; }
+/* Writing: a slower swirl, the inner glow stronger and breathing. The glow is its breath, so the sphere holds still. */
+.curv-orb-writing { --wb: 8px; animation: none; }
 .curv-orb-s24.curv-orb-writing, .curv-orb-s18.curv-orb-writing, .curv-orb-s20.curv-orb-writing { --wb: 3px; }
 .curv-orb-writing i:nth-child(1) { animation: curv-orb-a 10s linear infinite, curv-orb-glow 1.8s ease-in-out infinite alternate; }
 .curv-orb-writing i:nth-child(2) { animation-duration: 7s; }
 
 @keyframes curv-orb-a { to { transform: rotate(360deg); } }
 @keyframes curv-orb-b { from { transform: translate(-9%, 6%) rotate(0); } to { transform: translate(9%, -7%) rotate(160deg); } }
+@keyframes curv-orb-b-rest { from { transform: translate(-11%, 7%) rotate(0); } to { transform: translate(11%, -8%) rotate(160deg); } }
+@keyframes curv-orb-breathe { 50% { transform: scale(1.045); } }
 @keyframes curv-orb-sheen { to { transform: rotate(360deg); } }
 @keyframes curv-orb-beat { 50% { transform: scale(1.05); } }
 @keyframes curv-orb-glow {

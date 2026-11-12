@@ -1695,12 +1695,12 @@ test('a text area does not resize: iOS draws no grip and a desktop one looked wr
 
 // ── 0.3.4: version and docs ─────────────────────────────────────────────────
 
-test('the package is 0.4.0 in package.json and in the lockfile, twice there', () => {
+test('the package is 0.4.1 in package.json and in the lockfile, twice there', () => {
   const pkg = JSON.parse(read('package.json'));
   const lock = JSON.parse(read('package-lock.json'));
-  assert.equal(pkg.version, '0.4.0');
-  assert.equal(lock.version, '0.4.0');
-  assert.equal(lock.packages[''].version, '0.4.0');
+  assert.equal(pkg.version, '0.4.1');
+  assert.equal(lock.version, '0.4.1');
+  assert.equal(lock.packages[''].version, '0.4.1');
 });
 
 test('the docs and the skill say what 0.3.4 changed: one gutter, type sizes, touch scrubbing, the board, the switcher and the search field', () => {

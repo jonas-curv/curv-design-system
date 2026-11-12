@@ -21,7 +21,7 @@ One shell for every Curv OS (approved on the "Curv Phone Before & After" canvas,
 | Top bar | `MobileHeader` | 62px black chrome plus the top safe area. **One** 20px title, with an optional caret dropdown (`switcher`) that lists a hub's pages; or a back chevron plus the record's id (`recordId`). On the right a 40px glass **search circle** (`onSearch`) and the **Ask orb** (`ask`); on records optionally a ⋯ button (`onMore`). Nothing else: no bell, no stats line, no menu button, no page heading under it. `MobileHeaderTitle` still works for an app that keeps its own bar. |
 | Bar | `MobileTabBar` | The one glass dock. 64px tall, radius 32, 12px from the left, right and bottom edges plus the safe area, 6px of inner padding. Five slots in the same order everywhere: **Home, work, report, inbox, ☰**. The active slot is a black (`#171b1d`) pill 52px tall (radius 26) with a white 24px icon and a 13px semibold label; the other four are 24px icons with no label. A badge may sit on any slot. The last slot is the hamburger (`onMenu`) and opens `MobileMenu` (or `MobileMoreMenu`). No search circle in the bar. It hides while the software keyboard is open. |
 | Glass | `.curv-mobile-tabbar-glass` | Fill `rgba(250,250,251,.62)`, `backdrop-filter: blur(24px) saturate(1.9)`, 1px `rgba(255,255,255,.75)` border, inset highlights, and a two-layer drop shadow (`0 12px 36px` and `0 2px 6px`). Dark chrome (under `.dark` or `[data-theme="dark"]`) gets a dark lens and a white active pill. Reduced transparency, increased contrast and forced colours make it opaque. |
-| Ask | `AskButton`, `AskOrb` | The Customs orb. `AskButton` is a 40px glass circle holding a 20px orb, no label, for the dark top bar (`variant="circle"`, the default); `variant="labelled"` is the white 40px button with the word, for desktop. `AskOrb` is the sphere alone: sizes 18, 20, 24 and 88, states `idle`, `searching`, `reading` and `writing` (`busy` alone means searching). With reduced motion nothing animates and the sheen is parked, so the states still differ. |
+| Ask | `AskButton`, `AskOrb` | The Customs orb. `AskButton` is a 40px glass circle holding a 20px orb, no label, for the dark top bar (`variant="circle"`, the default); `variant="labelled"` is the white 40px button with the word, for desktop. `AskOrb` is the sphere alone: sizes 18, 20, 24 and 88, states `idle`, `searching`, `reading` and `writing` (`busy` alone means searching). At rest it breathes slowly over a steady swirl. With reduced motion nothing animates and the sheen is parked, so the states still differ. |
 
 **Content reserve.** The bar and the 12px under it take `--curv-mobile-dock-height`, **76px**, plus the bottom safe area. A scrolling page reserves that plus 12px to breathe: `calc(var(--curv-mobile-dock-height) + 12px + env(safe-area-inset-bottom))`, which is 88px and the safe area. `MobileSurface` and `MobilePage` already do; a page that lays out its own bottom edge uses the same calculation, never a number of its own.
 
@@ -208,6 +208,15 @@ The landing screen (`/` on a phone) continues the black header into `MobileHeroP
 | `MobileGroupRow`, `MobileCountRow`, `MobileFigure` | Separator row with count and total; 34px count tile row; 24px tabular figure |
 | `MobilePicture`, `MobileShareBar` | 16:10 picture card; readout, one-share bar and two label/value/percent pairs |
 | `MobileBottomNav` (deprecated), `MobileMoreMenu` | The old dock, now an alias that renders `MobileTabBar`; the More sheet |
+
+## Upgrading to 0.4.1
+
+The Ask orb moves at rest; no prop, class or markup changed.
+
+- **`AskOrb` idle**: the sphere breathes (scale 1 to 1.045 over 4.6s), the swirl turns every 7s (it was 15s) and the highlights drift over 4.2s with a slightly wider travel (it was 9s). It used to look frozen.
+- **Working states**: reading is unchanged (its beat replaces the breath). Searching keeps the breath under its sheen. Writing does not breathe: its glow is the breath. The highlights' travel while working is the one it was.
+- **Reduced motion** still stops everything.
+- **Vendoring**: rerun `scripts/vendor-payload.sh /path/to/app`. From a 0.4.0 vendor, `dist/mobile.js` is byte for byte the same; `mobile.css`, a doc comment in `dist/mobile.d.ts`, `docs/mobile.md`, `mobile-source.json` and the tarball change.
 
 ## Upgrading to 0.4.0
 

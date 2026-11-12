@@ -15,9 +15,10 @@ export interface AskOrbProps {
 }
 
 /**
- * The Ask AI orb (Pool Water), ported from Customs OS. Calm at rest; while working it follows the agent: a sheen sweeps
- * while it searches, a gentle beat while it reads, a slow breathing glow while it writes. Decorative: the control that
- * holds it carries the name. With reduced motion every animation stops and the sheen is parked, so the states still differ.
+ * The Ask AI orb (Pool Water), ported from Customs OS. At rest it breathes slowly over a steady swirl; while working it
+ * follows the agent: a sheen sweeps while it searches, a gentle beat while it reads, a slow breathing glow while it
+ * writes. Decorative: the control that holds it carries the name. With reduced motion every animation stops and the
+ * sheen is parked, so the states still differ.
  */
 export function AskOrb({ size = 24, busy = false, state, className }: AskOrbProps) {
   const current: AskOrbState = state && state !== "idle" ? state : busy ? "searching" : "idle";
