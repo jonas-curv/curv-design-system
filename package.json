@@ -51,9 +51,10 @@
     "watch": "tsup --watch",
     "watch:mobile": "tsup --config tsup.mobile.config.ts --watch",
     "site:build": "vite build",
-    "typecheck": "tsc --noEmit",
+    "typecheck": "node node_modules/typescript-native/bin/tsc --noEmit",
     "vendor": "bash scripts/vendor-payload.sh",
-    "lint": "eslint .",
+    "lint": "eslint . --cache --cache-location .eslintcache --cache-strategy content",
+    "lint:changed": "node scripts/lint-changed.mjs",
     "test": "node --test tests/mobile.test.mjs tests/mobile-nav.test.mjs tests/mobile-content.test.mjs tests/mobile-events.test.mjs tests/mobile-shell.test.mjs tests/mobile-shell-events.test.mjs tests/home.test.mjs tests/morph.test.mjs tests/data-table-grouping.test.mjs"
   },
   "peerDependencies": {
@@ -93,6 +94,7 @@
     "tsup": "^8",
     "typescript": "^5",
     "typescript-eslint": "^8.20.0",
+    "typescript-native": "npm:typescript@^7.0.2",
     "vite": "^8.1.5"
   },
   "publishConfig": {

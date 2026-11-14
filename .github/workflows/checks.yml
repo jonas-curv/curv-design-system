@@ -1,0 +1,30 @@
+name: Design system checks
+on:
+  pull_request:
+  push:
+    branches: [main]
+# A newer push to the same PR supersedes its in-flight run; every main push keeps its own.
+concurrency:
+  group: checks-${{ github.event_name == 'push' && github.sha || github.ref }}
+  cancel-in-progress: true
+permissions:
+  contents: read
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+      # `npm ci` runs `prepare`, which builds dist/ with tsup: a broken
+      # library build fails here, and the tests below import dist/.
+      - run: npm ci
+      # TypeScript 7 (typescript-native).
+      - run: npm run typecheck
+      - run: npm run lint
+      - run: npm test
+      # The docs site Vercel serves (vercel.json).
+      - run: npm run site:build
