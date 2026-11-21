@@ -123,13 +123,15 @@
   --secondary: #E5E5E6;
   --secondary-foreground: #1B1B1B;
   --muted: #F3F3F4;
-  --muted-foreground: #6B6B6F;
+  --muted-foreground: #66666A; /* 4.5:1 on --secondary chips; was #6B6B6F (4.2:1) */
   --accent: rgba(27, 27, 27, 0.05);
   --accent-foreground: #1B1B1B;
-  --destructive: #D6453F;
+  --destructive: #BE3530; /* text on canvas 5.5:1, on destructive/10 5.0:1; was #D6453F (4.3:1) */
   --border: rgba(27, 27, 27, 0.08);
   --input: rgba(27, 27, 27, 0.12);
-  --ring: rgba(27, 27, 27, 0.20);
+  /* Focus indicator: the focus ring must clear 3:1 against the card
+     (WCAG 1.4.11); at 0.20 alpha it was 1.5:1. */
+  --ring: rgba(27, 27, 27, 0.50);
   --chart-1: #1B1B1B;
   --chart-2: #6B6B6F;
   --chart-3: #8A8A8E;
@@ -150,21 +152,24 @@
   --sidebar-active: #E5E5E6; /* active nav item — distinct from hover */
   --sidebar-accent-foreground: #1B1B1B;
   --sidebar-border: rgba(27, 27, 27, 0.06);
-  --sidebar-ring: rgba(27, 27, 27, 0.20);
+  --sidebar-ring: rgba(27, 27, 27, 0.50);
 
-  /* Curv OS ink-system extensions */
+  /* Curv OS ink-system extensions. Readability audit 2026-10-30: every ink
+     used as text clears WCAG AA 4.5:1 on canvas, card and muted fills
+     (tests/theme-contrast.test.mjs). --text-3 is the tertiary tier (labels,
+     placeholders, "—"). */
   --surface-2: #F3F3F4;
   --surface-3: #E5E5E6;
-  --text-2: #6B6B6F;
-  --text-3: #8A8A8E;
+  --text-2: #66666A;
+  --text-3: #747478; /* was #8A8A8E (3.4:1 on card) */
   --border-strong: rgba(27, 27, 27, 0.12);
   --accent-soft: rgba(27, 27, 27, 0.05);
   --accent-line: rgba(27, 27, 27, 0.20);
   --verdict-green: #1F7A33;
   --verdict-green-soft: #D7F7C2;
-  --verdict-amber: #A35C00;
+  --verdict-amber: #9A5600; /* was #A35C00: 4.4:1 on its soft fill */
   --verdict-amber-soft: #FCEDB9;
-  --verdict-red: #D6453F;
+  --verdict-red: #BE3530; /* was #D6453F: 4.3:1 on canvas, 3.6:1 on its soft fill */
   --verdict-red-soft: #F7E6E5;
   /* Cards lift with a subtle shadow instead of a border. First layer is a
      hairline "border" (0.5px spread); the two soft drops give the lift. */
@@ -179,8 +184,8 @@
 
   /* Curv OS chart vocabulary (curv-os-tokens.json v2) — data series ONLY.
      Never on buttons, never as a verdict. */
-  --chart: #2E90FA;
-  --chart-soft: rgba(46, 144, 250, 0.09);
+  --chart: #1966D0; /* was #2E90FA: 3.2:1 as text, 2.9:1 on its soft fill; lines were already 3:1 */
+  --chart-soft: rgba(25, 102, 208, 0.09);
   --chart-prev: #9DC6FB;
   /* Second data series, for overlaying a distinct metric on the same chart
      (e.g. Revenue + Gross profit on the P&L). A deliberate second hue — the
@@ -210,7 +215,7 @@
   --destructive: #F2545B;
   --border: rgba(255, 255, 255, 0.10);
   --input: rgba(255, 255, 255, 0.14);
-  --ring: rgba(255, 255, 255, 0.24);
+  --ring: rgba(255, 255, 255, 0.50); /* focus ring 5.3:1 on card; was 2.2:1 */
   --chart-1: #EDEDED;
   --chart-2: #A1A1A6;
   --chart-3: #6B6B6F;
@@ -224,12 +229,12 @@
   --sidebar-active: #2A2A2C; /* active nav item */
   --sidebar-accent-foreground: #EDEDED;
   --sidebar-border: rgba(255, 255, 255, 0.08);
-  --sidebar-ring: rgba(255, 255, 255, 0.24);
+  --sidebar-ring: rgba(255, 255, 255, 0.50);
 
   --surface-2: #1E1E20;
   --surface-3: #2A2A2C;
   --text-2: #A1A1A6;
-  --text-3: #6B6B6F;
+  --text-3: #88888D; /* was #6B6B6F (3.4:1 on card) */
   --border-strong: rgba(255, 255, 255, 0.16);
   --accent-soft: rgba(255, 255, 255, 0.08);
   --accent-line: rgba(255, 255, 255, 0.24);
