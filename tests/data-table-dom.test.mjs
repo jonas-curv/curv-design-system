@@ -253,3 +253,12 @@ test('a rendered cell wider than its estimate widens its column; an explicit wid
   Range.prototype.getBoundingClientRect = original;
  }
 });
+
+test('Checkbox: indeterminate is mixed, and a click reports checked', async () => {
+ const seen = [];
+ const { container } = await mount(h(ds.Checkbox, { indeterminate: true, onCheckedChange: (on) => seen.push(on), 'aria-label': 'All' }));
+ const box = q(container, '[role=checkbox]');
+ assert.equal(box.getAttribute('aria-checked'), 'mixed');
+ await click(box);
+ assert.deepEqual(seen, [true]);
+});

@@ -39,7 +39,7 @@ component's TSDoc for the full surface. **Style through tokens, never raw hex.**
 | A multi-line input | `Textarea` | native `<textarea>` attrs (`rows`, `value`, `onChange`) |
 | A single-choice dropdown | `Select` | `items`, `value`, `onValueChange`, `placeholder` |
 | A multi-choice dropdown with search | `MultiSelect` | `items`, `value`, `onValueChange`, `searchPlaceholder` |
-| A checkbox | `Checkbox` | `checked`, `onCheckedChange`, `aria-label` |
+| A checkbox | `Checkbox` | `checked`, `indeterminate` (mixed), `onCheckedChange`, `aria-label` |
 | A radio group | `RadioGroup`, `Radio` | Group: `value`, `onValueChange` · Radio: `value` |
 | An on/off switch | `Switch` | `checked`, `onCheckedChange`, `aria-label` |
 | A small view-swapper toggle | `SegmentedControl` | `items`, `value`, `onValueChange`, `size` |

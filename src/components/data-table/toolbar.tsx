@@ -8,7 +8,7 @@
 import * as React from "react";
 import { cn } from "../../lib/cn";
 import { Button, type ButtonProps } from "../button";
-import { Checkbox, type CheckboxProps } from "../checkbox";
+import { Checkbox } from "../checkbox";
 import { Input } from "../input";
 import { Menu, MenuItem } from "../menu";
 import { Popover } from "../popover";
@@ -177,11 +177,6 @@ export function DataTableToolbar() {
 
 /* ---------- selection checkbox ---------- */
 
-// The design system's Checkbox has no mixed state of its own: the mixed look
-// (a bar on the filled box) and `aria-checked="mixed"` are layered on here. The
-// spread comes last inside Checkbox, so it overrides its aria-checked.
-const MIXED = { "aria-checked": "mixed" } as unknown as Partial<CheckboxProps>;
-
 /** The Checkbox with a mixed state and a 40px hit area, for the selection column and the bulk bar. */
 export function SelectionCheckbox({
   state,
@@ -196,21 +191,16 @@ export function SelectionCheckbox({
   tabIndex?: number;
   disabled?: boolean;
 }) {
-  const mixed = state === "some";
   return (
     <Checkbox
       checked={state === "all"}
+      indeterminate={state === "some"}
       disabled={disabled}
-      // Mixed → all, the WAI tri-state convention.
-      onCheckedChange={(next) => onCheckedChange(mixed ? true : next)}
+      onCheckedChange={onCheckedChange}
       aria-label={label}
-      className={cn(
-        // A 34 × 40 hit area that stays inside the 40px column.
-        "relative after:absolute after:-inset-y-3 after:-left-4 after:-right-2",
-        mixed && "border-primary bg-primary before:h-0.5 before:w-2 before:rounded-full before:bg-primary-foreground",
-      )}
-      {...(mixed ? MIXED : null)}
-      {...(tabIndex !== undefined ? ({ tabIndex } as unknown as Partial<CheckboxProps>) : null)}
+      tabIndex={tabIndex}
+      // A 34 × 40 hit area that stays inside the 40px column.
+      className="relative after:absolute after:-inset-y-3 after:-left-4 after:-right-2"
     />
   );
 }
