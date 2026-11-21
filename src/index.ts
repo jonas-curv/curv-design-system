@@ -105,6 +105,33 @@ export {
 } from "./components/data-table/toolbar";
 export { tableHeaderRow, tableCellPadding } from "./components/data-table/tokens";
 export {
+  Table,
+  TableHeader,
+  TableBody,
+  TableFooter,
+  TableRow,
+  TableHead,
+  TableCell,
+  TableCaption,
+  TableNull,
+  type TableProps,
+  type TableHeaderProps,
+  type TableFooterProps,
+  type TableRowProps,
+  type TableHeadProps,
+  type TableCellProps,
+  type TableColumnPriority,
+  type TableSortOrder,
+} from "./components/table";
+export {
+  useTableSort,
+  type TableSortState,
+  type TableSortColumn,
+  type TableSortHeadProps,
+  type UseTableSortOptions,
+  type UseTableSortResult,
+} from "./components/use-table-sort";
+export {
   formatMoney,
   formatNumber,
   formatPercent,

@@ -23,6 +23,11 @@
       "types": "./dist/index.d.ts",
       "import": "./dist/index.js"
     },
+    "./table": {
+      "types": "./dist/table.d.ts",
+      "import": "./dist/table.js",
+      "default": "./dist/table.js"
+    },
     "./theme.css": "./theme.css",
     "./eslint": "./eslint/index.js",
     "./mobile": {
