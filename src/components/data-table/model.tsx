@@ -13,6 +13,7 @@ import {
   alignForType,
   checkState,
   computeTotals,
+  exportColumns,
   firstSortOrder,
   isSortable,
   looksNumeric,
@@ -111,6 +112,9 @@ function widthSamples<Row>(rc: ResolvedColumn<Row>, rows: readonly Row[]): strin
   return out;
 }
 
+/** One entry of the virtual list: a group header, a row, or the detail panel under an expanded row. */
+export type DataTableListItem<Row> = DataTableGroupItem<Row> | { kind: "detail"; row: Row; index: number };
+
 export interface DataTableModel<Row> {
   props: DataTableProps<Row>;
   columns: ResolvedColumn<Row>[];
@@ -141,12 +145,22 @@ export interface DataTableModel<Row> {
 
   runExport: (kind: "csv" | "pdf") => void;
 
-  /** Rows in view (search, filters, tabs), sorted. */
+  /** Rows in view (search, filters, tabs), sorted and pinned. */
   sorted: Row[];
-  /** The virtual list when grouped; null when flat. */
-  listItems: DataTableGroupItem<Row>[] | null;
+  /** The rows on screen: `sorted`, or its first `rowCap` while capped. */
+  shown: Row[];
+  /** With a `rowCap` the rows exceed: whether all show, and the toggle. Null otherwise. */
+  cap: { showingAll: boolean; toggle: () => void } | null;
+  /** The virtual list when grouped or a row is expanded; null for the plain list of `shown`. */
+  listItems: DataTableListItem<Row>[] | null;
+  grouped: boolean;
   groupCount: number;
   toggleGroup: (key: string | null) => void;
+
+  expandable: boolean;
+  canExpandRow: (row: Row) => boolean;
+  isExpanded: (row: Row) => boolean;
+  toggleExpanded: (row: Row) => void;
 
   selectable: boolean;
   rowId: (row: Row) => string;
@@ -178,10 +192,21 @@ export function useDataTableModel<Row>(props: DataTableProps<Row>): DataTableMod
     rows,
     getRowId,
     initialSort,
+    sort: sortProp,
+    onSortChange,
+    manualSort = false,
     searchKeys,
+    query: queryProp,
+    defaultQuery,
+    onQueryChange,
     filters,
+    filterValues: filterValuesProp,
+    defaultFilterValues,
+    onFilterValuesChange,
     tabs,
     defaultTab,
+    tab: tabProp,
+    onTabChange,
     exportFilename,
     pdfTitle,
     pdfSubtitle,
@@ -200,18 +225,45 @@ export function useDataTableModel<Row>(props: DataTableProps<Row>): DataTableMod
     collapsedGroups,
     onCollapsedGroupsChange,
     searchActive = false,
+    getRowPin,
+    rowCap,
+    renderExpanded,
+    canExpand,
+    expanded,
+    defaultExpanded,
+    onExpandedChange,
   } = props;
 
-  const [query, setQuery] = React.useState("");
-  const [sort, setSort] = React.useState<SortState>(initialSort ?? null);
-  const [filterValues, setFilterValues] = React.useState<FilterValues>({});
-  const [activeTab, setActiveTab] = React.useState(defaultTab ?? tabs?.[0]?.key ?? "");
+  // Each piece of view state is the table's own unless the caller passes it
+  // (controlled); either way a change is reported.
+  const [ownQuery, setOwnQuery] = React.useState(defaultQuery ?? "");
+  const query = queryProp ?? ownQuery;
+  const setQuery = (q: string) => {
+    if (queryProp === undefined) setOwnQuery(q);
+    onQueryChange?.(q);
+  };
+  const [ownSort, setOwnSort] = React.useState<SortState>(initialSort ?? null);
+  const sort = sortProp !== undefined ? sortProp : ownSort;
+  const [ownFilterValues, setOwnFilterValues] = React.useState<FilterValues>(defaultFilterValues ?? {});
+  const filterValues = filterValuesProp ?? ownFilterValues;
+  const setFilterValues = (v: FilterValues) => {
+    if (filterValuesProp === undefined) setOwnFilterValues(v);
+    onFilterValuesChange?.(v);
+  };
+  const [ownTab, setOwnTab] = React.useState(defaultTab ?? tabs?.[0]?.key ?? "");
+  const activeTab = tabProp ?? ownTab;
+  const setActiveTab = (key: string) => {
+    if (tabProp === undefined) setOwnTab(key);
+    onTabChange?.(key);
+  };
 
   /* ---- columns ---- */
 
+  // `exportOnly` columns never reach the screen: only search and export read them.
+  const shownColumns = React.useMemo(() => columns.filter((c) => !c.exportOnly), [columns]);
   const resolved = React.useMemo<ResolvedColumn<Row>[]>(() => {
     const sample = rows.slice(0, 20);
-    return columns.map((col, i) => {
+    return shownColumns.map((col, i) => {
       const numericValues = looksNumeric(sample.map((r) => accessor(col, r)));
       const type = col.type;
       // `align` wins; then the type. Untyped, only a PLAIN numeric column (no
@@ -222,13 +274,13 @@ export function useDataTableModel<Row>(props: DataTableProps<Row>): DataTableMod
         key: col.key,
         type,
         align,
-        first: firstSortOrder(type, numericValues),
+        first: col.sortFirst ?? firstSortOrder(type, numericValues),
         sortable: isSortable(col),
         text: align === "left" && (type === undefined || type === "text"),
         locked: i === 0 || !!col.sticky || col.hideable === false,
       };
     });
-  }, [columns, rows]);
+  }, [shownColumns, rows]);
   const byKey = React.useMemo(() => new Map(resolved.map((c) => [c.key, c])), [resolved]);
 
   /* ---- column visibility ---- */
@@ -273,16 +325,18 @@ export function useDataTableModel<Row>(props: DataTableProps<Row>): DataTableMod
     () => (searchKeys ? columns.filter((c) => searchKeys.includes(c.key)) : columns),
     [columns, searchKeys],
   );
+  const matchSearch = props.matchSearch;
   const searched = React.useMemo(() => {
     const q = query.trim().toLowerCase();
     if (!q) return rows;
+    if (matchSearch) return rows.filter((row) => matchSearch(row, query.trim()));
     return rows.filter((row) =>
       searchCols.some((c) => {
         const v = accessor(c, row);
         return v != null && String(v).toLowerCase().includes(q);
       }),
     );
-  }, [rows, searchCols, query]);
+  }, [rows, searchCols, query, matchSearch]);
   const faceted = React.useMemo(() => {
     if (!filters || filters.length === 0) return searched;
     return searched.filter((r) => rowMatchesFilters(r, filters, filterValues));
@@ -297,17 +351,39 @@ export function useDataTableModel<Row>(props: DataTableProps<Row>): DataTableMod
     const t = tabs?.find((x) => x.key === activeTab);
     return t?.filter ? faceted.filter(t.filter) : faceted;
   }, [faceted, tabs, activeTab]);
-  const sorted = React.useMemo(() => {
-    if (!sort) return tabbed;
+  const ordered = React.useMemo(() => {
+    if (!sort || manualSort) return tabbed;
     const rc = byKey.get(sort.key);
     if (!rc) return tabbed;
-    return sortRows(tabbed, (row) => accessor(rc.col, row), sort.order);
-  }, [tabbed, sort, byKey]);
+    const value = rc.col.sortValue ?? ((row: Row) => accessor(rc.col, row));
+    return sortRows(tabbed, value, sort.order);
+  }, [tabbed, sort, byKey, manualSort]);
+  // Pinned rows hold the top or the bottom whatever the sort.
+  const sorted = React.useMemo(() => {
+    if (!getRowPin) return ordered;
+    const top: Row[] = [];
+    const middle: Row[] = [];
+    const bottom: Row[] = [];
+    for (const row of ordered) {
+      const pin = getRowPin(row);
+      (pin === "top" ? top : pin === "bottom" ? bottom : middle).push(row);
+    }
+    return top.length || bottom.length ? [...top, ...middle, ...bottom] : ordered;
+  }, [ordered, getRowPin]);
 
   const toggleSort = (key: string) => {
     const first = byKey.get(key)?.first ?? "asc";
-    setSort((prev) => nextSort(prev, key, first));
+    const next = nextSort(sort, key, first);
+    if (sortProp === undefined) setOwnSort(next);
+    onSortChange?.(next);
   };
+
+  /* ---- the row cap ---- */
+
+  const [showAll, setShowAll] = React.useState(false);
+  const overCap = rowCap != null && rowCap >= 0 && sorted.length > rowCap;
+  const shown = React.useMemo(() => (overCap && !showAll ? sorted.slice(0, rowCap) : sorted), [overCap, showAll, sorted, rowCap]);
+  const cap = overCap ? { showingAll: showAll, toggle: () => setShowAll((v) => !v) } : null;
 
   /* ---- grouping ---- */
 
@@ -317,11 +393,11 @@ export function useDataTableModel<Row>(props: DataTableProps<Row>): DataTableMod
   // is set aside and the toggles rest until it ends.
   const searching = query.trim() !== "" || searchActive;
   const shownCollapsed = collapsedFor(searching, controlledSet ?? collapsed, NO_GROUPS);
-  const listItems = React.useMemo(
-    () => (groupBy ? groupItems(sorted, groupBy, shownCollapsed, compareGroups) : null),
-    [sorted, groupBy, shownCollapsed, compareGroups],
+  const groupedItems = React.useMemo(
+    () => (groupBy ? groupItems(shown, groupBy, shownCollapsed, compareGroups) : null),
+    [shown, groupBy, shownCollapsed, compareGroups],
   );
-  const groupCount = React.useMemo(() => (listItems ? listItems.filter((i) => i.kind === "group").length : 0), [listItems]);
+  const groupCount = React.useMemo(() => (groupedItems ? groupedItems.filter((i) => i.kind === "group").length : 0), [groupedItems]);
   const toggleGroup = React.useCallback(
     (key: string | null) => {
       if (searching) return;
@@ -337,13 +413,41 @@ export function useDataTableModel<Row>(props: DataTableProps<Row>): DataTableMod
   // so sorting and filtering never reassign them.
   const getRowIdRef = React.useRef(getRowId);
   getRowIdRef.current = getRowId;
+  const expandable = renderExpanded != null;
   const ids = React.useMemo(() => {
     const m = new Map<Row, string>();
-    if (!selectable) return m;
+    if (!selectable && !expandable) return m;
     rows.forEach((r, i) => m.set(r, getRowIdRef.current ? getRowIdRef.current(r, i) : String(i)));
     return m;
-  }, [rows, selectable]);
+  }, [rows, selectable, expandable]);
   const rowId = React.useCallback((row: Row) => ids.get(row) ?? "", [ids]);
+
+  /* ---- expanded rows ---- */
+
+  const [ownExpanded, setOwnExpanded] = React.useState<ReadonlySet<string>>(() => new Set(defaultExpanded));
+  const expandedSet = React.useMemo<ReadonlySet<string>>(() => (expanded ? new Set(expanded) : ownExpanded), [expanded, ownExpanded]);
+  const canExpandRow = (row: Row) => expandable && (canExpand ? canExpand(row) : true);
+  const isExpanded = (row: Row) => expandable && expandedSet.has(ids.get(row) ?? "") && (canExpand ? canExpand(row) : true);
+  const toggleExpanded = (row: Row) => {
+    const next = toggled(expandedSet, ids.get(row) ?? "");
+    if (!expanded) setOwnExpanded(next);
+    onExpandedChange?.([...next]);
+  };
+  // The virtual list: group headers and rows, and a detail panel after each expanded row.
+  const canExpandRef = React.useRef(canExpand);
+  canExpandRef.current = canExpand;
+  const listItems = React.useMemo<DataTableListItem<Row>[] | null>(() => {
+    if (!expandable || expandedSet.size === 0) return groupedItems;
+    const base: DataTableGroupItem<Row>[] = groupedItems ?? shown.map((row, index) => ({ kind: "row", row, index }));
+    const out: DataTableListItem<Row>[] = [];
+    for (const item of base) {
+      out.push(item);
+      if (item.kind !== "row") continue;
+      const open = expandedSet.has(ids.get(item.row) ?? "") && (canExpandRef.current ? canExpandRef.current(item.row) : true);
+      if (open) out.push({ kind: "detail", row: item.row, index: item.index });
+    }
+    return out;
+  }, [expandable, expandedSet, groupedItems, shown, ids]);
   const [ownSelection, setOwnSelection] = React.useState<ReadonlySet<string>>(() => new Set(defaultSelected));
   const selectedSet = React.useMemo<ReadonlySet<string>>(() => (selected ? new Set(selected) : ownSelection), [selected, ownSelection]);
   const commitSelection = (next: Set<string>) => {
@@ -354,11 +458,11 @@ export function useDataTableModel<Row>(props: DataTableProps<Row>): DataTableMod
   // Shift-click ranges follow what's on screen: collapsed groups are skipped.
   const orderIds = React.useMemo(() => {
     if (!selectable) return [];
-    if (!listItems) return viewIds;
+    if (!listItems) return shown === sorted ? viewIds : shown.map((r) => ids.get(r) ?? "");
     const out: string[] = [];
     for (const item of listItems) if (item.kind === "row") out.push(ids.get(item.row) ?? "");
     return out;
-  }, [selectable, listItems, viewIds, ids]);
+  }, [selectable, listItems, viewIds, ids, shown, sorted]);
   const selectedRows = React.useMemo(
     () => (selectable && selectedSet.size ? sorted.filter((r) => selectedSet.has(ids.get(r) ?? "")) : []),
     [selectable, selectedSet, sorted, ids],
@@ -421,6 +525,7 @@ export function useDataTableModel<Row>(props: DataTableProps<Row>): DataTableMod
     totalsProp ? Object.keys(totalsProp).filter((k) => totalsProp[k] === "sum") : null,
     grouped,
     selectable,
+    expandable,
     grown,
   ]);
   const template = React.useMemo(() => {
@@ -443,8 +548,9 @@ export function useDataTableModel<Row>(props: DataTableProps<Row>): DataTableMod
         weight: i === 0 ? 500 : 400,
         // A rendered status is a badge: 8px of padding each side.
         extra: rc.type === "status" && rc.col.render ? 16 : rc.type === "date" ? 6 : 0,
-        // Grouped rows sit under the group label (16 + chevron + gap = 36).
-        indent: grouped && !selectable && i === 0 ? 20 : 0,
+        // Grouped rows sit under the group label, and an expandable row's text
+        // after its chevron: 16 + chevron + gap = 36.
+        indent: i === 0 ? (grouped && !selectable ? 20 : 0) + (expandable ? 20 : 0) : 0,
       };
     });
     return resolveTemplate(specs, { selection: selectable });
@@ -466,10 +572,15 @@ export function useDataTableModel<Row>(props: DataTableProps<Row>): DataTableMod
 
   /* ---- export ---- */
 
+  // The shown columns plus the export-only ones, in the order given, less any
+  // `exportable: false`; each with its export header and value.
   const runExport = (kind: "csv" | "pdf") => {
-    const headers = visible.map((c) => c.col.header);
-    const data = sorted.map((row) => visible.map((c) => accessor(c.col, row)));
-    const align = visible.map((c) => c.align);
+    const shownByKey = new Map(visible.map((c) => [c.key, c]));
+    const out = exportColumns(columns, new Set(shownByKey.keys()))
+      .map((col) => ({ col, align: shownByKey.get(col.key)?.align ?? (col.align ?? (col.type ? alignForType(col.type) : "left")) }));
+    const headers = out.map((c) => c.col.exportHeader ?? c.col.header);
+    const data = sorted.map((row) => out.map((c) => (c.col.exportValue ? c.col.exportValue(row) : accessor(c.col, row))));
+    const align = out.map((c) => c.align);
     if (kind === "csv") downloadCsv(headers, data, exportFilename ?? "export");
     else void downloadPdf(headers, data, { filename: exportFilename ?? "export", title: pdfTitle, subtitle: pdfSubtitle, align });
   };
@@ -497,9 +608,16 @@ export function useDataTableModel<Row>(props: DataTableProps<Row>): DataTableMod
     setVisible,
     runExport,
     sorted,
+    shown,
+    cap,
     listItems,
+    grouped,
     groupCount,
     toggleGroup,
+    expandable,
+    canExpandRow,
+    isExpanded,
+    toggleExpanded,
     selectable,
     rowId,
     isSelected: (row) => selectedSet.has(ids.get(row) ?? ""),

@@ -1,6 +1,6 @@
 import type * as React from "react";
 import type { CellValue } from "./export";
-import type { FilterDef } from "./filter-bar";
+import type { FilterDef, FilterValues } from "./filter-bar";
 import type { DataTableColumnType } from "./format";
 import type { DataTableGroup } from "./grouping";
 import type { TotalSpec } from "./layout";
@@ -30,6 +30,10 @@ export interface DataTableColumn<Row> {
   render?: (row: Row) => React.ReactNode;
   /** Sort + export + search value. Defaults to `row[key]`. */
   value?: (row: Row) => CellValue;
+  /** A sort value that differs from `value` (a "Q3 2026" label that sorts by its date). Defaults to `value`. */
+  sortValue?: (row: Row) => CellValue;
+  /** Where a first click sorts, when the `type` would pick wrong (a rank sorts 1 first: `"asc"`). Default: from `type`. */
+  sortFirst?: "asc" | "desc";
   align?: "left" | "right";
   /**
    * The column's track. A number is px. A string may be `"240px"`, `"1.5fr"` or
@@ -64,6 +68,17 @@ export interface DataTableColumn<Row> {
   hideable?: boolean;
   /** Start hidden until someone turns it on in the Columns picker. */
   defaultHidden?: boolean;
+  /** The CSV / PDF value, when it differs from `value` (a raw id behind a name). Defaults to `value`. */
+  exportValue?: (row: Row) => CellValue;
+  /** The CSV / PDF header, when it differs from `header`. */
+  exportHeader?: string;
+  /** Leave the column out of the export (a row-actions column). Default true. */
+  exportable?: boolean;
+  /**
+   * In the export (and the search) but never on screen: a raw id, an email
+   * behind a name. Not in the Columns picker or on phone cards.
+   */
+  exportOnly?: boolean;
   className?: string;
 }
 
@@ -87,7 +102,20 @@ export interface DataTableProps<Row> {
   rows: Row[];
   /** A stable id per row. Selection needs it (without it, a row's id is its index in `rows`). */
   getRowId?: (row: Row, index: number) => string;
+  /** The sort on first render (uncontrolled). */
   initialSort?: { key: string; order: "asc" | "desc" };
+  /**
+   * Controlled sort, with `onSortChange`: keep it in the URL, a saved view or
+   * the server's query. `null` is unsorted. A header click reports the next
+   * state (first direction, flipped, cleared) and the table shows `sort`.
+   */
+  sort?: { key: string; order: "asc" | "desc" } | null;
+  onSortChange?: (sort: { key: string; order: "asc" | "desc" } | null) => void;
+  /**
+   * The rows arrive sorted (by the server, or by you): the headers still show
+   * and report the sort, but the table keeps `rows` in the order given.
+   */
+  manualSort?: boolean;
   /** The table's accessible name ("Deals"). */
   "aria-label"?: string;
 
@@ -103,15 +131,36 @@ export interface DataTableProps<Row> {
   /** Search box (left of the toolbar). */
   searchable?: boolean;
   searchPlaceholder?: string;
+  /** The search box's accessible name. Default: the placeholder. */
+  searchLabel?: string;
   /** Column keys to search; defaults to every column. */
   searchKeys?: string[];
+  /**
+   * Replaces the built-in match (the query as one piece of text inside any
+   * searched column's value): every word in any order, a fuzzy match. Gets the
+   * trimmed query. Pass a stable function.
+   */
+  matchSearch?: (row: Row, query: string) => boolean;
+  /** Controlled search text, with `onQueryChange` (a deep link, a saved view). */
+  query?: string;
+  /** The search text on first render (uncontrolled). */
+  defaultQuery?: string;
+  onQueryChange?: (query: string) => void;
 
   /** Linear-style filters (select + range facets). Filtered internally. */
   filters?: FilterDef<Row>[];
+  /** Controlled filter values, with `onFilterValuesChange` (keep them in the URL or a saved view). */
+  filterValues?: FilterValues;
+  /** Filter values on first render (uncontrolled). */
+  defaultFilterValues?: FilterValues;
+  onFilterValuesChange?: (values: FilterValues) => void;
 
   /** Segmented view tabs (All / Confirmed / …), first in the toolbar. Filter on top of search + facets. */
   tabs?: DataTableTab<Row>[];
   defaultTab?: string;
+  /** Controlled view tab (its `key`), with `onTabChange`. */
+  tab?: string;
+  onTabChange?: (key: string) => void;
 
   /** Extra controls after Filter (e.g. a Views button). */
   toolbarActions?: React.ReactNode;
@@ -167,6 +216,38 @@ export interface DataTableProps<Row> {
   /** Keep spatial report/workbook comparison scrollable on phones. */
   mobileLayout?: "cards" | "scroll";
   onRowClick?: (row: Row) => void;
+  /**
+   * Extra classes for a row (a muted archived row, an attention tint). Color
+   * marks exceptions, not the field: tint the few rows that deviate. A pinned
+   * (`sticky`) cell is opaque and keeps the card colour.
+   */
+  getRowClassName?: (row: Row) => string | undefined;
+  /**
+   * Keep a row above (`"top"`) or below (`"bottom"`) the others whatever the
+   * sort: a pinned account, an "Unattributed" bucket. Pinned rows keep their
+   * sorted order among themselves. Totals still come from `totals`.
+   */
+  getRowPin?: (row: Row) => "top" | "bottom" | null | undefined;
+  /**
+   * Show the first N rows, and a "Show all" button in the footer (then "Show
+   * fewer"). The cap is display only: search, totals, select-all and export
+   * cover every row in view. For a preview of a long list inside a card;
+   * a full list scrolls (no pagination).
+   */
+  rowCap?: number;
+  /**
+   * A detail panel under a row, opened by a chevron in the row's first cell
+   * (`aria-expanded`). It spans the table's visible width and sizes to its
+   * content. Phone cards (`mobileLayout="cards"`) don't expand.
+   */
+  renderExpanded?: (row: Row) => React.ReactNode;
+  /** Which rows have a panel. Default: every row (with `renderExpanded`). */
+  canExpand?: (row: Row) => boolean;
+  /** Controlled open panels: row ids (`getRowId`), with `onExpandedChange`. */
+  expanded?: readonly string[];
+  /** Open panels on first render (uncontrolled). */
+  defaultExpanded?: readonly string[];
+  onExpandedChange?: (ids: string[]) => void;
   /**
    * Make rows real links (cmd+click, middle-click, copy-link, native keyboard
    * access). Rendered as a stretched overlay anchor so per-cell `TableLink`s
