@@ -90,7 +90,7 @@
     --morph-primary-ink: var(--primary-foreground, #ffffff);
     --morph-line: var(--input, rgba(27, 27, 27, 0.12));
     --morph-hover: var(--accent, rgba(27, 27, 27, 0.05));
-    --morph-ring: var(--ring, rgba(27, 27, 27, 0.2));
+    --morph-ring: var(--ring, rgba(27, 27, 27, 0.5));
     --morph-field: var(--muted, #f3f3f4);
     --morph-ok: var(--verdict-green, #1f7a33);
   }

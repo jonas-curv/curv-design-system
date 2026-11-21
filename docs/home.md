@@ -75,7 +75,7 @@ The panel and clock tokens follow the theme. Each one resolves on the element, s
 | `--home-line` | `--border` → `rgba(27,27,27,.08)` |
 | `--home-chip-bg` | `--surface-2` → `--muted` → `#f3f3f4` |
 | `--home-hover` | `--accent` → `rgba(27,27,27,.05)` |
-| `--home-ring` | `--ring` → `rgba(27,27,27,.2)` |
+| `--home-ring` | `--ring` → `rgba(27,27,27,.5)` |
 | `--home-day-future` | `--app-strong` → `--border` |
 
 The shape tokens default to the design system:
