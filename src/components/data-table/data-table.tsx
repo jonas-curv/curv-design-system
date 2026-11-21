@@ -69,6 +69,29 @@ const ROW_CLICK_SKIP = "a,button,input,select,textarea,label,[role=button],[role
 // The header deepens once rows scroll under it.
 const HEADER_SCROLLED = "0 2px 4px -2px rgb(0 0 0 / 0.08)";
 
+const useIsomorphicLayoutEffect = typeof window === "undefined" ? React.useEffect : React.useLayoutEffect;
+
+// What each measured cell (`data-dt-grow`) needs: its content's natural width
+// plus its padding, when that is more than the cell has. A Range measures the
+// laid-out text even where the cell clips it.
+function measureGrowth(root: HTMLElement): Record<string, number> {
+  const need: Record<string, number> = {};
+  const range = document.createRange();
+  root.querySelectorAll<HTMLElement>("[data-dt-grow]").forEach((cell) => {
+    const key = cell.dataset.dtGrow;
+    const width = cell.offsetWidth;
+    if (!key || !width) return;
+    range.selectNodeContents(cell);
+    // Rects are in screen pixels; offsetWidth is in CSS pixels (a scaled dialog).
+    const scale = cell.getBoundingClientRect().width / width || 1;
+    const style = getComputedStyle(cell);
+    const pad = (parseFloat(style.paddingLeft) || 0) + (parseFloat(style.paddingRight) || 0);
+    const px = Math.ceil(range.getBoundingClientRect().width / scale + pad);
+    if (px > width && px > (need[key] ?? 0)) need[key] = px;
+  });
+  return need;
+}
+
 function totalText<Row>(rc: ResolvedColumn<Row>, v: unknown): React.ReactNode {
   if (v == null || v === "") return DASH;
   if (typeof v === "number") {
@@ -135,6 +158,19 @@ function DataTableCard<Row>({
     overscan: 12,
   });
   const items = virt.getVirtualItems();
+
+  // Widen a content-sized column the estimate under-sized (a `render` showing
+  // more than the formatted value), once its cells are on screen. Re-measures
+  // when other rows scroll into view; the tracks only grow, so this settles.
+  const tableRef = React.useRef<HTMLDivElement>(null);
+  const { growable, growColumns } = m;
+  const firstItem = items[0]?.index ?? -1;
+  const lastItem = items[items.length - 1]?.index ?? -1;
+  useIsomorphicLayoutEffect(() => {
+    if (!tableRef.current || growable.size === 0) return;
+    const need = measureGrowth(tableRef.current);
+    if (Object.keys(need).length > 0) growColumns(need);
+  }, [growable, growColumns, firstItem, lastItem, m.template.template, loading, totals]);
 
   // Scroll edges: the side fades (only where the table can scroll), the frozen
   // column's shadow, and the header's once rows pass under it. Set only on a
@@ -434,6 +470,7 @@ function DataTableCard<Row>({
             <div
               key={c.key}
               role="cell"
+              data-dt-grow={m.growable.has(rc.key) ? rc.key : undefined}
               className={cn(
                 // `min-w-0` lets the cell shrink to its track instead of its
                 // content; `overflow-hidden` clips tall custom content to the
@@ -523,6 +560,7 @@ function DataTableCard<Row>({
               </div>
             )}
             <div
+              ref={tableRef}
               role="table"
               aria-label={p["aria-label"]}
               aria-rowcount={loading ? -1 : 1 + count + (showTotals ? 1 : 0)}
@@ -610,7 +648,7 @@ function DataTableCard<Row>({
                       ),
                     );
                     return (
-                      <div key={rc.key} role="cell" className={sc.className} style={sc.style}>
+                      <div key={rc.key} role="cell" data-dt-grow={m.growable.has(rc.key) ? rc.key : undefined} className={sc.className} style={sc.style}>
                         {content != null && <span className="min-w-0 truncate">{content}</span>}
                       </div>
                     );

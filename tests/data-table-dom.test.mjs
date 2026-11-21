@@ -229,3 +229,27 @@ test('an untyped plain numeric column still aligns right; a rendered one stays l
  assert.ok(!rating.className.includes('text-right'));
  assert.equal(qty.textContent, '3', 'untyped values are not reformatted');
 });
+
+test('a rendered cell wider than its estimate widens its column; an explicit width stays', async () => {
+ // happy-dom lays nothing out: every cell is 1000 wide (above) and, here, every
+ // cell's content 1200, as a `render` with cents or a unit would be.
+ const original = Range.prototype.getBoundingClientRect;
+ Range.prototype.getBoundingClientRect = function () {
+  return { x: 0, y: 0, top: 0, left: 0, right: 1200, bottom: 20, width: 1200, height: 20 };
+ };
+ try {
+  const { container } = await mount(h(ds.DataTable, {
+   rows: ROWS,
+   columns: [
+    { key: 'deal', header: 'Deal' },
+    { key: 'value', header: 'Value', align: 'right', render: (r) => `$${r.value}.00 USD` },
+    { key: 'gp', header: 'GP', type: 'money', width: 120 },
+   ],
+  }));
+  const tracks = q(container, '.overflow-auto').style.getPropertyValue('--dt-cols').split(' ');
+  assert.equal(tracks[1], '1200px', 'the rendered money column grows to its content');
+  assert.equal(tracks[2], '120px', 'a column with a width keeps it');
+ } finally {
+  Range.prototype.getBoundingClientRect = original;
+ }
+});

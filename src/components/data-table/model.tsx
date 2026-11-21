@@ -161,6 +161,11 @@ export interface DataTableModel<Row> {
   totals: Record<string, unknown> | null;
   /** Index into `visible` where "Total" goes, or -1. */
   totalLabelAt: number;
+
+  /** Content-sized columns (no `width`, not sticky) whose rendered cells the card measures. */
+  growable: ReadonlySet<string>;
+  /** Widens content-sized columns to what their rendered cells need (grow-only). */
+  growColumns: (need: Readonly<Record<string, number>>) => void;
 }
 
 const useIsomorphicLayoutEffect = typeof window === "undefined" ? React.useEffect : React.useLayoutEffect;
@@ -385,6 +390,27 @@ export function useDataTableModel<Row>(props: DataTableProps<Row>): DataTableMod
 
   /* ---- the one column template ---- */
 
+  // A content-sized track is estimated from the formatted values, but a
+  // `render` can show more (cents, a unit, stars and a count). The card
+  // measures the rendered cells and reports what they need: tracks only ever
+  // grow, so a number never loses a digit to the estimate and the columns
+  // never jitter.
+  const [grown, setGrown] = React.useState<Readonly<Record<string, number>>>({});
+  const growColumns = React.useCallback((need: Readonly<Record<string, number>>) => {
+    setGrown((prev) => {
+      let next: Record<string, number> | null = null;
+      for (const [key, px] of Object.entries(need)) if (px > (prev[key] ?? 0)) (next ??= { ...prev })[key] = px;
+      return next ?? prev;
+    });
+  }, []);
+  const contentSized = (rc: ResolvedColumn<Row>) => rc.align === "right" || rc.type === "date" || rc.type === "status";
+  // Keyed by the joined keys: a fresh `columns` array each render keeps the same set.
+  const growableKeys = visible
+    .filter((rc) => contentSized(rc) && rc.col.width == null && !rc.col.sticky)
+    .map((rc) => rc.key)
+    .join("\u0000");
+  const growable = React.useMemo<ReadonlySet<string>>(() => new Set(growableKeys ? growableKeys.split("\u0000") : []), [growableKeys]);
+
   const grouped = !!groupBy;
   // What sizes the columns. Callers often pass a fresh `columns` array each
   // render; keyed on this instead, the template (which scans every row) is
@@ -394,20 +420,21 @@ export function useDataTableModel<Row>(props: DataTableProps<Row>): DataTableMod
     totalsProp ? Object.keys(totalsProp).filter((k) => totalsProp[k] === "sum") : null,
     grouped,
     selectable,
+    grown,
   ]);
   const template = React.useMemo(() => {
     // The widest a sum gets is over every row; sizing from it keeps the column
     // from jumping as filters change the total.
     const sums = totalDefs ? computeTotals(totalDefs.filter((d) => d.total === "sum"), rows) : null;
     const specs: TrackSpec[] = visible.map((rc, i) => {
-      const sizing: TrackSpec["sizing"] =
-        rc.align === "right" || rc.type === "date" || rc.type === "status" ? "content" : "flex";
+      const sizing: TrackSpec["sizing"] = contentSized(rc) ? "content" : "flex";
+      const measured = sizing === "content" ? grown[rc.key] : undefined;
       return {
         label: rc.col.header,
         sortable: rc.sortable,
         hasSuffix: rc.col.headerSuffix != null,
         width: rc.col.width,
-        minWidth: rc.col.minWidth,
+        minWidth: measured != null ? Math.max(rc.col.minWidth ?? 0, measured) : rc.col.minWidth,
         maxWidth: rc.col.maxWidth,
         sizing,
         samples: sizing === "content" ? widthSamples(rc, rows) : undefined,
@@ -482,6 +509,8 @@ export function useDataTableModel<Row>(props: DataTableProps<Row>): DataTableMod
     clearSelection,
     totals,
     totalLabelAt,
+    growable,
+    growColumns,
   };
 }
 

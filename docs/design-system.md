@@ -512,10 +512,13 @@ statements; a plain `<table>` only for a few read-only rows, and it borrows
   content-sized, so every grid resolves the same widths and columns can't drift.
 - **Column widths.** Numbers, money, percentages, dates and statuses get a fixed
   px track as wide as their longest formatted value (the total included):
-  **numbers never truncate**. Leave exactly ONE primary text column with no
-  `width`/`maxWidth`: it is the filler (`minmax(minWidth, 1fr)`), takes the
-  slack, and truncates with `…` past its floor. Give it a `minWidth`
-  (~240–320px; the default floor is 120). Give other text columns a `width`.
+  **numbers never truncate**. A `render` that shows more than the formatted
+  value (cents, a unit, stars and a count) widens its column once its cells are
+  on screen; tracks only grow. A column with a `width` keeps it. Leave exactly
+  ONE primary text column with no `width`/`maxWidth`: it is the filler
+  (`minmax(minWidth, 1fr)`), takes the slack, and truncates with `…` past its
+  floor. Give it a `minWidth` (~240–320px; the default floor is 120). Give
+  other text columns a `width`.
   **No column is narrower than its header label** (plus the sort slot and
   padding); a smaller `width` is raised to it. A `width` string may be `"240px"`,
   `"1.5fr"` or `"minmax(220px,1.6fr)"`; `auto` and `max-content` are ignored.
