@@ -197,7 +197,8 @@ test('theme.css defines the seven type sizes as Tailwind theme tokens, and no co
     assert.match(css, new RegExp(`--text-${name}: ${size}rem;`), name);
     assert.match(css, new RegExp(`--text-${name}--line-height: ${lineHeight}rem;`), `${name} line height`);
   }
-  for (const token of ['--background: #FCFCFD', '--foreground: #1B1B1B', '--muted-foreground: #6B6B6F', '--sidebar: #F3F3F4', '--topbar: #1B1B1B', '--text-2: #6B6B6F', '--text-3: #8A8A8E']) {
+  // 0.5.1 restored the readability-audit inks (tests/theme-contrast.test.mjs).
+  for (const token of ['--background: #FCFCFD', '--foreground: #1B1B1B', '--muted-foreground: #66666A', '--sidebar: #F3F3F4', '--topbar: #1B1B1B', '--text-2: #66666A', '--text-3: #747478']) {
     assert.ok(css.includes(token), token);
   }
 });

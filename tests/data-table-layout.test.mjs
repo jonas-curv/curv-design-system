@@ -6,6 +6,7 @@ import assert from 'node:assert/strict';
 import {
  alignForType,
  firstSortOrder,
+ isSortable,
  nextSort,
  looksNumeric,
  sortRows,
@@ -122,6 +123,17 @@ test('a header cycles first → opposite → cleared; another header starts over
  assert.deepEqual(s, { key: 'value', order: 'asc' });
  assert.equal(nextSort(s, 'value', 'desc'), null);
  assert.deepEqual(nextSort({ key: 'value', order: 'asc' }, 'name', 'asc'), { key: 'name', order: 'asc' });
+});
+
+test('an empty header has no sort button unless it opts in with a name', () => {
+ assert.equal(isSortable({ header: 'Deal' }), true);
+ assert.equal(isSortable({ header: 'Deal', sortable: false }), false);
+ assert.equal(isSortable({ header: '' }), false, 'a button with no name');
+ assert.equal(isSortable({ header: '  ' }), false);
+ assert.equal(isSortable({ header: '', ariaLabel: 'Flag' }), false, 'a name alone does not opt in');
+ assert.equal(isSortable({ header: '', sortable: true }), false, 'opting in still needs a name');
+ assert.equal(isSortable({ header: '', sortable: true, ariaLabel: ' ' }), false);
+ assert.equal(isSortable({ header: '', sortable: true, ariaLabel: 'Flag' }), true);
 });
 
 test('sortRows: stable, numeric and natural, empties last in both directions', () => {

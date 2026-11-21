@@ -147,7 +147,7 @@
   --_home-line: var(--home-line, var(--border, rgba(27, 27, 27, 0.08)));
   --_home-chip-bg: var(--home-chip-bg, var(--surface-2, var(--muted, #f3f3f4)));
   --_home-hover: var(--home-hover, var(--accent, rgba(27, 27, 27, 0.05)));
-  --_home-ring: var(--home-ring, var(--ring, rgba(27, 27, 27, 0.2)));
+  --_home-ring: var(--home-ring, var(--ring, rgba(27, 27, 27, 0.5)));
   --_home-day-future: var(--home-day-future, var(--app-strong, var(--border, rgba(27, 27, 27, 0.08))));
   --_home-hairline: var(--home-panel-border-width, 1px);
   --_home-radius-sm: calc(var(--radius, 0.625rem) * 0.8);

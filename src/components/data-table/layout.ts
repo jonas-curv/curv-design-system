@@ -38,6 +38,16 @@ export function nextSort(prev: SortState, key: string, first: SortOrder): SortSt
   return null;
 }
 
+/**
+ * Whether a column gets a sort button. On by default, except a column with an
+ * empty header (an icon or actions column): its button would have no name. It
+ * sorts only with an explicit `sortable: true` and an `ariaLabel` to name it.
+ */
+export function isSortable(col: { header: string; sortable?: boolean; ariaLabel?: string }): boolean {
+  if (col.header.trim() !== "") return col.sortable ?? true;
+  return col.sortable === true && !!col.ariaLabel?.trim();
+}
+
 /** Whether most sampled non-empty values are numbers (an untyped column's guess). */
 export function looksNumeric(values: readonly unknown[]): boolean {
   let seen = 0;

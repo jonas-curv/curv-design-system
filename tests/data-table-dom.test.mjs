@@ -83,6 +83,32 @@ test('header: whole cell is the sort button, named by its label, aria-sort, sort
  assert.equal(button.textContent, 'Value');
 });
 
+test('an empty header is not a sort button (no nameless button) unless sortable and named', async () => {
+ const flag = { key: 'flag', header: '', value: (r) => r.stage, render: (r) => h('span', { 'aria-hidden': true }, r.stage[0]) };
+ const { container, render } = await mount(table({ columns: [...COLUMNS, flag] }));
+ const blank = headers(container).at(-1);
+ assert.equal(q(blank, 'button'), null, 'no button');
+ assert.equal(blank.getAttribute('aria-sort'), null);
+ for (const button of qa(container, '[role=columnheader] button')) {
+  assert.ok(button.textContent.trim() || button.getAttribute('aria-label'), 'every header button has a name');
+ }
+ assert.ok(!qa(container, '[role=option], option').some((o) => o.textContent.trim() === ''), 'no blank phone sort option');
+
+ await render(table({ columns: [...COLUMNS, { ...flag, sortable: true, ariaLabel: 'Flag' }] }));
+ const named = headers(container).at(-1);
+ const button = q(named, 'button');
+ assert.equal(button.getAttribute('aria-label'), 'Flag');
+ assert.equal(named.getAttribute('aria-label'), 'Flag');
+ assert.equal(named.getAttribute('aria-sort'), 'none');
+ await click(button);
+ assert.equal(headers(container).at(-1).getAttribute('aria-sort'), 'ascending');
+ assert.deepEqual(firstCells(container).slice(0, 2), ['Lanyards', 'Keychains'], 'sorts by its value');
+
+ await render(table({ columns: [...COLUMNS, { ...flag, sortable: true }] }));
+ assert.equal(q(headers(container).at(-1), 'button'), null, 'opting in without a name keeps it a plain header');
+ assert.equal(header(container, 'Deal').querySelector('button').getAttribute('aria-label'), null, 'a visible header keeps naming its button');
+});
+
 test('numbers and dates sort high to low first, text A to Z, third click clears', async () => {
  const { container } = await mount(table());
  const sortBy = (name) => click(q(header(container, name), 'button'));
