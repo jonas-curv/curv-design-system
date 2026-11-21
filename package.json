@@ -56,7 +56,7 @@
     "vendor:mobile": "bash scripts/vendor-payload.sh",
     "lint": "eslint . --cache --cache-location .eslintcache --cache-strategy content",
     "lint:changed": "node scripts/lint-changed.mjs",
-    "test": "node --test tests/mobile.test.mjs tests/mobile-nav.test.mjs tests/mobile-content.test.mjs tests/mobile-events.test.mjs tests/mobile-shell.test.mjs tests/mobile-shell-events.test.mjs tests/home.test.mjs tests/morph.test.mjs tests/data-table-grouping.test.mjs tests/shell.test.mjs tests/eslint.test.mjs tests/vendor.test.mjs"
+    "test": "node --test tests/mobile.test.mjs tests/mobile-nav.test.mjs tests/mobile-content.test.mjs tests/mobile-events.test.mjs tests/mobile-shell.test.mjs tests/mobile-shell-events.test.mjs tests/home.test.mjs tests/morph.test.mjs tests/data-table-grouping.test.mjs tests/data-table-layout.test.mjs tests/data-table-dom.test.mjs tests/shell.test.mjs tests/eslint.test.mjs tests/vendor.test.mjs"
   },
   "peerDependencies": {
     "jspdf": "*",
