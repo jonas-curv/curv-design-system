@@ -54,6 +54,17 @@ import {
   BarBreakdown,
   ChartCard,
   ReportTable,
+  Table,
+  TableBody,
+  TableCell,
+  TableFooter,
+  TableHead,
+  TableHeader,
+  TableNull,
+  TableRow,
+  formatDate,
+  formatMoney,
+  useTableSort,
   type ReportSection as ReportSectionT,
   TableLink,
   CopyButton,
@@ -539,6 +550,88 @@ const plUsd = (n: number) => `${n < 0 ? "-" : ""}$${(Math.abs(n) / 1e6).toFixed(
 const pctTag = (v: number) => (
   <span className="tabular-nums">{v > 0 ? "+" : ""}{v}%</span>
 );
+
+/* ---------- Table parts demo ---------- */
+
+type LineRow = { id: string; item: string; supplier: string; due: string | null; qty: number; value: number };
+const LINE_ROWS: LineRow[] = [
+  { id: "1", item: "Mailer box 12 x 9 x 3", supplier: "Hanzhou Pack", due: "2026-12-04", qty: 8000, value: 4960 },
+  { id: "2", item: "Mailer box 9 x 6 x 3", supplier: "Hanzhou Pack", due: "2026-12-04", qty: 12000, value: 5760 },
+  { id: "3", item: "Tissue paper, printed", supplier: "Ningbo Paper", due: null, qty: 20000, value: 1800 },
+  { id: "4", item: "Thank-you card", supplier: "Lucerne Print", due: "2026-11-28", qty: 15000, value: 1350 },
+  { id: "5", item: "Poly mailer, large", supplier: "Ningbo Paper", due: "2026-12-11", qty: 6000, value: 1140 },
+];
+const LINE_SORT = {
+  item: (r: LineRow) => r.item,
+  supplier: (r: LineRow) => r.supplier,
+  due: { value: (r: LineRow) => r.due, type: "date" as const },
+  qty: (r: LineRow) => r.qty,
+  value: (r: LineRow) => r.value,
+};
+
+function TablePartsDemo() {
+  const { rows, getHeadProps } = useTableSort(LINE_ROWS, { columns: LINE_SORT, initialSort: { key: "value", order: "desc" } });
+  return (
+    <Table card maxHeight={320} aria-label="PO lines" className="min-w-[640px]">
+      <TableHeader sticky>
+        <TableRow>
+          <TableHead {...getHeadProps("item")}>Item</TableHead>
+          <TableHead {...getHeadProps("supplier")} className="w-40">Supplier</TableHead>
+          <TableHead {...getHeadProps("due")} className="w-28">Due</TableHead>
+          <TableHead {...getHeadProps("qty")} numeric className="w-24">Qty</TableHead>
+          <TableHead {...getHeadProps("value")} numeric className="w-28">Value</TableHead>
+        </TableRow>
+      </TableHeader>
+      <TableBody>
+        {rows.map((r) => (
+          <TableRow key={r.id}>
+            <TableCell>{r.item}</TableCell>
+            <TableCell>{r.supplier}</TableCell>
+            <TableCell>{r.due ? formatDate(r.due) : <TableNull />}</TableCell>
+            <TableCell numeric>{r.qty.toLocaleString()}</TableCell>
+            <TableCell numeric>{formatMoney(r.value)}</TableCell>
+          </TableRow>
+        ))}
+      </TableBody>
+      <TableFooter sticky>
+        <TableRow>
+          <TableCell>Total</TableCell>
+          <TableCell />
+          <TableCell />
+          <TableCell numeric>{LINE_ROWS.reduce((n, r) => n + r.qty, 0).toLocaleString()}</TableCell>
+          <TableCell numeric>{formatMoney(LINE_ROWS.reduce((n, r) => n + r.value, 0))}</TableCell>
+        </TableRow>
+      </TableFooter>
+    </Table>
+  );
+}
+
+function TableDenseDemo() {
+  const lines = [
+    { label: "Revenue", value: 1204500 },
+    { label: "Direct COGS", value: -712300 },
+    { label: "Deal gross profit", value: 492200 },
+    { label: "Operational expenses", value: -301800 },
+  ];
+  return (
+    <Table card dense aria-label="Statement">
+      <TableHeader>
+        <TableRow>
+          <TableHead>Line</TableHead>
+          <TableHead numeric className="w-36">Year to date</TableHead>
+        </TableRow>
+      </TableHeader>
+      <TableBody>
+        {lines.map((l) => (
+          <TableRow key={l.label}>
+            <TableCell>{l.label}</TableCell>
+            <TableCell numeric>{formatMoney(l.value)}</TableCell>
+          </TableRow>
+        ))}
+      </TableBody>
+    </Table>
+  );
+}
 
 function ReportTableDemo() {
   const [drill, setDrill] = React.useState<string | null>(null);
@@ -1105,6 +1198,30 @@ function PoTableDemo() {
   );
 }
 
+function ExpandTableDemo() {
+  // A preview of a long list: the first five, "Show all" in the footer. A row opens its lines in place.
+  return (
+    <DataTable
+      columns={PO_COLUMNS}
+      rows={PO_LINES}
+      getRowId={(r) => r.id}
+      aria-label="PO lines"
+      initialSort={{ key: "due", order: "asc" }}
+      rowCap={5}
+      renderExpanded={(r) => (
+        <dl className="grid grid-cols-[max-content_1fr] gap-x-6 gap-y-1 text-body">
+          <dt className="text-muted-foreground">Supplier</dt>
+          <dd>{r.supplier}</dd>
+          <dt className="text-muted-foreground">Unit cost</dt>
+          <dd className="tabular-nums">{formatMoney(r.unit, { cents: true })}</dd>
+        </dl>
+      )}
+      unit="lines"
+      maxHeight={440}
+    />
+  );
+}
+
 /* ---------- form-control demos (need local state) ---------- */
 
 function TextFieldDemo() {
@@ -1572,6 +1689,12 @@ const byPo = (line) => line.po;
         canvas: "surface",
         render: () => <PoTableDemo />,
       },
+      {
+        title: "Expandable rows and a row cap",
+        description: "renderExpanded opens a panel under a row from the chevron in its first cell; rowCap shows the first rows with Show all in the footer. Totals, select-all and export still cover every row.",
+        canvas: "surface",
+        render: () => <ExpandTableDemo />,
+      },
     ],
   },
   {
@@ -1678,6 +1801,55 @@ const [range, setRange] = React.useState();
         description: "Line charts don't have to start at zero. For a metric that lives at $2M–$3M and never nears zero, a zero baseline squashes the movement into the top third (left). yBaseline=\"auto\" fits the axis just below the data min so the trend is legible (right). Default stays \"zero\" — the honest baseline; opt into auto deliberately. Never on a BarChart (a truncated bar lies).",
         canvas: "plain",
         render: () => <LineBaselineDemo />,
+      },
+    ],
+  },
+  {
+    slug: "table",
+    name: "Table",
+    group: "Data display",
+    isNew: true,
+    summary:
+      "The shadcn table parts in the standard look: a 36 solid header, 44 rows, hairlines, numbers right and tabular, the first column 500. For small read-only tables, editable grids and cells DataTable can't express. Sortable heads with useTableSort; sticky header and totals inside a capped card; dense 36 rows for statements. Server components import them from @curvgroup/design-system/table.",
+    usage: `import { Table, TableHeader, TableBody, TableFooter, TableRow, TableHead, TableCell, TableNull, useTableSort } from "@curvgroup/design-system";
+
+const { rows, getHeadProps } = useTableSort(lines, {
+  columns: { item: (r) => r.item, due: { value: (r) => r.due, type: "date" }, value: (r) => r.value },
+});
+
+<Table card maxHeight={320} aria-label="PO lines">
+  <TableHeader sticky>
+    <TableRow>
+      <TableHead {...getHeadProps("item")}>Item</TableHead>
+      <TableHead {...getHeadProps("due")}>Due</TableHead>
+      <TableHead {...getHeadProps("value")} numeric>Value</TableHead>
+    </TableRow>
+  </TableHeader>
+  <TableBody>
+    {rows.map((r) => (
+      <TableRow key={r.id}>
+        <TableCell>{r.item}</TableCell>
+        <TableCell>{r.due ? formatDate(r.due) : <TableNull />}</TableCell>
+        <TableCell numeric>{formatMoney(r.value)}</TableCell>
+      </TableRow>
+    ))}
+  </TableBody>
+  <TableFooter sticky>
+    <TableRow><TableCell>Total</TableCell><TableCell /><TableCell numeric>{formatMoney(total)}</TableCell></TableRow>
+  </TableFooter>
+</Table>`,
+    demos: [
+      {
+        title: "Sortable, sticky header and totals",
+        description: "Numbers and dates sort high to low first, text A to Z, the third click clears. The card caps at 320 and owns the scroll, so the header and the totals hold.",
+        canvas: "plain",
+        render: () => <TablePartsDemo />,
+      },
+      {
+        title: "Dense rows (statements)",
+        description: "dense: rows 36, the header unchanged.",
+        canvas: "plain",
+        render: () => <TableDenseDemo />,
       },
     ],
   },
@@ -2963,6 +3135,20 @@ export const PREVIEWS: Record<string, () => React.ReactNode> = {
         </div>
       </div>
       <div className="-mt-1 size-2 rotate-45 border-b border-r border-border bg-popover" />
+    </div>
+  ),
+  table: () => (
+    <div className="w-52 overflow-hidden rounded-md bg-card shadow-card">
+      <div className="grid grid-cols-[1fr_auto] items-center gap-3 bg-muted px-2.5 py-1.5">
+        <Bar w="40%" />
+        <Bar w="20px" />
+      </div>
+      {[0, 1, 2].map((r) => (
+        <div key={r} className="grid grid-cols-[1fr_auto] items-center gap-3 border-b border-border px-2.5 py-1.5 last:border-b-0">
+          <Bar w="70%" />
+          <Bar w="24px" />
+        </div>
+      ))}
     </div>
   ),
   "report-table": () => (

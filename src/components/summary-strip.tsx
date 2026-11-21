@@ -50,20 +50,20 @@ export function SummaryStrip({
     <div className={cn("w-full rounded-lg border border-border bg-card px-5 py-4 shadow-card", className)}>
       <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:gap-8">
         <div className="shrink-0 sm:min-w-[180px]">
-          <div className="text-[12px] text-muted-foreground">{label}</div>
+          <div className="text-caption text-muted-foreground">{label}</div>
           <div className="text-2xl font-semibold tracking-tight tabular-nums text-foreground">{total}</div>
-          {caption && <div className="mt-0.5 text-[12px] text-muted-foreground">{caption}</div>}
+          {caption && <div className="mt-0.5 text-caption text-muted-foreground">{caption}</div>}
         </div>
         <div className="grid min-w-0 flex-1 grid-cols-[repeat(auto-fit,minmax(88px,1fr))] gap-x-6 gap-y-3">
           {items.map((it, i) => (
             <div key={i} className="min-w-0">
               <div className="flex items-center gap-1.5">
                 <span className={cn("size-1.5 shrink-0 rounded-full", it.colorClassName ?? "bg-muted-foreground/40")} />
-                <span className="truncate text-[12px] text-muted-foreground">{it.label}</span>
+                <span className="truncate text-caption text-muted-foreground">{it.label}</span>
               </div>
-              <div className="mt-0.5 text-[15px] font-semibold tabular-nums text-foreground">{it.value}</div>
+              <div className="mt-0.5 text-section font-semibold tabular-nums text-foreground">{it.value}</div>
               {it.share != null && (
-                <div className="text-[12px] tabular-nums text-muted-foreground">{it.share}%</div>
+                <div className="text-caption tabular-nums text-muted-foreground">{it.share}%</div>
               )}
             </div>
           ))}

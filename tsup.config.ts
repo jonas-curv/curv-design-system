@@ -6,10 +6,11 @@ import { defineConfig } from "tsup";
 // adds a "use client" directive that this entry must not carry (see package.json "build"). Both entries still
 // get their declarations from this one run, so index.d.ts, mobile.d.ts and their shared chunk stay as they were.
 export default defineConfig(options => ({
-  entry: ["src/index.ts"],
+  // `table` is the server-safe entry (@curvgroup/design-system/table): the Table parts with no hooks or context.
+  entry: ["src/index.ts", "src/table.ts"],
   splitting: false,
   format: ["esm"],
-  dts: { entry: ["src/index.ts", "src/mobile.ts"] },
+  dts: { entry: ["src/index.ts", "src/mobile.ts", "src/table.ts"] },
   // A one-shot build starts from an empty dist. A watcher must not: it would delete dist/mobile.js, which only
   // `watch:mobile` (or `build`) writes, and every other entry's output with it.
   clean: !options.watch,

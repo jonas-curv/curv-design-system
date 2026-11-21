@@ -357,6 +357,21 @@ export function visibilityStorageKey(tableId: string): string {
   return `curv.data-table.${tableId}.columns`;
 }
 
+/* ---------- export ---------- */
+
+export interface ExportColumnSpec {
+  key: string;
+  /** Default true: false leaves the column out of the export (row actions). */
+  exportable?: boolean;
+  /** Never on screen, always in the export (a raw id, an email). */
+  exportOnly?: boolean;
+}
+
+/** The export's columns: the shown ones plus the export-only ones, in column order, less `exportable: false`. */
+export function exportColumns<C extends ExportColumnSpec>(columns: readonly C[], shown: ReadonlySet<string>): C[] {
+  return columns.filter((c) => c.exportable !== false && (c.exportOnly === true || shown.has(c.key)));
+}
+
 /* ---------- totals ---------- */
 
 /** `"sum"` adds the column's numeric values; a function computes its own from the rows. */

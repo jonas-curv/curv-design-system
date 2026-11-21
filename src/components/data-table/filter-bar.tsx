@@ -51,7 +51,7 @@ function IconX({ className }: { className?: string }) {
 /* ---------- types ---------- */
 
 const MENU_POPUP =
-  "z-50 min-w-[190px] rounded-lg border border-border bg-popover p-1 text-[13px] text-foreground shadow-lg outline-none";
+  "z-50 min-w-[190px] rounded-lg border border-border bg-popover p-1 text-body text-foreground shadow-lg outline-none";
 const MENU_ROW =
   "flex cursor-default select-none items-center gap-2 rounded px-2 py-1.5 outline-none transition-colors data-[highlighted]:bg-accent data-[popup-open]:bg-accent";
 
@@ -140,7 +140,7 @@ function ValueList<Row>({
   onToggle: (value: string) => void;
 }) {
   if (def.options.length === 0) {
-    return <div className="px-2.5 py-2 text-[13px] text-muted-foreground">No options</div>;
+    return <div className="px-2.5 py-2 text-body text-muted-foreground">No options</div>;
   }
   return (
     <div className="max-h-72 overflow-y-auto p-1">
@@ -151,7 +151,7 @@ function ValueList<Row>({
             key={opt.value}
             type="button"
             onClick={() => onToggle(opt.value)}
-            className="flex w-full items-center gap-2 rounded px-2 py-1.5 text-left text-[13px] text-foreground transition hover:bg-accent"
+            className="flex w-full items-center gap-2 rounded px-2 py-1.5 text-left text-body text-foreground transition hover:bg-accent"
           >
             <span
               className={cn(
@@ -196,7 +196,7 @@ function NumInput({
       onKeyDown={(e) => {
         if (e.key === "Enter") commit();
       }}
-      className="w-full flex-1 rounded-md border border-border bg-card px-2 py-1.5 text-[13px] text-foreground placeholder:text-muted-foreground/60 focus:outline-none focus:ring-1 focus:ring-foreground/20"
+      className="w-full flex-1 rounded-md border border-border bg-card px-2 py-1.5 text-body text-foreground placeholder:text-muted-foreground/60 focus:outline-none focus:ring-1 focus:ring-foreground/20"
     />
   );
 }
@@ -226,7 +226,7 @@ function RangeEditor<Row>({
               type="button"
               onClick={() => onChange({ min: p.min, max: p.max })}
               className={cn(
-                "rounded-full border px-2 py-0.5 text-[11px] font-medium transition",
+                "rounded-full border px-2 py-0.5 text-micro font-medium transition",
                 presetActive(p)
                   ? "border-border bg-accent text-foreground"
                   : "border-border text-muted-foreground hover:bg-accent hover:text-foreground",
@@ -275,7 +275,7 @@ function FilterChip<Row>({
   }
 
   return (
-    <div className="inline-flex h-7 items-center rounded-md border border-border bg-card text-[13px]">
+    <div className="inline-flex h-7 items-center rounded-md border border-border bg-card text-body">
       <Popover
         open={open}
         onOpenChange={setOpen}
@@ -332,7 +332,7 @@ function AddFilterMenu<Row>({
       <Menu.Trigger
         aria-label={mode === "filter" ? "Filter" : "Add filter"}
         className={cn(
-          "inline-flex items-center justify-center rounded-md border text-[13px] text-muted-foreground transition hover:bg-accent hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring data-[popup-open]:bg-accent data-[popup-open]:text-foreground",
+          "inline-flex items-center justify-center rounded-md border text-body text-muted-foreground transition hover:bg-accent hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring data-[popup-open]:bg-accent data-[popup-open]:text-foreground",
           // The toolbar's Filter is a 36px icon button, like Columns; the "+"
           // in the active-filter band is a 28px in-table control.
           mode === "filter"
@@ -429,7 +429,7 @@ export function ActiveFilterBar<Row>({
       <button
         type="button"
         onClick={clearAll}
-        className="ml-auto text-[13px] text-muted-foreground transition hover:text-foreground"
+        className="ml-auto text-body text-muted-foreground transition hover:text-foreground"
       >
         Clear
       </button>

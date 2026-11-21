@@ -22,6 +22,7 @@ import {
 } from "./model";
 import { tableHeaderRow } from "./tokens";
 import { DataTableToolbar, IconChevronDown, SelectionCheckbox } from "./toolbar";
+import { SortArrow } from "../table";
 import type { DataTableProps } from "./types";
 
 export type {
@@ -37,20 +38,15 @@ export type { DataTableGroup } from "./grouping";
 // One toolbar-button treatment for links and controls that sit beside a
 // table's toolbar, at the canonical control height (h-9 / 36px).
 export const dataTableToolbarButton =
-  "inline-flex h-9 items-center gap-1.5 rounded-md border border-border bg-card px-2.5 text-[13px] font-medium text-foreground transition-[transform,border-color] duration-150 ease-[cubic-bezier(0.23,1,0.32,1)] hover:border-foreground/20 active:scale-[0.97]";
+  "inline-flex h-9 items-center gap-1.5 rounded-md border border-border bg-card px-2.5 text-body font-medium text-foreground transition-[transform,border-color] duration-150 ease-[cubic-bezier(0.23,1,0.32,1)] hover:border-foreground/20 active:scale-[0.97]";
 
 /** An empty cell's dash. */
 const DASH = <span className="text-muted-foreground/60">{EMPTY}</span>;
 const HEADER_HEIGHT = 36;
 const TOTALS_HEIGHT = 44;
 
-function IconArrow({ dir, className }: { dir: "asc" | "desc"; className?: string }) {
-  return (
-    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={cn("shrink-0", className)} aria-hidden>
-      <path d={dir === "asc" ? "M12 19V5M5 12l7-7 7 7" : "M12 5v14M19 12l-7 7-7-7"} />
-    </svg>
-  );
-}
+// One sort arrow for DataTable and the Table parts.
+const IconArrow = SortArrow;
 
 // Deterministic bar widths for the loading skeleton (no Math.random → stable
 // across renders), varied so rows don't look like a printed grid.
@@ -60,6 +56,9 @@ const SKELETON_WIDTHS = ["62%", "45%", "70%", "38%", "55%", "48%"];
 // plausibly contains, so a header can never collide with a row.
 const GROUP_KEY = "\u0000group:";
 const UNGROUPED_KEY = "\u0000ungrouped";
+// An expanded row's panel: keyed by its row, measured once it renders.
+const DETAIL_KEY = "\u0000detail:";
+const DETAIL_ESTIMATE = 120;
 // A click on these inside a header keeps its own behaviour and doesn't toggle
 // the group (the data-row guard, plus controls a header might hold).
 const GROUP_HEADER_SKIP =
@@ -120,10 +119,10 @@ function DataTableCard<Row>({
   const loading = p.loading ?? false;
   const unit = p.unit ?? "rows";
   const emptyLabel = p.emptyLabel ?? "No results.";
-  const { listItems, sorted, visible, totals } = m;
+  const { listItems, sorted, shown, visible, totals } = m;
   const lead = m.selectable ? 1 : 0;
-  const count = listItems ? listItems.length : sorted.length;
-  const grouped = listItems != null;
+  const count = listItems ? listItems.length : shown.length;
+  const grouped = m.grouped;
   const groupId = React.useId();
   const showTotals = totals != null && !loading && sorted.length > 0;
   const bulk = m.selectable && m.selectedRows.length > 0;
@@ -144,6 +143,7 @@ function DataTableCard<Row>({
       if (!item) return i;
       if (item.kind === "group") return item.group.key === null ? UNGROUPED_KEY : GROUP_KEY + item.group.key;
       const rowId = getRowIdRef.current;
+      if (item.kind === "detail") return DETAIL_KEY + (rowId ? rowId(item.row, item.index) : item.index);
       return rowId ? rowId(item.row, item.index) : item.index;
     },
     [listItems, rowHeight, groupHeaderHeight],
@@ -153,7 +153,10 @@ function DataTableCard<Row>({
   const virt = useVirtualizer({
     count,
     getScrollElement: () => parentRef.current,
-    estimateSize: (i) => (listItems?.[i]?.kind === "group" ? groupHeaderHeight : rowHeight),
+    estimateSize: (i) => {
+      const kind = listItems?.[i]?.kind;
+      return kind === "group" ? groupHeaderHeight : kind === "detail" ? DETAIL_ESTIMATE : rowHeight;
+    },
     getItemKey: listItems ? getItemKey : undefined,
     overscan: 12,
   });
@@ -323,7 +326,7 @@ function DataTableCard<Row>({
           m.toggleGroup(g.key);
         }}
         className={cn(
-          "absolute left-0 top-0 grid w-full border-b border-border bg-muted/60 text-[13px] transition-colors",
+          "absolute left-0 top-0 grid w-full border-b border-border bg-muted/60 text-body transition-colors",
           !m.searching && "cursor-pointer hover:bg-muted",
         )}
         style={{ height: groupHeaderHeight, transform: `translateY(${vi.start}px)`, ...gridStyle }}
@@ -382,6 +385,45 @@ function DataTableCard<Row>({
     />
   );
 
+  // The detail panel under an expanded row: one cell across the table, held to
+  // the visible width so it stays in view while the grid scrolls sideways.
+  const detailId = (rowIndex: number) => `${groupId}-detail-${rowIndex}`;
+  const renderDetailRow = (vi: { index: number; key: React.Key; start: number }, row: Row, rowIndex: number) => (
+    <div
+      key={vi.key}
+      ref={virt.measureElement}
+      data-index={vi.index}
+      id={detailId(rowIndex)}
+      role="row"
+      aria-rowindex={vi.index + 2}
+      className="absolute left-0 top-0 w-full border-b border-border bg-muted/30 text-body text-foreground"
+      style={{ transform: `translateY(${vi.start}px)` }}
+    >
+      <div role="cell" aria-colspan={m.cellCount} className="sticky left-0 min-w-0 px-4 py-3" style={{ maxWidth: "100cqw" }}>
+        {p.renderExpanded?.(row)}
+      </div>
+    </div>
+  );
+
+  // The chevron that opens a row's panel, in its first cell (a spacer keeps
+  // the text aligned on rows without one).
+  const expandToggle = (row: Row, rowIndex: number) => {
+    if (!m.canExpandRow(row)) return <span aria-hidden className="-ml-1.5 size-6 shrink-0" />;
+    const open = m.isExpanded(row);
+    return (
+      <button
+        type="button"
+        onClick={() => m.toggleExpanded(row)}
+        aria-expanded={open}
+        aria-controls={open ? detailId(rowIndex) : undefined}
+        aria-label={`Details for ${rowLabel(row)}`}
+        className="relative z-[2] -ml-1.5 grid size-6 shrink-0 place-items-center rounded-md font-normal text-muted-foreground transition-colors hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+      >
+        <IconChevronDown className={cn("motion-safe:transition-transform motion-safe:duration-150 motion-safe:ease-[cubic-bezier(0.23,1,0.32,1)]", !open && "-rotate-90")} />
+      </button>
+    );
+  };
+
   const renderRow = (vi: { index: number; key: React.Key; start: number }, row: Row, rowIndex: number) => {
     const href = p.getRowHref?.(row);
     const selected = m.selectable && m.isSelected(row);
@@ -393,9 +435,10 @@ function DataTableCard<Row>({
         aria-selected={m.selectable ? selected : undefined}
         onClick={p.onRowClick ? (e) => { if (!(e.target as HTMLElement).closest(ROW_CLICK_SKIP)) p.onRowClick!(row); } : undefined}
         className={cn(
-          "group absolute left-0 top-0 grid w-full items-center border-b border-border text-[13px] text-foreground hover:bg-accent/30",
+          "group absolute left-0 top-0 grid w-full items-center border-b border-border text-body text-foreground hover:bg-accent/30",
           selected && "bg-accent/50 hover:bg-accent/50",
           (p.onRowClick || href) && "cursor-pointer",
+          p.getRowClassName?.(row),
         )}
         style={{ height: rowHeight, transform: `translateY(${vi.start}px)`, ...gridStyle }}
       >
@@ -446,6 +489,7 @@ function DataTableCard<Row>({
           const content = raw == null || raw === "" ? DASH : raw;
           const right = rc.align === "right";
           const indent = grouped && !m.selectable && j === 0 && "pl-9";
+          const toggle = m.expandable && j === 0 ? expandToggle(row, rowIndex) : null;
           if (c.sticky) {
             // A sticky cell fills the FULL row height (self-stretch): the row
             // centres cells to content height, so an opaque cell only as tall
@@ -455,6 +499,7 @@ function DataTableCard<Row>({
               cell,
               cn(
                 "z-10 flex items-center self-stretch overflow-hidden bg-card",
+                toggle && "gap-0.5",
                 pad(cell),
                 indent,
                 j === 0 && "font-medium",
@@ -466,7 +511,22 @@ function DataTableCard<Row>({
               <div key={c.key} role="cell" className={sc.className} style={sc.style}>
                 {tint(selected)}
                 {href && <a href={href} tabIndex={-1} aria-hidden className="absolute inset-0 z-[1]" />}
+                {toggle}
                 <span className="min-w-0 truncate">{content}</span>
+              </div>
+            );
+          }
+          if (toggle) {
+            // The first cell with its chevron: measured and aligned like any other first cell.
+            return (
+              <div
+                key={c.key}
+                role="cell"
+                data-dt-grow={m.growable.has(rc.key) ? rc.key : undefined}
+                className={cn("flex min-w-0 items-center gap-0.5 overflow-hidden font-medium", pad(cell), indent, right && "tabular-nums", c.className)}
+              >
+                {toggle}
+                <span className={cn("min-w-0", right ? "ml-auto whitespace-nowrap" : "truncate")}>{content}</span>
               </div>
             );
           }
@@ -498,6 +558,7 @@ function DataTableCard<Row>({
   /* ---- the card ---- */
 
   const fadeInset = { top: HEADER_HEIGHT, bottom: showTotals ? TOTALS_HEIGHT : 0 };
+  const phoneColumns = React.useMemo(() => p.columns.filter((c) => !c.exportOnly), [p.columns]);
   const selectedCount = m.selectedRows.length;
   const bulkContent =
     typeof p.bulkActions === "function" ? p.bulkActions(m.selectedRows, { clear: m.clearSelection }) : p.bulkActions;
@@ -510,8 +571,8 @@ function DataTableCard<Row>({
 
       {mobileLayout === "cards" && (
         <MobileRows
-          columns={p.columns}
-          rows={sorted}
+          columns={phoneColumns}
+          rows={shown}
           getRowId={p.getRowId}
           getRowHref={p.getRowHref}
           getRowLabel={p.getRowLabel}
@@ -534,7 +595,7 @@ function DataTableCard<Row>({
           className="overflow-auto"
           style={{
             maxHeight,
-            containerType: grouped || m.selectable ? "inline-size" : undefined,
+            containerType: grouped || m.selectable || m.expandable ? "inline-size" : undefined,
             ["--dt-cols" as string]: m.template.template,
           }}
         >
@@ -550,14 +611,14 @@ function DataTableCard<Row>({
                 style={{ width: "100cqw" }}
               >
                 <SelectionCheckbox state={m.headerCheck} onCheckedChange={m.toggleAllInView} label={`Select all ${unit}`} />
-                <span className="whitespace-nowrap text-[13px] font-medium tabular-nums text-foreground">
+                <span className="whitespace-nowrap text-body font-medium tabular-nums text-foreground">
                   {selectedCount.toLocaleString()} selected
                 </span>
                 {bulkContent != null && <div className="flex min-w-0 items-center gap-1.5">{bulkContent}</div>}
                 <button
                   type="button"
                   onClick={m.clearSelection}
-                  className="ml-auto inline-flex h-7 shrink-0 items-center rounded-md px-2 text-[13px] text-muted-foreground transition-colors hover:bg-accent hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                  className="ml-auto inline-flex h-7 shrink-0 items-center rounded-md px-2 text-body text-muted-foreground transition-colors hover:bg-accent hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                 >
                   Clear
                 </button>
@@ -618,8 +679,9 @@ function DataTableCard<Row>({
                   {items.map((vi) => {
                     const item = listItems?.[vi.index];
                     if (item?.kind === "group") return renderGroupRow(vi, item);
+                    if (item?.kind === "detail") return renderDetailRow(vi, item.row, item.index);
                     // Grouped, vi.index counts headers too; getRowId gets the sorted-list index, as flat.
-                    return item ? renderRow(vi, item.row, item.index) : renderRow(vi, sorted[vi.index], vi.index);
+                    return item ? renderRow(vi, item.row, item.index) : renderRow(vi, shown[vi.index], vi.index);
                   })}
                 </div>
               )}
@@ -629,7 +691,7 @@ function DataTableCard<Row>({
                   role="row"
                   aria-rowindex={count + 2}
                   // -mt-px: its top hairline lands on the last row's, not under it.
-                  className="sticky bottom-0 z-20 -mt-px grid h-11 w-full items-center border-t border-border bg-muted text-[13px] font-semibold text-foreground"
+                  className="sticky bottom-0 z-20 -mt-px grid h-11 w-full items-center border-t border-border bg-muted text-body font-semibold text-foreground"
                   style={gridStyle}
                 >
                   {m.selectable &&
@@ -685,7 +747,7 @@ function DataTableCard<Row>({
         />
       </div>
 
-      <div className="flex h-9 shrink-0 items-center border-t border-border px-4 text-[12px] tabular-nums text-muted-foreground">
+      <div className="flex h-9 shrink-0 items-center gap-3 border-t border-border px-4 text-caption tabular-nums text-muted-foreground">
         <span role="status" aria-live="polite">
           {loading ? (
             "Loading…"
@@ -695,11 +757,21 @@ function DataTableCard<Row>({
             </>
           ) : (
             <>
+              {m.cap && !m.cap.showingAll ? <><span>{shown.length.toLocaleString()}</span> of </> : null}
               <span>{sorted.length.toLocaleString()}</span> {unit}
               {grouped && m.groupCount > 0 ? ` · ${m.groupCount.toLocaleString()} ${m.groupCount === 1 ? "group" : "groups"}` : null}
             </>
           )}
         </span>
+        {m.cap && !loading && (
+          <button
+            type="button"
+            onClick={m.cap.toggle}
+            className="-mr-2 ml-auto inline-flex h-7 shrink-0 items-center rounded-md px-2 font-medium text-foreground transition-colors hover:bg-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+          >
+            {m.cap.showingAll ? "Show fewer" : "Show all"}
+          </button>
+        )}
       </div>
     </div>
   );

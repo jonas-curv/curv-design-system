@@ -127,8 +127,9 @@ sets the size **and** its line height, so the class is the whole decision:
 | caption | 12 / 16     | `text-caption` | Secondary/meta text, column headers, stat and section labels. |
 | micro   | 11 / 16     | `text-micro`   | Rare: dense annotations, chart axes, count badges.      |
 
-Anything else folds to the scale: 14px → `text-body`, 10px and 9px →
-`text-micro`. `text-xl` is the same 20 / 28 as `text-title` (the `PageHeader`
+Anything else folds to the scale: 14px → `text-body`, 15px → `text-section`
+(the nearest step, so a title stays above body text), 10px and 9px →
+`text-micro`; otherwise the nearest step, ties to the larger. `text-xl` is the same 20 / 28 as `text-title` (the `PageHeader`
 title uses it). Lint reports every `text-[Npx]` with the token it folds to
 (`curv/no-arbitrary-text-size`). An app with its own `cn()` must extend
 tailwind-merge with `curvTailwindMergeConfig` (exported), or it reads
@@ -569,10 +570,30 @@ meaning is "progress".
 
 ## Tables
 
-One table, one look. **`DataTable`** for anything people query (sort, filter,
-search, export, select), at any size; **`ReportTable`** for financial
-statements; a plain `<table>` only for a few read-only rows, and it borrows
-`tableHeaderRow` + `tableCellPadding` so it looks the same.
+One table, one look, three components. Pick by the job:
+
+| Use | When |
+| --- | ---- |
+| **`DataTable`** | A list people sort, search, filter, select or export: an index page's main list, a queue, a roster. At any size. |
+| **`Table` parts** | A small read-only table in a card or a detail page, an editable grid, anything whose cells `DataTable` can't express, and any table a server component renders. |
+| **`ReportTable`** | A financial statement: the P&L, a balance sheet, a matrix by month. |
+
+Never a hand-built `<table>`: the `Table` parts are that table, already in the
+standard look.
+
+```tsx
+// DataTable: the list people query.
+<DataTable columns={columns} rows={deals} getRowId={(d) => d.id} aria-label="Deals" searchable exportFilename="deals" unit="deals" />
+
+// Table parts: a few rows in a card (shadcn names; server components import "@curvgroup/design-system/table").
+<Table card aria-label="Warehouses">
+  <TableHeader><TableRow><TableHead>Warehouse</TableHead><TableHead numeric>On hand</TableHead></TableRow></TableHeader>
+  <TableBody>{stock.map((s) => <TableRow key={s.id}><TableCell>{s.name}</TableCell><TableCell numeric>{formatNumber(s.qty)}</TableCell></TableRow>)}</TableBody>
+</Table>
+
+// ReportTable: the statement.
+<ReportTable sections={pnl} periods={months} view="monthly" />
+```
 
 - **Container.** The card recipe (`rounded-lg bg-card shadow-card`, no border),
   full-bleed, `overflow-hidden`. The card owns vertical scroll (`maxHeight`) so
@@ -726,6 +747,52 @@ statements; a plain `<table>` only for a few read-only rows, and it borrows
   axes or fill, and **no red/green** — trend-at-a-glance, not a verdict
   (direction lives in the delta column). One identical stroke for every row.
 
+### Table parts — the shadcn API in the standard look
+
+`Table`, `TableHeader`, `TableBody`, `TableFooter`, `TableRow`, `TableHead`,
+`TableCell`, `TableCaption`: shadcn's names and props, `className` merged with
+tailwind-merge, refs forwarded, so an app's `ui/table.tsx` copy is replaced by an
+import. They carry the spec above on their own: the 36 solid header (12 / 500,
+never wraps, a hairline drawn on each head cell so it travels when the header
+sticks), 44 rows at 13px with hairlines and `hover:bg-accent/30` on body rows
+only, 12 a side and 16 on the outer edges, the first column 500.
+
+- **Numbers.** `numeric` on a `TableHead` and its `TableCell`s: right, tabular,
+  never wraps (`align="right"` does the same). An empty value is `<TableNull />`,
+  the muted "—".
+- **The container.** `Table` renders the scroll area around the `<table>`.
+  `card` draws the standard card; leave it off inside a `Card`. `maxHeight` caps
+  it and makes it scroll, so `TableHeader sticky` and `TableFooter sticky` (the
+  totals row: 44, `bg-muted`, a hairline above, semibold, "Total" in the first
+  text column) hold while rows scroll.
+- **Sort.** `sort` (`"asc"`, `"desc"` or `null`) and `onSort` make a `TableHead`
+  the sort button exactly as `DataTable` draws it: the whole cell, a 12px arrow in
+  a reserved slot, hidden at rest, muted on hover and focus, foreground when
+  sorted, after the label on left columns and before it on right ones,
+  `aria-sort`, a focus ring. `sortFirst` sets the arrow a hover previews (dates:
+  `"desc"`). For a client-side sort, `useTableSort(rows, { columns })` returns the
+  sorted rows and `getHeadProps(key)` to spread on each head; numbers and dates
+  sort high to low first, text A to Z, the third click clears. Pass `sort` and
+  `onSortChange` to keep it in the URL.
+
+  ```tsx
+  const { rows, getHeadProps } = useTableSort(lines, {
+    columns: { item: (r) => r.item, due: { value: (r) => r.due, type: "date" }, value: (r) => r.value },
+  });
+  <TableHead {...getHeadProps("value")} numeric>Value</TableHead>
+  ```
+- **Rows.** `selected` on a `TableRow` (`bg-accent/50`, `data-state="selected"`).
+  `dense` on `Table` makes rows 36 for statements and dense read-outs (the header
+  stays 36). `identityColumn={false}` when the first column isn't the row's
+  identity (a date, a checkbox).
+- **Columns.** `priority={2}` hides a column below `md`, `priority={3}` below
+  `xl` (give the head and its cells the same one). `sticky` pins the identity
+  column left (`"right"` pins a total), opaque, with a hairline on its edge.
+- **Server components.** The parts have no hooks and no context. Import them
+  from `@curvgroup/design-system/table` in a server component (the package root
+  holds client components a server build can't load); client code may use
+  either. `useTableSort` is in the root only.
+
 ### Grouping — a list people scan by a parent record
 
 `DataTable` takes an opt-in `groupBy` (and `renderGroupHeader`): one header row
@@ -781,6 +848,34 @@ per parent record, its rows underneath. Without `groupBy` nothing changes.
   column to the label (36px), so the hierarchy reads without a tree line.
 - **Phones stay flat.** `mobileLayout="cards"` ignores grouping.
 
+### DataTable for app adapters — state you own, rows that open
+
+For a page that keeps the view in the URL or a saved view, and for the app
+table kits' adapters (each prop maps to a kit's own, see `TABLE-KITS.md`):
+
+- **Controlled state.** `sort` + `onSortChange` (`null` is unsorted), `query` +
+  `onQueryChange` (`defaultQuery` seeds it), `filterValues` +
+  `onFilterValuesChange` (`defaultFilterValues`), `tab` + `onTabChange`. Each is
+  the table's own until you pass it, and every change is reported either way.
+  `manualSort` keeps `rows` in the order given (a server sort) while the headers
+  still show and report it.
+- **Columns.** `sortFirst` when the type picks the wrong first direction (a rank
+  sorts 1 first); `sortValue` when the sort value differs from `value`;
+  `exportValue` / `exportHeader` for the file; `exportable: false` leaves a column
+  out of it (row actions); `exportOnly` puts one in the file and the search but
+  never on screen.
+- **Rows.** `getRowClassName` for the few rows that deviate (color marks
+  exceptions, not the field). `getRowPin` holds a row at the top or the bottom
+  whatever the sort. `rowCap` shows the first N with **Show all** in the footer:
+  a preview of a long list inside a card, not paging (totals, select-all and
+  export still cover every row in view). `renderExpanded` opens a panel under a
+  row from a chevron in its first cell (`aria-expanded`, `aria-controls`); the
+  panel spans the visible width and sizes to its content; `canExpand`,
+  `expanded` / `defaultExpanded` / `onExpandedChange`.
+- **Search.** `searchLabel` names the search box; `matchSearch` replaces the
+  built-in match (the query as one piece of text) with your own, such as every
+  word in any order.
+
 ### Pagination & virtualization — match the tool to the data
 
 The **UX is the same for every data table**: scroll to browse + a row-count at
@@ -800,23 +895,23 @@ paints empty on the server). So reach for it only when scale actually demands it
 1. **Will anyone *query* this table — search, filter, sort, export, or select
    rows?** Yes → the **`DataTable`** component, *at any size* (its features are
    opt-in; enable only what the view needs). No → a read-only block of a few
-   bounded rows you just present (a SKU's warehouses, a summary, PO detail) → a
-   plain semantic `<table>`, keeping Cmd+F / print / clean SSR.
+   bounded rows you just present (a SKU's warehouses, a summary, PO detail) → the
+   `Table` parts (a semantic `<table>`), keeping Cmd+F / print / clean SSR.
 2. **Read-only fallback by size.** For a *read-only* block, size picks the
-   render: bounded (≤ ~2k) → a plain `<table>` that renders all rows (keeps
+   render: bounded (≤ ~2k) → the `Table` parts, rendering all rows (keeps
    Cmd+F / print / clean SSR); larger → it must virtualize. **`DataTable` always
    virtualizes** — a CSS div-grid, never a `<table>`, at any size — so it also
    covers *large* read-only data, trading native find/print for its chrome.
-   Render-all is the plain-`<table>` path, **not** a mode inside `DataTable`.
+   Render-all is the `Table` parts' path, **not** a mode inside `DataTable`.
 
 **Size is not the trigger for `DataTable` — intent-to-query is.** A six-row list
 people filter is a `DataTable` (Shopify's Products index, Linear's issues, a
 six-row analytics list all keep Search / Filter / Sort / Export at any count); a
-few hundred read-only rows nobody queries can stay a plain `<table>`. So a per-SKU
+few hundred read-only rows nobody queries can stay on the `Table` parts. So a per-SKU
 or "detail" table is **not** "always plain," and `DataTable` is **not**
 "catalog-only." Reach for `DataTable` the moment a query verb
-(sort / filter / search / export / select) enters the picture; use a plain
-`<table>` only for pure display — and give even that plain table the soft-cap +
+(sort / filter / search / export / select) enters the picture; use the `Table`
+parts only for pure display — and give even that table the soft-cap +
 "narrow the range" hint above, so a freak-large case can't freeze the page.
 
 ### Summary strip — the breakdown above a table
@@ -1098,7 +1193,10 @@ system and add it below — the second copy is the signal to extract, never to f
   `ToastProvider` + `toast`, `Banner` (page-level), `EmptyState` — see *Overlays
   & feedback* above.
 - **Data & reporting**: `DataTable` (+ `TableLink`, `FilterButton` /
-  `ActiveFilterBar`, CSV/PDF export), `SummaryStrip` (full-width breakdown above a
+  `ActiveFilterBar`, CSV/PDF export), the `Table` parts (`Table`, `TableHeader`,
+  `TableBody`, `TableFooter`, `TableRow`, `TableHead`, `TableCell`,
+  `TableCaption`, `TableNull`, `useTableSort`; server-safe from
+  `@curvgroup/design-system/table`), `SummaryStrip` (full-width breakdown above a
   table), `StatCard` / `StatGroup` / `BreakdownRow`, `Sparkline`, `LineChart`,
   `BarChart`, `BarBreakdown`, `ChartCard`, `ReportTable` (P&L / matrix grid),
   `KanbanBoard` / `KanbanColumn` / `KanbanCard`, `HScroll`.
@@ -1116,7 +1214,8 @@ The pieces this section used to list now ship in the package — `date-range-pic
 URL-driven value picker → **`MultiSelect`**. If something is genuinely still
 missing, that's the "build new" path above.
 
-Superseded (migrate on touch): in-app `components/ui/tooltip.tsx`,
+Superseded (migrate on touch): an app's own `components/ui/table.tsx` and its
+sort header → the `Table` parts; in-app `components/ui/tooltip.tsx`,
 `components/ui/select-menu.tsx`, and `components/ui/segmented-control.tsx` →
 the package `Tooltip` / `Select` / `SegmentedControl`; shadcn `components/ui/*`
 copies → the package equivalents as they ship.

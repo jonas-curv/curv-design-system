@@ -1,6 +1,6 @@
 {
   "name": "@curvgroup/design-system",
-  "version": "0.5.1",
+  "version": "0.6.0",
   "private": true,
   "description": "Curv shared design system — components, theme tokens, and Claude Code skills used across all Curv OS apps.",
   "type": "module",
@@ -22,6 +22,11 @@
     ".": {
       "types": "./dist/index.d.ts",
       "import": "./dist/index.js"
+    },
+    "./table": {
+      "types": "./dist/table.d.ts",
+      "import": "./dist/table.js",
+      "default": "./dist/table.js"
     },
     "./theme.css": "./theme.css",
     "./eslint": "./eslint/index.js",
@@ -56,7 +61,7 @@
     "vendor:mobile": "bash scripts/vendor-payload.sh",
     "lint": "eslint . --cache --cache-location .eslintcache --cache-strategy content",
     "lint:changed": "node scripts/lint-changed.mjs",
-    "test": "node --test tests/mobile.test.mjs tests/mobile-nav.test.mjs tests/mobile-content.test.mjs tests/mobile-events.test.mjs tests/mobile-shell.test.mjs tests/mobile-shell-events.test.mjs tests/home.test.mjs tests/morph.test.mjs tests/data-table-grouping.test.mjs tests/data-table-layout.test.mjs tests/data-table-dom.test.mjs tests/stat-card-dom.test.mjs tests/theme-contrast.test.mjs tests/shell.test.mjs tests/eslint.test.mjs tests/vendor.test.mjs"
+    "test": "node --test tests/mobile.test.mjs tests/mobile-nav.test.mjs tests/mobile-content.test.mjs tests/mobile-events.test.mjs tests/mobile-shell.test.mjs tests/mobile-shell-events.test.mjs tests/home.test.mjs tests/morph.test.mjs tests/data-table-grouping.test.mjs tests/data-table-layout.test.mjs tests/data-table-dom.test.mjs tests/data-table-control.test.mjs tests/table-dom.test.mjs tests/stat-card-dom.test.mjs tests/theme-contrast.test.mjs tests/shell.test.mjs tests/eslint.test.mjs tests/vendor.test.mjs"
   },
   "peerDependencies": {
     "jspdf": "*",

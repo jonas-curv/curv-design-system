@@ -45,7 +45,7 @@ export function Select({
       <S.Trigger
         id={id}
         className={cn(
-          "flex h-11 sm:h-9 w-full items-center justify-between gap-2 rounded-md border border-border bg-card px-3 text-[13px] text-foreground transition focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-foreground/20 disabled:cursor-not-allowed disabled:opacity-50 data-[popup-open]:ring-1 data-[popup-open]:ring-foreground/20",
+          "flex h-11 sm:h-9 w-full items-center justify-between gap-2 rounded-md border border-border bg-card px-3 text-body text-foreground transition focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-foreground/20 disabled:cursor-not-allowed disabled:opacity-50 data-[popup-open]:ring-1 data-[popup-open]:ring-foreground/20",
           className,
         )}
       >
@@ -58,7 +58,7 @@ export function Select({
       </S.Trigger>
       <S.Portal>
         <S.Positioner side="bottom" align="start" sideOffset={6} alignItemWithTrigger={false} className="z-50">
-          <S.Popup className="max-h-[min(24rem,var(--available-height))] min-w-[var(--anchor-width)] overflow-y-auto rounded-lg border border-border bg-popover p-1 text-[13px] text-popover-foreground shadow-lg outline-none">
+          <S.Popup className="max-h-[min(24rem,var(--available-height))] min-w-[var(--anchor-width)] overflow-y-auto rounded-lg border border-border bg-popover p-1 text-body text-popover-foreground shadow-lg outline-none">
             {items.map((it) => (
               <S.Item
                 key={it.value}

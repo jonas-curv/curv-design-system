@@ -73,7 +73,7 @@ export function DataTableSearch({ className }: { className?: string }) {
   return (
     <div className={cn("relative w-full sm:w-60", className)}>
       <IconSearch className="pointer-events-none absolute left-2.5 top-1/2 -translate-y-1/2 text-muted-foreground" />
-      <Input value={m.query} onChange={(e) => m.setQuery(e.target.value)} placeholder={placeholder} aria-label={placeholder} className="pl-8" />
+      <Input value={m.query} onChange={(e) => m.setQuery(e.target.value)} placeholder={placeholder} aria-label={m.props.searchLabel ?? placeholder} className="pl-8" />
     </div>
   );
 }
@@ -105,7 +105,7 @@ export function DataTableColumnsButton() {
           <label
             key={c.key}
             className={cn(
-              "flex h-8 shrink-0 items-center gap-2 rounded px-2 text-[13px] transition-colors",
+              "flex h-8 shrink-0 items-center gap-2 rounded px-2 text-body transition-colors",
               c.locked ? "text-muted-foreground" : "cursor-pointer text-foreground hover:bg-accent",
             )}
           >

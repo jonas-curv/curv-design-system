@@ -119,7 +119,11 @@ off-colour, or with a hand-rolled `bg-neutral-100` shell.*
      render truncating text cells as inline/string content (a `<span>` Fragment,
      not a wrapping `<div>`) so `…` shows. Never hand-roll a table or the export
      button — use `DataTable` + `exportFilename`. (Full rules: `docs/cheatsheet.md`
-     → *DataTable column widths*.) The
+     → *DataTable column widths*.) A few read-only rows, an editable grid or a
+     server-rendered table use the `Table` parts (`Table`, `TableHeader`,
+     `TableBody`, `TableFooter`, `TableRow`, `TableHead`, `TableCell`, shadcn
+     API; sortable heads with `useTableSort`; server components import
+     `@curvgroup/design-system/table`) — never a bare `<table>`. The
      **reporting engine** — `StatCard`/`StatGroup`, `Sparkline`, `LineChart`,
      `BarChart`, `BarBreakdown`, `ChartCard` (the shell that hosts chart
      controls; chart stays a dumb primitive), `ReportTable` (P&L/matrix grid),
@@ -165,7 +169,7 @@ off-colour, or with a hand-rolled `bg-neutral-100` shell.*
 - **Seven type sizes, by role — never `text-[Npx]`.** `text-display` 32 ·
   `text-figure` 24 (KPI values) · `text-title` 20 (detail-page title) ·
   `text-section` 16 · `text-body` 13 · `text-caption` 12 · `text-micro` 11.
-  14 folds to 13; 10 and 9 fold to 11. Weights 400/500/600 only.
+  14 folds to 13; 15 folds to 16; 10 and 9 fold to 11. Weights 400/500/600 only.
   (`curv/no-arbitrary-text-size`, a warning in the default preset.)
 - **No full uppercase.** No `uppercase`, no `tracking-wide`/`-wider`/`-widest`.
   Labels are **sentence case** ("Gap to goal", not "GAP TO GOAL").

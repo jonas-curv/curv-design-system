@@ -86,7 +86,7 @@ export function Tabs({
             key={it.value}
             value={it.value}
             className={cn(
-              "relative inline-flex shrink-0 whitespace-nowrap h-11 items-center rounded-t-md px-3 text-[13px] font-medium outline-none transition-colors",
+              "relative inline-flex shrink-0 whitespace-nowrap h-11 items-center rounded-t-md px-3 text-body font-medium outline-none transition-colors",
               // NB: base-ui Tabs.Tab marks the active tab with `data-active`
               // (Select/Menu items use `data-selected` — the attribute differs).
               "text-muted-foreground hover:text-foreground data-[active]:text-foreground",

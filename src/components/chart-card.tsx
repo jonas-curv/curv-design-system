@@ -54,7 +54,7 @@ function DeltaTag({ delta }: { delta: StatDelta }) {
   const sentiment = delta.sentiment ?? (delta.direction === "up" ? "positive" : delta.direction === "down" ? "negative" : "neutral");
   const color = sentiment === "positive" ? "text-verdict-green" : sentiment === "negative" ? "text-verdict-red" : "text-muted-foreground";
   return (
-    <span className={cn("inline-flex items-center gap-1 text-[12px] font-medium tabular-nums", color)}>
+    <span className={cn("inline-flex items-center gap-1 text-caption font-medium tabular-nums", color)}>
       {delta.direction === "flat" ? (
         <svg width="9" height="9" viewBox="0 0 12 12" fill="currentColor" aria-hidden><rect x="1.5" y="5.25" width="9" height="1.5" rx="0.75" /></svg>
       ) : (
@@ -87,13 +87,13 @@ export function ChartCard({ title, value, delta, controls, legend, loading, char
     <Card className={cn("p-5", className)} aria-busy={loading || undefined}>
       <div className="mb-4 flex items-start justify-between gap-4">
         <div className="min-w-0">
-          {title && <div className="text-[13px] text-muted-foreground">{title}</div>}
+          {title && <div className="text-body text-muted-foreground">{title}</div>}
           {loading ? (
             <Skeleton width={128} height={26} className="mt-1" />
           ) : (
             (value || delta) && (
               <div className="mt-0.5 flex items-baseline gap-2">
-                {value && <span className="text-[26px] font-semibold leading-tight tracking-tight tabular-nums text-foreground">{value}</span>}
+                {value && <span className="text-figure font-semibold leading-tight tracking-tight tabular-nums text-foreground">{value}</span>}
                 {delta && <DeltaTag delta={delta} />}
               </div>
             )
@@ -111,7 +111,7 @@ export function ChartCard({ title, value, delta, controls, legend, loading, char
       )}
 
       {legend && legend.length > 0 && (
-        <div className="mt-3 flex flex-wrap items-center gap-4 text-[12px] text-muted-foreground">
+        <div className="mt-3 flex flex-wrap items-center gap-4 text-caption text-muted-foreground">
           {legend.map((l, i) => {
             const off = l.key ? hidden.has(l.key) : false;
             const inner = (

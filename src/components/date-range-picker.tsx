@@ -92,16 +92,16 @@ const dayCalendarClassNames = {
   months: "relative",
   month: "",
   month_caption: "flex h-8 items-center px-1",
-  caption_label: "text-[13px] font-medium text-foreground",
+  caption_label: "text-body font-medium text-foreground",
   nav: "absolute right-0 top-0 flex items-center gap-1",
   button_previous: "grid size-7 place-items-center rounded-md text-muted-foreground transition-colors hover:bg-accent hover:text-foreground disabled:opacity-40",
   button_next: "grid size-7 place-items-center rounded-md text-muted-foreground transition-colors hover:bg-accent hover:text-foreground disabled:opacity-40",
   month_grid: "mt-1 w-full border-collapse",
   weekdays: "",
-  weekday: "size-8 text-[11px] font-normal text-muted-foreground",
+  weekday: "size-8 text-micro font-normal text-muted-foreground",
   week: "",
   day: "p-0 text-center align-middle",
-  day_button: "grid size-8 place-items-center rounded-full text-[13px] text-foreground transition-colors hover:bg-accent focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-foreground/20 aria-selected:hover:bg-transparent",
+  day_button: "grid size-8 place-items-center rounded-full text-body text-foreground transition-colors hover:bg-accent focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-foreground/20 aria-selected:hover:bg-transparent",
   // Today: a small dot under the number. `bg-current` adapts — dark on a normal
   // day, white when today is the selected range endpoint.
   today: "[&>button]:relative [&>button]:font-semibold [&>button]:text-foreground [&>button]:after:absolute [&>button]:after:bottom-1 [&>button]:after:left-1/2 [&>button]:after:size-1 [&>button]:after:-translate-x-1/2 [&>button]:after:rounded-full [&>button]:after:bg-current [&>button]:after:content-['']",
@@ -130,7 +130,7 @@ function PresetRow({ preset, active, onClick }: { preset: Preset; active: boolea
       onClick={onClick}
       aria-pressed={active}
       className={cn(
-        "flex w-full items-center justify-between gap-6 rounded-md px-2.5 py-1.5 text-left text-[13px] transition-colors",
+        "flex w-full items-center justify-between gap-6 rounded-md px-2.5 py-1.5 text-left text-body transition-colors",
         active ? "bg-primary text-primary-foreground" : "text-foreground hover:bg-accent",
       )}
     >
@@ -217,7 +217,7 @@ export function DateRangePicker({
     <button
       type="button"
       className={cn(
-        "inline-flex h-9 items-center gap-2 rounded-md border border-border bg-card px-3 text-[13px] transition-colors hover:bg-accent/40 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-foreground/20 data-[popup-open]:ring-1 data-[popup-open]:ring-foreground/20",
+        "inline-flex h-9 items-center gap-2 rounded-md border border-border bg-card px-3 text-body transition-colors hover:bg-accent/40 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-foreground/20 data-[popup-open]:ring-1 data-[popup-open]:ring-foreground/20",
         className,
       )}
     >
@@ -260,7 +260,7 @@ export function DateRangePicker({
                 onClick={() => pickPreset(p)}
                 aria-pressed={current.presetKey === p.key}
                 className={cn(
-                  "rounded-md py-1 text-[12px] font-medium tabular-nums transition-colors",
+                  "rounded-md py-1 text-caption font-medium tabular-nums transition-colors",
                   current.presetKey === p.key ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:bg-accent hover:text-foreground",
                 )}
               >

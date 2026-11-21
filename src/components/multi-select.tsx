@@ -66,7 +66,7 @@ export function MultiSelect({
       <C.Trigger
         id={id}
         className={cn(
-          "flex h-9 w-full items-center justify-between gap-2 rounded-md border border-border bg-card px-3 text-[13px] text-foreground transition focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-foreground/20 disabled:cursor-not-allowed disabled:opacity-50 data-[popup-open]:ring-1 data-[popup-open]:ring-foreground/20",
+          "flex h-9 w-full items-center justify-between gap-2 rounded-md border border-border bg-card px-3 text-body text-foreground transition focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-foreground/20 disabled:cursor-not-allowed disabled:opacity-50 data-[popup-open]:ring-1 data-[popup-open]:ring-foreground/20",
           className,
         )}
       >
@@ -84,7 +84,7 @@ export function MultiSelect({
         </C.Value>
         <span className="flex shrink-0 items-center gap-1.5 text-muted-foreground">
           {selectedOptions.length > 0 && (
-            <span className="rounded bg-muted px-1.5 text-[11px] font-medium tabular-nums text-foreground">{selectedOptions.length}</span>
+            <span className="rounded bg-muted px-1.5 text-micro font-medium tabular-nums text-foreground">{selectedOptions.length}</span>
           )}
           <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
             <path d="m6 9 6 6 6-6" />
@@ -95,7 +95,7 @@ export function MultiSelect({
         <C.Positioner side="bottom" align="start" sideOffset={6} className="z-50">
           <C.Popup
             className={cn(
-              "max-h-[min(24rem,var(--available-height))] w-[max(var(--anchor-width),12rem)] origin-[var(--transform-origin)] overflow-hidden rounded-lg border border-border bg-popover text-[13px] text-popover-foreground shadow-lg outline-none",
+              "max-h-[min(24rem,var(--available-height))] w-[max(var(--anchor-width),12rem)] origin-[var(--transform-origin)] overflow-hidden rounded-lg border border-border bg-popover text-body text-popover-foreground shadow-lg outline-none",
               "transition-[transform,opacity] duration-150 ease-[cubic-bezier(0.23,1,0.32,1)] data-[ending-style]:duration-100",
               "data-[starting-style]:opacity-0 data-[ending-style]:opacity-0 motion-safe:data-[starting-style]:scale-95 motion-safe:data-[ending-style]:scale-95",
             )}
@@ -103,12 +103,12 @@ export function MultiSelect({
             <div className="border-b border-border p-1.5">
               <C.Input
                 placeholder={searchPlaceholder}
-                className="h-8 w-full rounded-md bg-transparent px-2 text-[13px] text-foreground outline-none placeholder:text-muted-foreground/70"
+                className="h-8 w-full rounded-md bg-transparent px-2 text-body text-foreground outline-none placeholder:text-muted-foreground/70"
               />
             </div>
             {/* base-ui keeps Empty mounted as a live region even when there are
                 results — `empty:hidden` collapses it so it doesn't leave a gap. */}
-            <C.Empty className="px-2 py-6 text-center text-[13px] text-muted-foreground empty:hidden">No results.</C.Empty>
+            <C.Empty className="px-2 py-6 text-center text-body text-muted-foreground empty:hidden">No results.</C.Empty>
             <C.List className="max-h-[16rem] overflow-y-auto p-1">
               {(item: MultiSelectOption) => (
                 <C.Item

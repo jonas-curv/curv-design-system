@@ -65,15 +65,15 @@ export function Dialog({
             "motion-safe:data-[starting-style]:scale-95 motion-safe:data-[ending-style]:scale-95",
           )}
         >
-          <D.Title className="text-[15px] font-semibold tracking-tight text-foreground text-balance">
+          <D.Title className="text-section font-semibold tracking-tight text-foreground text-balance">
             {title}
           </D.Title>
           {description ? (
-            <D.Description className="mt-1.5 text-[13px] leading-relaxed text-muted-foreground text-pretty">
+            <D.Description className="mt-1.5 text-body leading-relaxed text-muted-foreground text-pretty">
               {description}
             </D.Description>
           ) : null}
-          {children ? <div className="mt-4 text-[13px] text-foreground">{children}</div> : null}
+          {children ? <div className="mt-4 text-body text-foreground">{children}</div> : null}
           {footer ? <div className="mt-5 flex flex-wrap items-center justify-end gap-2">{footer}</div> : null}
         </D.Popup>
       </D.Portal>

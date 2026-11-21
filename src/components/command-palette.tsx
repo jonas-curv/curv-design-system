@@ -122,7 +122,7 @@ export function CommandPalette({
           )}
         >
           <D.Title className="sr-only">Search</D.Title>
-          <D.Close className="min-h-11 px-4 text-right text-[13px] sm:hidden">Close</D.Close>
+          <D.Close className="min-h-11 px-4 text-right text-body sm:hidden">Close</D.Close>
           {/* search row */}
           <div className="flex items-center gap-2.5 border-b border-border px-4">
             <span className="text-muted-foreground/70" aria-hidden>
@@ -138,14 +138,14 @@ export function CommandPalette({
               aria-expanded
               aria-controls="command-list"
               aria-activedescendant={filtered[active] ? `command-item-${active}` : undefined}
-              className="h-12 w-full bg-transparent text-base sm:text-[14px] text-foreground placeholder:text-muted-foreground/70 focus:outline-none"
+              className="h-12 w-full bg-transparent text-base sm:text-body text-foreground placeholder:text-muted-foreground/70 focus:outline-none"
             />
           </div>
 
           {/* results */}
           <div ref={listRef} id="command-list" role="listbox" className="min-h-0 flex-1 overflow-y-auto p-2">
             {filtered.length === 0 ? (
-              <div className="px-2 py-8 text-center text-[13px] text-muted-foreground">{emptyLabel}</div>
+              <div className="px-2 py-8 text-center text-body text-muted-foreground">{emptyLabel}</div>
             ) : (
               filtered.map((it, i) => {
                 const header = it.group && it.group !== lastGroup ? it.group : null;
@@ -153,7 +153,7 @@ export function CommandPalette({
                 const isActive = i === active;
                 return (
                   <React.Fragment key={it.id}>
-                    {header && <div className="px-2 pb-1 pt-2 text-[11px] font-medium text-muted-foreground">{header}</div>}
+                    {header && <div className="px-2 pb-1 pt-2 text-micro font-medium text-muted-foreground">{header}</div>}
                     <div
                       id={`command-item-${i}`}
                       data-cmd-index={i}
@@ -162,13 +162,13 @@ export function CommandPalette({
                       onClick={() => select(it)}
                       onMouseMove={() => setActive(i)}
                       className={cn(
-                        "flex min-h-11 sm:min-h-0 cursor-default items-center gap-2.5 rounded-md px-2 py-2 text-[13px]",
+                        "flex min-h-11 sm:min-h-0 cursor-default items-center gap-2.5 rounded-md px-2 py-2 text-body",
                         isActive ? "bg-accent text-foreground" : "text-popover-foreground",
                       )}
                     >
                       {it.icon && <span className="grid size-4 shrink-0 place-items-center text-muted-foreground">{it.icon}</span>}
                       <span className="flex-1 truncate">{it.label}</span>
-                      {it.hint && <span className="shrink-0 text-[12px] text-muted-foreground">{it.hint}</span>}
+                      {it.hint && <span className="shrink-0 text-caption text-muted-foreground">{it.hint}</span>}
                     </div>
                   </React.Fragment>
                 );

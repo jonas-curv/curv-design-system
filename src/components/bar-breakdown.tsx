@@ -50,7 +50,7 @@ export function BarBreakdown({
   return (
     <div className={cn("flex flex-col", className)}>
       {valueLabel != null && (
-        <div className="flex items-center gap-3 border-b border-border px-2.5 pb-1.5 text-[11px] font-medium text-muted-foreground">
+        <div className="flex items-center gap-3 border-b border-border px-2.5 pb-1.5 text-micro font-medium text-muted-foreground">
           <span className="min-w-0 flex-1" />
           <span className="w-16 shrink-0 text-right">{valueLabel}</span>
           {showPercent && <span className="w-12 shrink-0 text-right">{percentLabel}</span>}
@@ -58,7 +58,7 @@ export function BarBreakdown({
         </div>
       )}
       {items.map((item, i) => (
-        <div key={i} className="relative flex items-center gap-3 rounded-md px-2.5 py-2 text-[13px]">
+        <div key={i} className="relative flex items-center gap-3 rounded-md px-2.5 py-2 text-body">
           {/* proportional fill behind the whole row */}
           <div
             aria-hidden

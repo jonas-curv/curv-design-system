@@ -207,3 +207,34 @@ change). *Applying a new rule to a page you already built* — setting a new pro
 restoring a dropped element, moving tabs — is a code change Claude Code makes. The
 library can ship a better `DataTable`; it can't decide *your* Name column should
 be 300px wide.
+
+## Upgrading to 0.6.0
+
+The shared table components, so every app's table kit can become a thin adapter
+and then go. Every 0.5 prop still works; nothing an app passes changes meaning.
+
+- **New: the `Table` parts.** `Table`, `TableHeader`, `TableBody`, `TableFooter`,
+  `TableRow`, `TableHead`, `TableCell`, `TableCaption` with shadcn's names and
+  props, plus `TableNull` (the muted "—") and `useTableSort` (client-side sort in
+  the standard order). They replace an app's `components/ui/table.tsx` and its
+  sort header. Server components import them from the new entry
+  `@curvgroup/design-system/table` (no hooks, no context); `npm run vendor`
+  ships it with the rest.
+- **DataTable, new and optional:** controlled `sort` / `onSortChange`,
+  `manualSort`, `query` / `onQueryChange` / `defaultQuery`, `filterValues` /
+  `onFilterValuesChange` / `defaultFilterValues`, `tab` / `onTabChange`,
+  `searchLabel`, `matchSearch`, `getRowClassName`, `getRowPin`, `rowCap` (Show all in the
+  footer), `renderExpanded` with `canExpand` / `expanded` / `defaultExpanded` /
+  `onExpandedChange`; on columns `sortFirst`, `sortValue`, `exportValue`,
+  `exportHeader`, `exportable`, `exportOnly`. The row and header DOM is
+  unchanged; an expanded row adds a chevron to its first cell and a panel row
+  after it.
+- **Type scale inside the package.** Every component uses the seven tokens:
+  `text-[13px]` became `text-body`, `text-[12px]` `text-caption`, and so on
+  (`tableHeaderRow` now reads `text-caption`). Sizes that were off the scale
+  fold to it: dialog and drawer titles and the summary strip's values go from 15
+  to 16 (`text-section`), the chart card's value from 26 to 24, chart axes from
+  10 to 11. The lint rule suggests the same folds (15 → `text-section`). An app
+  that matched `text-[13px]` in a selector inside a design-system component
+  should match `text-body`.
+- **Which table:** `docs/design-system.md` → Tables.
