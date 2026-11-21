@@ -249,6 +249,8 @@ function DataTableCard<Row>({
       />
     );
     const suffix = c.headerSuffix;
+    // An empty header (an icon or actions column) is named by `ariaLabel`.
+    const name = c.header.trim() === "" ? c.ariaLabel : undefined;
     const sc = stickyCell(cell, cn("flex h-full min-w-0 items-center whitespace-nowrap", c.sticky && "z-20 bg-muted", suffix != null && pad(cell), suffix != null && right && "justify-end"));
     let body: React.ReactNode;
     if (rc.sortable) {
@@ -256,6 +258,7 @@ function DataTableCard<Row>({
         <button
           type="button"
           onClick={() => m.toggleSort(rc.key)}
+          aria-label={name}
           tabIndex={bulk ? -1 : undefined}
           className={cn(
             "group/sort flex h-full min-w-0 items-center outline-none transition-colors hover:bg-accent/60",
@@ -290,6 +293,7 @@ function DataTableCard<Row>({
       <div
         key={rc.key}
         role="columnheader"
+        aria-label={name}
         aria-sort={!rc.sortable ? undefined : active ? (m.sort!.order === "asc" ? "ascending" : "descending") : "none"}
         className={sc.className}
         style={sc.style}

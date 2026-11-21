@@ -14,6 +14,7 @@ import {
   checkState,
   computeTotals,
   firstSortOrder,
+  isSortable,
   looksNumeric,
   nextSort,
   parseVisibility,
@@ -222,7 +223,7 @@ export function useDataTableModel<Row>(props: DataTableProps<Row>): DataTableMod
         type,
         align,
         first: firstSortOrder(type, numericValues),
-        sortable: col.sortable ?? true,
+        sortable: isSortable(col),
         text: align === "left" && (type === undefined || type === "text"),
         locked: i === 0 || !!col.sticky || col.hideable === false,
       };

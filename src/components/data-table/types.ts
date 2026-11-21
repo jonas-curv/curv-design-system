@@ -46,7 +46,13 @@ export interface DataTableColumn<Row> {
   minWidth?: number;
   /** Cap for an auto-sized text column. Numbers never truncate, so a numeric column ignores it. */
   maxWidth?: number;
+  /**
+   * Default true, except for a column whose `header` is empty: it has no sort
+   * button unless `sortable: true` and an `ariaLabel` name it.
+   */
   sortable?: boolean;
+  /** The header's accessible name when `header` is empty (an icon or actions column). Ignored when there is a visible header. */
+  ariaLabel?: string;
   /**
    * Pin this column to the left while the table scrolls horizontally (the
    * identity column: Customer, Deal #). Sticky columns must be the leftmost
