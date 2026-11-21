@@ -87,8 +87,8 @@ Light:
 | `--muted` | `#F3F3F4` | Recessed gray (= sidebar, tracks, insets) |
 | `--secondary` | `#E5E5E6` | Stronger recessed fill |
 | `--foreground` | `#1B1B1B` | Primary text / ink |
-| `--muted-foreground` | `#6B6B6F` | Secondary text |
-| `--text-3` | `#8A8A8E` | Tertiary text |
+| `--muted-foreground` | `#66666A` | Secondary text |
+| `--text-3` | `#747478` | Tertiary text |
 | `--border` | `rgba(27,27,27,.08)` | Hairline borders |
 | `--sidebar` | `#F3F3F4` | Sidebar surface |
 | `--sidebar-accent` | `#EBEBEC` | Sidebar hover |
@@ -102,8 +102,8 @@ Dark mirrors the same logic (navy-free): `--background #0B0B0C`, `--card #161618
 `--sidebar #101011`, `--sidebar-accent #1E1E20`, `--sidebar-active #2A2A2C`.
 
 **Accents are shared across themes and were untouched by the neutral rebase**:
-`--verdict-green #1F7A33` (soft `#D7F7C2`), `--verdict-amber #A35C00`,
-`--verdict-red #D6453F`, the chart/data blue `--chart #2E90FA`, and the brand
+`--verdict-green #1F7A33` (soft `#D7F7C2`), `--verdict-amber #9A5600`,
+`--verdict-red #BE3530`, the chart/data blue `--chart #1966D0`, and the brand
 dots. The top bar is a fixed `#1b1b1b` in both themes.
 
 **Elevation shadow** — raised cards lift with `shadow-card` (a `0.5px` hairline
@@ -310,9 +310,9 @@ four generic count tiles, because it read this rule as "standardize the KPIs".)
 **Stat depth is a hover away (the Curv breakdown pattern).** A `StatCard` stays
 minimal — label, value, delta — and its detail lives in the **`breakdown`**
 hover card (period comparisons + per-brand rows via `BreakdownRow`), appearing
-after a short rest and never on click. A stat that links to its report takes
-`href` (whole card is a real anchor, ↗ affordance on hover). Progressive
-disclosure, not denser cards.
+after a short rest or at once on keyboard focus (Escape closes it), and never on
+click. A stat that links to its report takes `href` (whole card is a real
+anchor, ↗ affordance on hover). Progressive disclosure, not denser cards.
 
 **Table headers never wrap or truncate.** A header is the key to its whole
 column, so it must stay fully readable — `whitespace-nowrap`, and if a label is
@@ -615,7 +615,9 @@ statements; a plain `<table>` only for a few read-only rows, and it borrows
   arrow sits after the label on left-aligned columns, before it on
   right-aligned ones. **Numbers and dates sort high to low first, text A to Z;
   the third click clears.** `aria-sort` on the header cell, a visible focus
-  ring, and no `aria-label` on the button: its visible label names it.
+  ring, and no `aria-label` on the button: its visible label names it. A
+  column with an empty `header` (icons, actions) gets no sort button, unless it
+  sets `sortable: true` and an `ariaLabel` to name it.
 - **Definitions.** A column's `description` becomes a dotted underline and a
   tooltip on the header label. Never an info icon.
 - **Rows.** 44, 13px, the first column 500, hairline dividers,
