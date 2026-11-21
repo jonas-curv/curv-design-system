@@ -4,6 +4,8 @@ import * as React from "react";
 import { cn } from "../lib/cn";
 import { Card } from "./card";
 import { SegmentedControl } from "./segmented-control";
+import { EMPTY, formatNumber } from "./data-table/format";
+import { tableCellPadding, tableHeaderRow } from "./data-table/tokens";
 
 /**
  * ReportTable — the P&L / financial-matrix grid: metric rows grouped into
@@ -102,7 +104,7 @@ export function ReportTable({
   defaultView = "monthly",
   onViewChange,
   showViewToggle = true,
-  formatValue = (n) => n.toLocaleString(),
+  formatValue = (n) => formatNumber(n),
   metricLabel,
   totalLabel = "Total",
   labelWidth = 240,
@@ -130,7 +132,7 @@ export function ReportTable({
   const colCount = 1 + dataCols;
 
   const fmt = (v: number | null | undefined) =>
-    v == null ? <span className="text-muted-foreground/50">—</span> : <span className="tabular-nums">{formatValue(v)}</span>;
+    v == null ? <span className="text-muted-foreground/60">{EMPTY}</span> : <span className="tabular-nums">{formatValue(v)}</span>;
 
   // Sticky label column: opaque bg + a right divider so the frozen block reads
   // as separate. Table cells stretch to row height, so no masking-height bug.
@@ -140,7 +142,7 @@ export function ReportTable({
   return (
     <Card className={cn("flex flex-col overflow-hidden", className)}>
       {showViewToggle && periods.length > 0 && (
-        <div className="flex items-center justify-between gap-2 border-b border-border p-3">
+        <div className="flex items-center justify-between gap-2 border-b border-border px-4 py-3">
           <span className="text-[13px] font-medium text-foreground">{metricLabel}</span>
           <SegmentedControl
             value={view}
@@ -155,25 +157,29 @@ export function ReportTable({
 
       <div className="overflow-auto" style={{ maxHeight }}>
         <table className="w-full border-collapse text-[13px]">
+          {/* The same header as DataTable: 36, solid muted, a hairline below,
+              12 / 500 muted; 12 per side, 16 on the outer edges. A collapsed
+              border stays behind when the header sticks, so the hairline is an
+              inset shadow on each cell, which travels with it. */}
           <thead className="sticky top-0 z-20">
-            <tr className="bg-muted/95 text-[12px] font-medium text-muted-foreground backdrop-blur">
-              <th scope="col" className={cn(stickyHead, "px-3 py-2.5 text-left font-medium")} style={{ minWidth: labelWidth, width: labelWidth }}>
+            <tr className={cn(tableHeaderRow, "border-b-0 [&>th]:shadow-[inset_0_-1px_0_var(--border)]")}>
+              <th scope="col" className={cn(stickyHead, tableCellPadding, "text-left font-medium")} style={{ minWidth: labelWidth, width: labelWidth }}>
                 {!showViewToggle || periods.length === 0 ? metricLabel : null}
               </th>
               {monthly ? (
                 <>
                   {periods.map((p) => (
-                    <th key={p.key} scope="col" className={cn("whitespace-nowrap px-3 py-2.5 text-right font-medium", p.partial && "italic")}>
+                    <th key={p.key} scope="col" className={cn(tableCellPadding, "text-right font-medium", p.partial && "italic")}>
                       {p.label}
                     </th>
                   ))}
-                  <th scope="col" className="whitespace-nowrap border-l border-border px-3 py-2.5 text-right font-medium text-foreground">
+                  <th scope="col" className={cn(tableCellPadding, "border-l border-border text-right font-medium text-foreground")}>
                     {totalLabel}
                   </th>
                 </>
               ) : (
                 summaryColumns.map((c) => (
-                  <th key={c.key} scope="col" className="whitespace-nowrap px-3 py-2.5 text-right font-medium" style={c.width ? { width: c.width } : undefined}>
+                  <th key={c.key} scope="col" className={cn(tableCellPadding, "text-right font-medium")} style={c.width ? { width: c.width } : undefined}>
                     {c.label}
                   </th>
                 ))
@@ -187,20 +193,20 @@ export function ReportTable({
               return (
                 <React.Fragment key={section.key}>
                   {section.label != null && (
-                    <tr>
-                      <td colSpan={colCount} className="sticky left-0 z-[1] border-b border-border bg-muted/40">
+                    <tr className="h-9">
+                      <td colSpan={colCount} className="sticky left-0 z-[1] border-b border-border bg-muted/40 p-0">
                         {section.collapsible ? (
                           <button
                             type="button"
                             onClick={() => toggle(section.key)}
                             aria-expanded={open}
-                            className="flex w-full items-center gap-1.5 px-3 py-1.5 text-left text-[12px] font-medium text-muted-foreground transition-colors hover:text-foreground"
+                            className="flex h-9 w-full items-center gap-1.5 px-4 text-left text-[12px] font-medium text-muted-foreground transition-colors hover:text-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-inset focus-visible:ring-foreground/25"
                           >
                             <Chevron open={open} />
                             {section.label}
                           </button>
                         ) : (
-                          <div className="px-3 py-1.5 text-[12px] font-medium text-muted-foreground">{section.label}</div>
+                          <div className="flex h-9 items-center px-4 text-[12px] font-medium text-muted-foreground">{section.label}</div>
                         )}
                       </td>
                     </tr>
@@ -208,32 +214,37 @@ export function ReportTable({
 
                   {open &&
                     section.rows.map((row) => {
-                      const labelPad = 12 + (row.indent ?? 0) * 16;
+                      // 16 on the outer edge, then 16 per indent level.
+                      const labelPad = 16 + (row.indent ?? 0) * 16;
                       // Interactive value cell: full-cell button (keyboard-safe)
-                      // with a hover affordance; the td drops its padding.
-                      const valueCell = (colKey: string, node: React.ReactNode, extra?: string) =>
+                      // with a hover affordance; the td drops its padding, so the
+                      // button carries it (16 on the table's right edge).
+                      const valueCell = (colKey: string, node: React.ReactNode, extra?: string, last?: boolean) =>
                         onCellClick ? (
                           <td className={cn("p-0 text-right", extra)}>
                             <button
                               type="button"
                               onClick={() => onCellClick(row, colKey)}
-                              className="w-full px-3 py-2 text-right transition-colors hover:bg-accent/50 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-inset focus-visible:ring-foreground/25"
+                              className={cn(
+                                "h-9 w-full whitespace-nowrap text-right transition-colors hover:bg-accent/50 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-inset focus-visible:ring-foreground/25",
+                                last ? "pl-3 pr-4" : "px-3",
+                              )}
                             >
                               {node}
                             </button>
                           </td>
                         ) : (
-                          <td className={cn("px-3 py-2 text-right", extra)}>{node}</td>
+                          <td className={cn("whitespace-nowrap py-0 text-right", tableCellPadding, extra)}>{node}</td>
                         );
                       return (
-                        <tr key={row.key} className={cn("border-b border-border", row.subtotal ? "font-medium text-foreground" : "text-foreground")}>
-                          <td className={cn(stickyBody, row.subtotal && "font-medium", onRowClick ? "p-0" : "truncate px-3 py-2")} style={onRowClick ? undefined : { paddingLeft: labelPad }}>
+                        <tr key={row.key} className={cn("h-9 border-b border-border", row.subtotal ? "font-medium text-foreground" : "text-foreground")}>
+                          <td className={cn(stickyBody, row.subtotal && "font-medium", onRowClick ? "p-0" : "truncate py-0 pr-3")} style={onRowClick ? undefined : { paddingLeft: labelPad }}>
                             {onRowClick ? (
                               <button
                                 type="button"
                                 onClick={() => onRowClick(row)}
                                 style={{ paddingLeft: labelPad }}
-                                className="flex w-full items-center truncate py-2 pr-3 text-left transition-colors hover:bg-accent/50 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-inset focus-visible:ring-foreground/25"
+                                className="flex h-9 w-full items-center truncate pr-3 text-left transition-colors hover:bg-accent/50 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-inset focus-visible:ring-foreground/25"
                               >
                                 {row.label}
                               </button>
@@ -248,14 +259,14 @@ export function ReportTable({
                                   {valueCell(p.key, fmt(row.values?.[p.key]), p.partial ? "italic text-muted-foreground" : undefined)}
                                 </React.Fragment>,
                               )}
-                              {valueCell("total", fmt(row.total), "border-l border-border font-medium")}
+                              {valueCell("total", fmt(row.total), "border-l border-border font-medium", true)}
                             </>
                           ) : (
-                            summaryColumns.map((c) => {
+                            summaryColumns.map((c, i) => {
                               const t = c.tint?.(row);
                               return (
                                 <React.Fragment key={c.key}>
-                                  {valueCell(c.key, c.render(row), t ? TINT[t] : undefined)}
+                                  {valueCell(c.key, c.render(row), t ? TINT[t] : undefined, i === summaryColumns.length - 1)}
                                 </React.Fragment>
                               );
                             })
