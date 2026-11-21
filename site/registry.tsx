@@ -9,6 +9,10 @@ import {
   Inbox,
   LayoutGrid,
   ListChecks,
+  Target,
+  WavesHorizontal,
+  FolderKanban,
+  ChartColumn,
   MessageSquarePlus,
   Pencil,
   Radar,
@@ -65,6 +69,7 @@ import {
   DrawerClose,
   EmptyState,
   PageHeader,
+  PageToolbar,
   Popover,
   PopoverClose,
   SegmentedControl,
@@ -77,6 +82,7 @@ import {
   Sidebar,
   SidebarItem,
   SidebarSection,
+  SidebarToggle,
   Tabs,
   Switch,
   Textarea,
@@ -84,6 +90,7 @@ import {
   Tooltip,
   TooltipProvider,
   TopBar,
+  Wordmark,
   ThemeToggle,
   AccountMenu,
   AccountMenuItem,
@@ -130,19 +137,20 @@ function IconBtn({ children }: { children: React.ReactNode }) {
   );
 }
 
-const demoLogo = (
-  <span className="pl-1 text-[15px] font-semibold lowercase text-white">
-    customs
-    <span className="align-super text-[8px] font-normal text-white/60">os</span>
-  </span>
-);
+const demoLogo = <Wordmark name="customs" />;
 
 const demoSearch = (
-  <div className="flex w-full max-w-xl items-center gap-2 rounded-md bg-white/10 px-3 py-1.5 text-[13px] text-white/55">
-    <Search size={15} />
-    <span>Search</span>
-    <span className="ml-auto rounded bg-white/10 px-1.5 py-0.5 text-[11px]">⌘K</span>
-  </div>
+  <>
+    <div className="flex h-9 min-w-0 flex-1 items-center gap-2 rounded-[10px] bg-white/10 pl-3 pr-2 text-body text-white/60">
+      <Search size={16} className="shrink-0" />
+      <span className="min-w-0 flex-1 truncate">Search Customs OS</span>
+      <span className="rounded-md bg-white/10 px-1.5 py-0.5 text-micro text-white/65">⌘K</span>
+    </div>
+    <button className="flex h-9 shrink-0 items-center gap-1.5 rounded-[10px] bg-white/10 px-3 text-body font-medium text-white/90 transition hover:bg-white/15">
+      <Sparkles size={16} />
+      Ask
+    </button>
+  </>
 );
 
 const demoActions = (
@@ -165,11 +173,26 @@ const demoActions = (
   </>
 );
 
-type NavItem = { icon: typeof House; label: string; active?: boolean; comingSoon?: boolean };
+type NavItem = { icon: typeof House; label: string; active?: boolean; comingSoon?: boolean; badge?: number; items?: NavItem[] };
 type NavGroup = { section: string | null; items: NavItem[] };
 
 const DEMO_NAV: NavGroup[] = [
-  { section: null, items: [{ icon: House, label: "Home", active: true }] },
+  {
+    section: null,
+    items: [
+      { icon: House, label: "Home", active: true },
+      {
+        icon: WavesHorizontal,
+        label: "Flow",
+        items: [
+          { icon: Inbox, label: "Inbox", badge: 3 },
+          { icon: Target, label: "Goals" },
+          { icon: FolderKanban, label: "Projects" },
+          { icon: ChartColumn, label: "Insights" },
+        ],
+      },
+    ],
+  },
   {
     section: "Leads",
     items: [
@@ -189,9 +212,29 @@ const DEMO_NAV: NavGroup[] = [
   { section: "Analytics", items: [{ icon: Radar, label: "Analytics" }, { icon: LayoutGrid, label: "Attribution", comingSoon: true }] },
 ];
 
-function DemoSidebar() {
+function DemoNavItem({ item }: { item: NavItem }) {
   return (
-    <Sidebar>
+    <SidebarItem
+      icon={item.icon}
+      label={item.label}
+      active={item.active}
+      comingSoon={item.comingSoon}
+      badge={item.badge}
+      onClick={() => {}}
+      defaultOpen={item.items ? true : undefined}
+    >
+      {item.items?.map((child) => <DemoNavItem key={child.label} item={child} />)}
+    </SidebarItem>
+  );
+}
+
+function DemoSidebar({ rail = false }: { rail?: boolean }) {
+  const [collapsed, setCollapsed] = React.useState(false);
+  return (
+    <Sidebar
+      collapsed={rail && collapsed}
+      footer={rail ? <SidebarToggle collapsed={collapsed} onCollapsedChange={setCollapsed} /> : undefined}
+    >
       {DEMO_NAV.map((group, i) => (
         <SidebarSection
           key={i}
@@ -200,7 +243,7 @@ function DemoSidebar() {
           defaultOpen
         >
           {group.items.map((it) => (
-            <SidebarItem key={it.label} icon={it.icon} label={it.label} active={it.active} comingSoon={it.comingSoon} />
+            <DemoNavItem key={it.label} item={it} />
           ))}
         </SidebarSection>
       ))}
@@ -208,42 +251,45 @@ function DemoSidebar() {
   );
 }
 
-function Kpi({ label, value, sub }: { label: string; value: string; sub: string }) {
+const DEAL_VIEWS = [
+  { value: "open", label: "Open" },
+  { value: "won", label: "Won" },
+  { value: "lost", label: "Lost" },
+];
+
+/** The index-page standard: no visible title, one control row, then content 16 below. */
+function DealsToolbar() {
+  const [view, setView] = React.useState("open");
   return (
-    <Card className="flex flex-col px-5 py-4">
-      <span className="text-[12px] font-medium text-muted-foreground">{label}</span>
-      <span className="mt-1.5 text-2xl font-semibold tracking-tight tabular-nums text-foreground">
-        {value}
-      </span>
-      <span className="mt-1 text-[11.5px] text-muted-foreground">{sub}</span>
-    </Card>
+    <PageToolbar
+      title="Deals"
+      controls={
+        <>
+          <SegmentedControl aria-label="View" items={DEAL_VIEWS} value={view} onValueChange={setView} />
+          <Input type="search" placeholder="Search" aria-label="Search deals" className="w-60" />
+        </>
+      }
+      actions={
+        <>
+          <Button variant="outline">Export</Button>
+          <Button>New deal</Button>
+        </>
+      }
+    />
   );
 }
 
 function DealsPage() {
   return (
-    <PageContainer bleed>
-      <div className="mb-5 flex items-center justify-between">
-        <h1 className="text-2xl font-semibold tracking-tight text-foreground">Deals</h1>
-        <div className="flex items-center gap-2 text-[13px]">
-          <span className="inline-flex h-9 items-center rounded-md border border-border bg-card px-3 text-muted-foreground">
-            All brands
-          </span>
-          <span className="inline-flex h-9 items-center rounded-md border border-border bg-card px-3 text-muted-foreground">
-            Jul 1 – 18, 2026
-          </span>
-        </div>
-      </div>
-      <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-        <Kpi label="Collected GP" value="$327,449" sub="month to date" />
-        <Kpi label="Deals" value="261" sub="of 261" />
-        <Kpi label="Confirmed" value="211" sub="80.8%" />
-        <Kpi label="To collect" value="50" sub="pending" />
-      </div>
-      <Card className="mt-4 grid h-[560px] place-items-center text-sm text-muted-foreground">
-        DataTable — the next component we extract &amp; fine-tune.
-        <span className="mt-1 text-[12px]">(scroll — the sidebar corner stays pinned under the bar)</span>
-      </Card>
+    <PageContainer>
+      <DealsToolbar />
+      <StatGroup className="mt-4">
+        <StatCard label="Open pipeline" value="$2.41M" />
+        <StatCard label="Won this month" value="$612K" />
+        <StatCard label="Collected" value="$488K" />
+        <StatCard label="Balance due" value="$124K" />
+      </StatGroup>
+      <Card className="mt-4 h-[560px]" />
     </PageContainer>
   );
 }
@@ -808,12 +854,10 @@ function PageHeaderDemo() {
   const [range, setRange] = React.useState<DateRangeValueT | undefined>(undefined);
   const [brand, setBrand] = React.useState("all");
   return (
-    <div className="w-full rounded-lg border border-border bg-card p-5">
+    <div className="w-full rounded-lg bg-card px-5 py-4 shadow-card">
       <PageHeader
-        eyebrow="Finance / Refunds"
-        title="Refund dashboard"
+        title="Northwind Co."
         badge={<Badge variant="green">Live</Badge>}
-        description="Activity counted by refund date. Refund rate uses deals closed in the same period."
         actions={
           <>
             {/* Real composed controls — the shell hosts, it doesn't hardcode. */}
@@ -1348,12 +1392,12 @@ export const COMPONENTS: Entry[] = [
     name: "Top Bar",
     group: "Navigation",
     summary:
-      "The global navigation bar — a fixed dark (#1b1b1b) chrome bar in both themes. Three regions: logo, search, actions.",
-    usage: `import { TopBar } from "@curvgroup/design-system";
+      "The global navigation bar: a fixed dark (#1b1b1b) chrome bar in both themes. Wordmark left, ⌘K search and Ask at the true center, actions right.",
+    usage: `import { TopBar, Wordmark } from "@curvgroup/design-system";
 
 <TopBar
-  logo={<Wordmark />}
-  center={<CommandSearch />}
+  logo={<a href="/"><Wordmark name="customs" /></a>}
+  center={<><CommandSearch className="w-full" /><AskButton className="shrink-0" /></>}
   actions={<Actions />}
 />`,
     demos: [
@@ -1369,33 +1413,35 @@ export const COMPONENTS: Entry[] = [
     group: "Navigation",
     isNew: true,
     summary:
-      "The left nav — recessed gray, pinned under the bar, rounding into the cradle. Compose it from sections and items with icons + an active state.",
-    usage: `import { Sidebar, SidebarSection, SidebarItem } from "@curvgroup/design-system";
+      "The left nav: recessed gray, pinned under the bar, rounding into the cradle. Sections, 32px rows with 16px icons, counts, expandable items, and an optional 56px icon rail.",
+    usage: `import { Sidebar, SidebarSection, SidebarItem, SidebarToggle } from "@curvgroup/design-system";
 
-<Sidebar>
-  <SidebarSection label="Pipeline">
-    <SidebarItem icon={Users} label="Customers" onClick={…} />
-    <SidebarItem icon={LayoutGrid} label="Deals" active />
+<Sidebar
+  collapsed={rail}
+  renderLink={(props) => <Link {...props} />}
+  footer={<SidebarToggle collapsed={rail} onCollapsedChange={setRail} />}
+>
+  <SidebarSection>
+    <SidebarItem icon={House} label="Home" href="/" />
+    <SidebarItem icon={Waves} label="Flow" href="/flow">
+      <SidebarItem icon={Inbox} label="Inbox" href="/flow/inbox" badge={3} />
+      <SidebarItem icon={Target} label="Goals" href="/flow/goals" />
+    </SidebarItem>
+  </SidebarSection>
+  <SidebarSection label="Pipeline" collapsible>
+    <SidebarItem icon={LayoutGrid} label="Deals" href="/deals" active />
   </SidebarSection>
 </Sidebar>`,
     demos: [
       {
         title: "In the frame",
-        description: "Where a sidebar lives — pinned under the bar. Scroll: the corner stays put.",
         canvas: "frame",
         render: () => (
           <AppFrame
             topBar={<TopBar logo={demoLogo} center={demoSearch} actions={demoActions} />}
-            sidebar={<DemoSidebar />}
+            sidebar={<DemoSidebar rail />}
           >
-            <PageContainer>
-              <h1 className="text-2xl font-semibold tracking-tight text-foreground">Sidebar</h1>
-              <p className="mt-2 max-w-md text-sm text-muted-foreground">
-                Sections, items with icons, and the active state — pinned in the cradle it
-                lives in. Scroll: the rounded corner stays under the bar.
-              </p>
-              <div className="mt-4 h-[440px] rounded-lg border border-dashed border-border" />
-            </PageContainer>
+            <DealsPage />
           </AppFrame>
         ),
       },
@@ -1753,14 +1799,12 @@ const [range, setRange] = React.useState();
     group: "Layout and structure",
     isNew: true,
     summary:
-      "The top of every OS page: eyebrow, title with an optional count + status badge, description, and right-aligned controls. Like ChartCard, it's a layout shell — `actions` hosts REAL composed controls (Select · DateRangePicker · Button), never hardcoded ones. Stacks on narrow screens.",
+      "The title block of a detail page (one deal, one customer): a 20px title, an optional status badge, and right-aligned actions. Index pages show no title: they open on a Page Toolbar.",
     usage: `import { PageHeader, Badge, Button, Select, DateRangePicker } from "@curvgroup/design-system";
 
 <PageHeader
-  eyebrow="Finance / Refunds"
-  title="Refund dashboard"
+  title="Northwind Co."
   badge={<Badge variant="green">Live</Badge>}
-  description="Activity counted by refund date."
   actions={
     <>
       <Select items={brands} value={brand} onValueChange={setBrand} className="h-9 w-[150px]" />
@@ -1771,10 +1815,63 @@ const [range, setRange] = React.useState();
 />`,
     demos: [
       {
-        title: "Page header",
-        description: "Eyebrow + title + badge + description on the left; the actions slot holds the REAL brand Select, DateRangePicker, and the primary action — open them, they work. Everything but the title is optional. Best practice: scope controls first, one filled primary action rightmost.",
+        title: "Detail page",
         canvas: "plain",
         render: () => <PageHeaderDemo />,
+      },
+    ],
+  },
+  {
+    slug: "page-toolbar",
+    name: "Page Toolbar",
+    group: "Layout and structure",
+    isNew: true,
+    summary:
+      "How an index page opens: no visible title (the sidebar says where you are), a hidden h1, and one 36px control row. Views, search and filter left; Export and the primary action right.",
+    usage: `import { PageToolbar, SegmentedControl, Input, Button } from "@curvgroup/design-system";
+
+<PageToolbar
+  title="Deals"
+  controls={
+    <>
+      <SegmentedControl aria-label="View" items={views} value={view} onValueChange={setView} />
+      <Input type="search" placeholder="Search" aria-label="Search deals" className="w-60" />
+    </>
+  }
+  actions={
+    <>
+      <Button variant="outline">Export</Button>
+      <Button>New deal</Button>
+    </>
+  }
+/>`,
+    demos: [
+      {
+        canvas: "surface",
+        render: () => <DealsToolbar />,
+      },
+    ],
+  },
+  {
+    slug: "wordmark",
+    name: "Wordmark",
+    group: "Navigation",
+    isNew: true,
+    summary:
+      "The OS name in the top bar: lowercase name, superscript os. 16px / 600, tracking -0.02em.",
+    usage: `import { Wordmark } from "@curvgroup/design-system";
+
+<a href="/"><Wordmark name="sales" /></a>`,
+    demos: [
+      {
+        canvas: "fill",
+        render: () => (
+          <div className="flex h-14 w-full items-center gap-8 bg-topbar px-4">
+            {["finance", "sales", "customs", "product", "curv"].map((name) => (
+              <Wordmark key={name} name={name} />
+            ))}
+          </div>
+        ),
       },
     ],
   },

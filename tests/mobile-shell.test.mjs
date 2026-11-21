@@ -524,7 +524,7 @@ test('vendor script: it reads the declaration chunk from mobile.d.ts, ships docs
   const script = read('scripts/vendor-payload.sh');
   for (const needle of [/grep -oE "from '\\\.\/\[\^'\]\+\\\.js'" dist\/mobile\.d\.ts/, /cp docs\/mobile\.md/, /cp skills\/curv-mobile\/SKILL\.md/, /mobile-source\.json/, /git archive --format=tar HEAD docs mobile\.css package\.json package-lock\.json src tests \| gzip -n/, /git rev-parse HEAD/, /version/, /"dist\/mobile\.js": "\$JS_SHA"/, /verify failed/, /git diff --quiet HEAD/]) assert.match(script, needle);
   assert.doesNotMatch(script, /mobile-command-[A-Za-z0-9_-]+\.d\.ts/, 'no hard-coded chunk name');
-  assert.match(read('package.json'), /"vendor": "bash scripts\/vendor-payload\.sh"/);
+  assert.match(read('package.json'), /"vendor:mobile": "bash scripts\/vendor-payload\.sh"/, 'npm run vendor is the whole package from 0.5.0 (scripts/vendor.sh)');
   assert.match(read('docs/mobile.md'), /scripts\/vendor-payload\.sh \/path\/to\/app/);
   assert.match(read('docs/mobile.md'), /Customs is on 0\.3\.4, Finance on 0\.2\.22 and Sales on 0\.2\.25/);
 });
