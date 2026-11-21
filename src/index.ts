@@ -79,12 +79,37 @@ export {
 } from "./components/shell/sidebar";
 export {
   DataTable,
+  DataTableProvider,
   dataTableToolbarButton,
   type DataTableProps,
+  type DataTableProviderProps,
+  type DataTableConnectedProps,
   type DataTableColumn,
+  type DataTableColumnType,
   type DataTableTab,
   type DataTableGroup,
+  type DataTableBulkContext,
 } from "./components/data-table/data-table";
+export {
+  DataTableViews,
+  DataTableSearch,
+  DataTableFilterButton,
+  DataTableColumnsButton,
+  DataTableExportMenu,
+  DataTableBulkAction,
+} from "./components/data-table/toolbar";
+export { tableHeaderRow, tableCellPadding } from "./components/data-table/tokens";
+export {
+  formatMoney,
+  formatNumber,
+  formatPercent,
+  formatDate,
+  MINUS,
+  type FormatMoneyOptions,
+  type FormatNumberOptions,
+  type FormatPercentOptions,
+  type FormatDateOptions,
+} from "./components/data-table/format";
 export { TableLink, type TableLinkProps } from "./components/data-table/table-link";
 export { toCsv, downloadCsv, downloadPdf, type CellValue } from "./components/data-table/export";
 export {

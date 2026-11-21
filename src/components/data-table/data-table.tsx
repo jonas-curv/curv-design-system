@@ -3,266 +3,53 @@
 import * as React from "react";
 import { useVirtualizer } from "@tanstack/react-virtual";
 import { cn } from "../../lib/cn";
-import { SegmentedControl } from "../segmented-control";
-import { downloadCsv, downloadPdf, type CellValue } from "./export";
+import { EmptyState } from "../empty-state";
+import { Skeleton } from "../skeleton";
+import { Tooltip } from "../tooltip";
+import { ActiveFilterBar } from "./filter-bar";
+import { EMPTY, formatNumber, formatValue } from "./format";
+import type { DataTableGroupItem } from "./grouping";
+import { edgePadding } from "./layout";
+import { MobileRows } from "./mobile-rows";
 import {
-  ActiveFilterBar,
-  FilterButton,
-  rowMatchesFilters,
-  type FilterDef,
-  type FilterValues,
-} from "./filter-bar";
+  accessor,
+  cellText,
+  DataTableContext,
+  useDataTableModel,
+  useDataTableModelContext,
+  type DataTableModel,
+  type ResolvedColumn,
+} from "./model";
+import { tableHeaderRow } from "./tokens";
+import { DataTableToolbar, IconChevronDown, SelectionCheckbox } from "./toolbar";
+import type { DataTableProps } from "./types";
 
-/* ---------- inline icons ---------- */
-function IconSearch() {
-  return (
-    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="shrink-0" aria-hidden>
-      <circle cx="11" cy="11" r="7" /><path d="m21 21-4.3-4.3" />
-    </svg>
-  );
-}
-function IconDownload() {
-  return (
-    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="shrink-0" aria-hidden>
-      <path d="M12 3v12" /><path d="m7 10 5 5 5-5" /><path d="M5 21h14" />
-    </svg>
-  );
-}
-function IconChevronDown({ className }: { className?: string }) {
-  return (
-    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className={cn("shrink-0", className)} aria-hidden>
-      <path d="m6 9 6 6 6-6" />
-    </svg>
-  );
-}
-function IconSort({ dir }: { dir: "asc" | "desc" | null }) {
-  if (dir === null) {
-    return (
-      <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="shrink-0 text-muted-foreground/30" aria-hidden>
-        <path d="m7 15 5 5 5-5" /><path d="m7 9 5-5 5 5" />
-      </svg>
-    );
-  }
-  return (
-    <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="shrink-0" aria-hidden>
-      {dir === "asc" ? <path d="m5 12 7-7 7 7" /> : <path d="m5 12 7 7 7-7" />}
-    </svg>
-  );
-}
-
-import { MobileRows, type MobilePriority } from "./mobile-rows";
+export type {
+  DataTableBulkContext,
+  DataTableColumn,
+  DataTableColumnType,
+  DataTableProps,
+  DataTableTab,
+} from "./types";
 export type { MobilePriority } from "./mobile-rows";
-import { collapsedFor, groupItems, toggled, type DataTableGroup } from "./grouping";
 export type { DataTableGroup } from "./grouping";
 
-/* ---------- types ---------- */
-
-export interface DataTableColumn<Row> {
-  key: string;
-  header: string;
-  headerSuffix?: React.ReactNode;
-  mobilePriority?: MobilePriority;
-  render?: (row: Row) => React.ReactNode;
-  /** Sort + export + search value. Defaults to `row[key]`. */
-  value?: (row: Row) => CellValue;
-  align?: "left" | "right";
-  /** Grid track — number → px, or any CSS track (e.g. "minmax(220px,1.6fr)"). */
-  width?: number | string;
-  /**
-   * Comfortable width range for an auto-sized column (ignored when `width` is
-   * set). The **primary text column (Name / Title) should set a `minWidth`**
-   * (~240–320px) so typical values fit instead of truncating at the 120px
-   * default — longer values then ellipsis at the column edge (the Linear
-   * pattern). `maxWidth` caps growth so one pathological value can't blow the
-   * column out. Numeric columns can stay at the default.
-   */
-  minWidth?: number;
-  maxWidth?: number;
-  sortable?: boolean;
-  /**
-   * Pin this column to the left while the table scrolls horizontally (the
-   * identity column — Customer, Deal #). Sticky columns must be the leftmost
-   * ones; give any sticky column that has sticky columns after it a numeric
-   * `width` so the next one's offset can be computed. (design-system.md →
-   * Tables: "sticky what you scroll past".)
-   */
-  sticky?: boolean;
-  className?: string;
-}
-
-/** A segmented view-swapper tab (All deals / Confirmed / To collect …). */
-export interface DataTableTab<Row> {
-  key: string;
-  label: string;
-  /** Predicate for this view; omit for an "all" tab. */
-  filter?: (row: Row) => boolean;
-  /** Override the auto-computed count; pass null to hide the count. */
-  count?: number | null;
-}
-
-export interface DataTableProps<Row> {
-  columns: DataTableColumn<Row>[];
-  rows: Row[];
-  getRowId?: (row: Row, index: number) => string;
-  initialSort?: { key: string; order: "asc" | "desc" };
-
-  /** Search box (left of the toolbar). */
-  searchable?: boolean;
-  searchPlaceholder?: string;
-  /** Column keys to search; defaults to every column. */
-  searchKeys?: string[];
-
-  /** Linear-style filters (select + range facets). Filtered internally. */
-  filters?: FilterDef<Row>[];
-
-  /** Segmented view tabs (All / Confirmed / …). Filter on top of search + facets. */
-  tabs?: DataTableTab<Row>[];
-  defaultTab?: string;
-
-  /** Extra controls after Filter (e.g. a Views button). */
-  toolbarActions?: React.ReactNode;
-  /** Right cluster, before Export (e.g. a "$328k collected GP · 261 deals" summary). */
-  summary?: React.ReactNode;
-
-  exportFilename?: string;
-  pdfTitle?: string;
-  pdfSubtitle?: string;
-
-  rowHeight?: number;
-  maxHeight?: number | string;
-  /** Horizontal min-width; below it the grid scrolls sideways. */
-  minWidth?: number;
-  /** Keep spatial report/workbook comparison scrollable on phones. */
-  mobileLayout?: "cards" | "scroll";
-  onRowClick?: (row: Row) => void;
-  /**
-   * Make rows real links (cmd+click, middle-click, copy-link, native keyboard
-   * access). Rendered as a stretched overlay anchor so per-cell `TableLink`s
-   * remain valid HTML (never nested anchors). Interactive cell content needs
-   * `relative z-[2]` — above the overlay (z-[1]) for clicks but below sticky
-   * cells (z-10) so the frozen column keeps masking on horizontal scroll —
-   * `TableLink` and `CopyButton` handle this themselves.
-   */
-  getRowHref?: (row: Row) => string | undefined;
-  /** Accessible name for the row link; defaults to the first column's value. */
-  getRowLabel?: (row: Row) => string;
-  emptyLabel?: string;
-  /** Show a skeleton while data loads (distinct from the empty state). */
-  loading?: boolean;
-  /** Noun for the bottom count ("deals", "customers"). */
-  unit?: string;
-
-  /**
-   * Group rows under header rows — for a list people scan by a parent record
-   * (one header per PO, its lines underneath). Search, filters, tabs and sort
-   * run first, then this partitions the sorted rows, so a column sort orders
-   * rows *within* each group. Rows returning `null` (or `""`/`undefined`, which
-   * count as `null`) go in one trailing group. Opt-in: without it the table is
-   * the flat list, unchanged. The footer still counts rows, export stays flat,
-   * and `mobileLayout="cards"` ignores grouping (the phone card list is flat).
-   * Pass a stable function (module scope or `useCallback`): a new one each
-   * render regroups the whole list each render.
-   */
-  groupBy?: (row: Row) => string | null | undefined;
-  /**
-   * Header row content for a group, rendered beside the toggle. Default: the
-   * group label and the row count — the count is part of the default header
-   * only, so a custom header shows its own. Links and badges are fine here; a
-   * click anywhere else on the header toggles the group.
-   */
-  renderGroupHeader?: (group: DataTableGroup<Row>) => React.ReactNode;
-  /**
-   * Group order. Default: the order each group first appears in the sorted rows
-   * (sort by due date and POs order by their earliest line). The `null` group
-   * always comes last and never reaches the comparator.
-   */
-  compareGroups?: (a: DataTableGroup<Row>, b: DataTableGroup<Row>) => number;
-  /**
-   * Groups collapsed on first render (uncontrolled): read at mount only, so
-   * changing it later does nothing. `null` is the ungrouped group. Collapse
-   * hides a group's rows; an active search shows its matches regardless (the
-   * saved collapse comes back when the search clears). Ignored when
-   * `collapsedGroups` is passed.
-   */
-  defaultCollapsedGroups?: readonly (string | null)[];
-  /**
-   * Controlled collapse: the collapsed group keys. Passing it hands the state to
-   * you: a header toggle calls `onCollapsedGroupsChange` with the next keys and
-   * the table keeps none of its own. Use it to keep collapse across an unmount,
-   * or to act on the open groups only (select-all). Pass state, not a fresh array
-   * each render. Toggles made while a search shows its matches are not reported:
-   * they last until the search clears, when your keys come back as they were.
-   */
-  collapsedGroups?: readonly (string | null)[];
-  /** The next collapsed keys after a header toggle. Only called when `collapsedGroups` is passed. */
-  onCollapsedGroupsChange?: (keys: (string | null)[]) => void;
-  /**
-   * `true` while a search of your own is filtering `rows` (`searchable={false}`
-   * plus your own box): search matches then show in collapsed groups, as with the
-   * built-in search. The built-in search box already counts.
-   */
-  searchActive?: boolean;
-  /**
-   * Label for the `null` group in the default header. Default "Other". Set it
-   * (or `getGroupLabel`) whenever your own header names the catch-all, so the
-   * toggle's accessible name says the same thing.
-   */
-  ungroupedLabel?: string;
-  /**
-   * A group's name: the default header's text, and the toggle button's
-   * accessible name (with a custom `renderGroupHeader`, the button's only name).
-   * Default: the key, or `ungroupedLabel` for the `null` group.
-   */
-  getGroupLabel?: (group: DataTableGroup<Row>) => string;
-  /** Header row height. Default: `rowHeight`. */
-  groupHeaderHeight?: number;
-  className?: string;
-}
-
-// One toolbar-button treatment for Filter / Views / Export at the canonical
-// main-toolbar control height (h-9 / 36px, per design-system.md), so search,
-// filter, views and export read as one perfectly aligned band.
+// One toolbar-button treatment for links and controls that sit beside a
+// table's toolbar, at the canonical control height (h-9 / 36px).
 export const dataTableToolbarButton =
   "inline-flex h-9 items-center gap-1.5 rounded-md border border-border bg-card px-2.5 text-[13px] font-medium text-foreground transition-[transform,border-color] duration-150 ease-[cubic-bezier(0.23,1,0.32,1)] hover:border-foreground/20 active:scale-[0.97]";
-const menuRow =
-  "flex w-full items-center rounded-md px-2 py-1.5 text-left text-[13px] text-foreground transition hover:bg-accent";
 
-function accessor<Row>(col: DataTableColumn<Row>, row: Row): CellValue {
-  if (col.value) return col.value(row);
-  return (row as Record<string, unknown>)[col.key] as CellValue;
-}
+/** An empty cell's dash. */
+const DASH = <span className="text-muted-foreground/60">{EMPTY}</span>;
+const HEADER_HEIGHT = 36;
+const TOTALS_HEIGHT = 44;
 
-// Sample up to ~20 rows to decide whether an unmarked column is numeric — so it
-// auto-aligns right + sizes tight instead of ballooning to 1fr in the text
-// branch. Nulls are ignored; the column counts as numeric when its sampled
-// non-null values are predominantly `number`.
-function isNumericColumn<Row>(col: DataTableColumn<Row>, rows: Row[]): boolean {
-  let seen = 0;
-  let numeric = 0;
-  const limit = Math.min(rows.length, 20);
-  for (let i = 0; i < limit; i++) {
-    const v = accessor(col, rows[i]);
-    if (v == null) continue;
-    seen++;
-    if (typeof v === "number") numeric++;
-  }
-  return seen > 0 && numeric >= seen * 0.7;
-}
-
-function track<Row>(col: DataTableColumn<Row>, align: "left" | "right"): string {
-  if (col.width != null) return typeof col.width === "number" ? `${col.width}px` : col.width;
-  // Numeric (right-aligned) columns size to their content — **a number must never
-  // truncate** (a dropped digit is silently wrong). So an auto-sized numeric
-  // column is `max-content`: always wide enough for its longest value.
-  if (align === "right" && col.maxWidth == null) {
-    return `minmax(${col.minWidth ?? 72}px,max-content)`;
-  }
-  // Text columns: a comfortable floor (min) that grows to share slack (1fr) or is
-  // capped (maxWidth). Values past the track's width ellipsis in the cell. The
-  // primary text column should raise `minWidth`; 120px is the default floor.
-  const min = col.minWidth ?? 120;
-  const max = col.maxWidth != null ? `${col.maxWidth}px` : "1fr";
-  return `minmax(${min}px,${max})`;
+function IconArrow({ dir, className }: { dir: "asc" | "desc"; className?: string }) {
+  return (
+    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={cn("shrink-0", className)} aria-hidden>
+      <path d={dir === "asc" ? "M12 19V5M5 12l7-7 7 7" : "M12 5v14M19 12l-7 7-7-7"} />
+    </svg>
+  );
 }
 
 // Deterministic bar widths for the loading skeleton (no Math.random → stable
@@ -277,183 +64,46 @@ const UNGROUPED_KEY = "\u0000ungrouped";
 // the group (the data-row guard, plus controls a header might hold).
 const GROUP_HEADER_SKIP =
   "a,button,input,select,textarea,label,summary,[role=button],[role=checkbox],[role=switch],[role=link]";
-// One shared empty set: "no search-time toggles", comparable by identity.
-const NO_GROUPS: ReadonlySet<string | null> = new Set();
+const ROW_CLICK_SKIP = "a,button,input,select,textarea,label,[role=button],[role=checkbox]";
 
-/* ---------- component ---------- */
+// The header deepens once rows scroll under it.
+const HEADER_SCROLLED = "0 2px 4px -2px rgb(0 0 0 / 0.08)";
 
-export function DataTable<Row>({
-  columns,
-  rows,
-  getRowId,
-  initialSort,
-  searchable = false,
-  searchPlaceholder = "Search…",
-  searchKeys,
-  filters,
-  tabs,
-  defaultTab,
-  toolbarActions,
-  summary,
-  exportFilename,
-  pdfTitle,
-  pdfSubtitle,
-  rowHeight = 44,
-  maxHeight = "60vh",
-  minWidth,
-  mobileLayout = "cards",
-  onRowClick,
-  getRowHref,
-  getRowLabel,
-  emptyLabel = "No results.",
-  loading = false,
-  unit = "rows",
-  groupBy,
-  renderGroupHeader,
-  compareGroups,
-  defaultCollapsedGroups,
-  collapsedGroups,
-  onCollapsedGroupsChange,
-  searchActive = false,
-  ungroupedLabel = "Other",
-  getGroupLabel,
-  groupHeaderHeight = rowHeight,
+function totalText<Row>(rc: ResolvedColumn<Row>, v: unknown): React.ReactNode {
+  if (v == null || v === "") return DASH;
+  if (typeof v === "number") {
+    if (rc.col.format) return rc.col.format(v);
+    return rc.type ? formatValue(rc.type, v) : formatNumber(v);
+  }
+  return v as React.ReactNode;
+}
+
+/* ---------- the card ---------- */
+
+function DataTableCard<Row>({
+  model: m,
+  toolbar,
   className,
-}: DataTableProps<Row>) {
-  const [query, setQuery] = React.useState("");
-  const [sort, setSort] = React.useState<{ key: string; order: "asc" | "desc" } | null>(
-    initialSort ?? null,
-  );
-  const [filterValues, setFilterValues] = React.useState<FilterValues>({});
-  const [activeTab, setActiveTab] = React.useState(defaultTab ?? tabs?.[0]?.key ?? "");
-  // Keyed by group key, so a group's state survives re-sorts, re-filters and
-  // even the group leaving the list for a while.
-  const [collapsed, setCollapsed] = React.useState<ReadonlySet<string | null>>(
-    () => new Set(defaultCollapsedGroups),
-  );
-  // Controlled: the consumer's keys are the saved set and `collapsed` goes unused.
-  const controlledSet = React.useMemo(
-    () => (collapsedGroups ? new Set(collapsedGroups) : undefined),
-    [collapsedGroups],
-  );
-  // While a search is active every match shows, collapsed or not: the saved set
-  // is set aside and the toggles rest until it ends. A collapse made mid-search
-  // would hide a match the consumer cannot see, and its select-all with it.
-  const searching = query.trim() !== "" || searchActive;
-  const groupId = React.useId();
-
-  // Resolved align per column: the consumer's `align` always wins. Otherwise only
-  // a PLAIN numeric column — a number value with NO custom `render` — auto-aligns
-  // right + sizes tight. A column with a `render` is presentation-controlled by
-  // the consumer, so it's never auto-aligned: a numeric value shown as stars,
-  // a badge, or a chip must keep the default left alignment (this is the bug
-  // where a "Rating" column rendered as stars had its header flipped right).
-  // Used for header/cell alignment, tight track sizing, and export.
-  const aligns = React.useMemo<("left" | "right")[]>(
-    () => columns.map((c) => c.align ?? (!c.render && isNumericColumn(c, rows) ? "right" : "left")),
-    [columns, rows],
-  );
-  const grid = React.useMemo(() => columns.map((c, i) => track(c, aligns[i])).join(" "), [columns, aligns]);
-  const colByKey = React.useMemo(() => Object.fromEntries(columns.map((c) => [c.key, c])), [columns]);
-
-  // Sticky identity columns: cumulative left offset per sticky column, and the
-  // index of the last one (which carries the divider to the scrolling body).
-  const { stickyLeft, lastStickyIndex } = React.useMemo(() => {
-    let acc = 0;
-    let last = -1;
-    const lefts = columns.map((c) => {
-      if (!c.sticky) return undefined as number | undefined;
-      const left = Number.isNaN(acc) ? undefined : acc;
-      acc = typeof c.width === "number" ? acc + c.width : NaN;
-      return left;
-    });
-    lefts.forEach((l, i) => {
-      if (l !== undefined) last = i;
-    });
-    return { stickyLeft: lefts, lastStickyIndex: last };
-  }, [columns]);
-  const hasSticky = lastStickyIndex >= 0;
-
-  // Wrap a cell's classes with left-sticky positioning when its column is
-  // sticky. Callers supply their own z + background in `base` (header sits
-  // above body). The last sticky column carries a right-edge treatment: a
-  // resting hairline, deepening to a soft shadow once content scrolls under it
-  // (edges.left) — so partial cells at the frozen boundary read as sliding
-  // *under* the frozen block, not floating broken.
-  const stickyCell = (i: number, base: string): { className: string; style?: React.CSSProperties } => {
-    if (stickyLeft[i] === undefined) return { className: base };
-    const style: React.CSSProperties = { left: stickyLeft[i] };
-    // Only mark the frozen edge once content is actually scrolled under it —
-    // at rest the frozen column looks like any other (no stray vertical line,
-    // since the table has no column dividers). While scrolled: hairline + soft
-    // shadow so partial cells read as sliding under.
-    if (i === lastStickyIndex && edges.left) {
-      style.boxShadow = "1px 0 0 0 var(--border), 8px 0 10px -6px rgb(0 0 0 / 0.22)";
-    }
-    return { className: cn(base, "sticky"), style };
-  };
-
-  const searchCols = React.useMemo(
-    () => (searchKeys ? columns.filter((c) => searchKeys.includes(c.key)) : columns),
-    [columns, searchKeys],
-  );
-
-  // 1) search
-  const searched = React.useMemo(() => {
-    const q = query.trim().toLowerCase();
-    if (!q) return rows;
-    return rows.filter((row) =>
-      searchCols.some((c) => {
-        const v = accessor(c, row);
-        return v != null && String(v).toLowerCase().includes(q);
-      }),
-    );
-  }, [rows, searchCols, query]);
-
-  // 2) facet filters
-  const faceted = React.useMemo(() => {
-    if (!filters || filters.length === 0) return searched;
-    return searched.filter((r) => rowMatchesFilters(r, filters, filterValues));
-  }, [searched, filters, filterValues]);
-
-  // tab counts computed over the search + facet set (so they reflect current filters)
-  const tabCounts = React.useMemo(() => {
-    const out: Record<string, number> = {};
-    if (tabs) for (const t of tabs) out[t.key] = t.filter ? faceted.filter(t.filter).length : faceted.length;
-    return out;
-  }, [tabs, faceted]);
-
-  // 3) active tab
-  const tabbed = React.useMemo(() => {
-    const t = tabs?.find((x) => x.key === activeTab);
-    return t?.filter ? faceted.filter(t.filter) : faceted;
-  }, [faceted, tabs, activeTab]);
-
-  // 4) sort
-  const sorted = React.useMemo(() => {
-    if (!sort) return tabbed;
-    const col = colByKey[sort.key];
-    if (!col) return tabbed;
-    const dir = sort.order === "asc" ? 1 : -1;
-    return [...tabbed].sort((a, b) => {
-      const av = accessor(col, a);
-      const bv = accessor(col, b);
-      if (av == null && bv == null) return 0;
-      if (av == null) return 1;
-      if (bv == null) return -1;
-      if (typeof av === "number" && typeof bv === "number") return (av - bv) * dir;
-      return String(av).localeCompare(String(bv), undefined, { numeric: true }) * dir;
-    });
-  }, [tabbed, sort, colByKey]);
-
-  // 5) group — header + row items over the sorted rows. Null without `groupBy`,
-  // so the flat table never builds this list and renders straight from `sorted`.
-  const shownCollapsed = collapsedFor(searching, controlledSet ?? collapsed, NO_GROUPS);
-  const listItems = React.useMemo(
-    () => (groupBy ? groupItems(sorted, groupBy, shownCollapsed, compareGroups) : null),
-    [sorted, groupBy, shownCollapsed, compareGroups],
-  );
+}: {
+  model: DataTableModel<Row>;
+  toolbar: "internal" | "external";
+  className?: string;
+}) {
+  const p = m.props;
+  const rowHeight = p.rowHeight ?? 44;
+  const groupHeaderHeight = p.groupHeaderHeight ?? 36;
+  const maxHeight = p.maxHeight ?? "60vh";
+  const mobileLayout = p.mobileLayout ?? "cards";
+  const loading = p.loading ?? false;
+  const unit = p.unit ?? "rows";
+  const emptyLabel = p.emptyLabel ?? "No results.";
+  const { listItems, sorted, visible, totals } = m;
+  const lead = m.selectable ? 1 : 0;
   const count = listItems ? listItems.length : sorted.length;
+  const grouped = listItems != null;
+  const groupId = React.useId();
+  const showTotals = totals != null && !loading && sorted.length > 0;
+  const bulk = m.selectable && m.selectedRows.length > 0;
 
   // The virtualizer rebuilds its measurements only when `count` or `getItemKey`
   // changes. A re-sort can move headers without changing the count, so the key
@@ -463,8 +113,8 @@ export function DataTable<Row>({
   // when a height changes (`estimateSize` alone wouldn't). `getRowId` is read
   // through a ref instead: an inline lambda is new every render and would
   // rebuild every offset each time. (The row's React key below calls it direct.)
-  const getRowIdRef = React.useRef(getRowId);
-  getRowIdRef.current = getRowId;
+  const getRowIdRef = React.useRef(p.getRowId);
+  getRowIdRef.current = p.getRowId;
   const getItemKey = React.useCallback(
     (i: number): string | number => {
       const item = listItems?.[i];
@@ -486,369 +136,577 @@ export function DataTable<Row>({
   });
   const items = virt.getVirtualItems();
 
-  // Edge-fade: signal horizontal overflow (the Linear pattern) — only the edges
-  // that can actually scroll show a soft fade.
-  const [edges, setEdges] = React.useState({ left: false, right: false });
+  // Scroll edges: the side fades (only where the table can scroll), the frozen
+  // column's shadow, and the header's once rows pass under it. Set only on a
+  // change, so scrolling doesn't re-render the table every frame.
+  const [edges, setEdges] = React.useState({ left: false, right: false, top: false });
   const updateEdges = React.useCallback(() => {
     const el = parentRef.current;
     if (!el) return;
-    setEdges({
-      left: el.scrollLeft > 1,
-      right: el.scrollLeft < el.scrollWidth - el.clientWidth - 1,
-    });
+    const left = el.scrollLeft > 1;
+    const right = el.scrollLeft < el.scrollWidth - el.clientWidth - 1;
+    const top = el.scrollTop > 0;
+    setEdges((prev) => (prev.left === left && prev.right === right && prev.top === top ? prev : { left, right, top }));
   }, []);
-  React.useEffect(updateEdges, [updateEdges, grid, minWidth, loading, count]);
+  React.useEffect(updateEdges, [updateEdges, m.template.template, p.minWidth, loading, count]);
+  // The card resizing (a sidebar collapsing, the window) changes what can scroll.
+  React.useEffect(() => {
+    const el = parentRef.current;
+    if (!el || typeof ResizeObserver === "undefined") return;
+    const ro = new ResizeObserver(updateEdges);
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, [updateEdges]);
 
-  const toggleGroup = React.useCallback(
-    (key: string | null) => {
-      if (searching) return;
-      if (controlledSet) onCollapsedGroupsChange?.([...toggled(controlledSet, key)]);
-      else setCollapsed((prev) => toggled(prev, key));
-    },
-    [searching, controlledSet, onCollapsedGroupsChange],
-  );
+  const pad = (cell: number) => edgePadding(cell, m.cellCount).className;
 
-  const toggleSort = (key: string) =>
-    setSort((prev) => {
-      if (prev?.key !== key) return { key, order: "asc" };
-      if (prev.order === "asc") return { key, order: "desc" };
-      return null;
-    });
-
-  const [menuOpen, setMenuOpen] = React.useState(false);
-  const runExport = (kind: "csv" | "pdf") => {
-    setMenuOpen(false);
-    const headers = columns.map((c) => c.header);
-    const align = aligns;
-    const data = sorted.map((row) => columns.map((c) => accessor(c, row)));
-    if (kind === "csv") downloadCsv(headers, data, exportFilename ?? "export");
-    else void downloadPdf(headers, data, { filename: exportFilename ?? "export", title: pdfTitle, subtitle: pdfSubtitle, align });
+  // Left-sticky positioning for a pinned cell. Callers supply z + background.
+  // The last pinned cell carries the frozen edge: a hairline at rest, and a
+  // soft shadow once content scrolls under it, so partial cells read as
+  // sliding *under* the frozen block.
+  const stickyCell = (cell: number, base: string): { className: string; style?: React.CSSProperties } => {
+    const left = m.stickyLeft[cell];
+    if (left === undefined) return { className: base };
+    const style: React.CSSProperties = { left };
+    if (cell === m.lastSticky) {
+      style.boxShadow = edges.left
+        ? "1px 0 0 0 var(--border), 8px 0 10px -6px rgb(0 0 0 / 0.22)"
+        : "1px 0 0 0 var(--border)";
+    }
+    return { className: cn(base, "sticky"), style };
   };
 
-  const showToolbar = searchable || filters?.length || toolbarActions || summary || exportFilename;
+  // Escape clears the selection while focus is in the table. Portalled menus
+  // (a bulk action's own) bubble through React, not the DOM: skip those.
+  const rootRef = React.useRef<HTMLDivElement>(null);
+  const onKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key !== "Escape" || e.defaultPrevented || !m.selectable || m.selectedRows.length === 0) return;
+    if (!rootRef.current?.contains(e.target as Node)) return;
+    m.clearSelection();
+  };
 
-  return (
-    <div className={cn("flex flex-col overflow-hidden rounded-lg bg-card shadow-card", className)}>
-      {showToolbar && (
-        <div className="flex flex-wrap items-center gap-2 border-b border-border p-3">
-          {searchable && (
-            <div className="relative min-w-[200px] max-w-[320px] flex-1">
-              <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground/70">
-                <IconSearch />
-              </span>
-              <input
-                value={query}
-                onChange={(e) => setQuery(e.target.value)}
-                placeholder={searchPlaceholder}
-                aria-label={searchPlaceholder}
-                className="h-11 sm:h-9 w-full rounded-md border border-border bg-card pl-9 pr-3 text-base sm:text-[13px] text-foreground placeholder:text-muted-foreground/70 focus:outline-none focus:ring-1 focus:ring-foreground/20"
-              />
-            </div>
+  // Shift on the click that toggles a row's checkbox (the Checkbox reports only on/off).
+  const shiftRef = React.useRef(false);
+  const rowLabel = (row: Row) => (p.getRowLabel ? p.getRowLabel(row) : String(accessor(visible[0]?.col ?? p.columns[0], row) ?? "row"));
+
+  const gridStyle = { gridTemplateColumns: "var(--dt-cols)" } as const;
+  const anySticky = m.lastSticky >= 0;
+
+  /* ---- header ---- */
+
+  const headerCells = visible.map((rc, j) => {
+    const cell = j + lead;
+    const c = rc.col;
+    const right = rc.align === "right";
+    const active = m.sort?.key === rc.key;
+    const order = active ? m.sort!.order : rc.first;
+    const label = (
+      <span className={cn(c.description != null && "underline decoration-dotted underline-offset-4")}>{c.header}</span>
+    );
+    const arrow = (
+      <IconArrow
+        dir={order}
+        className={cn(
+          "transition-opacity duration-150",
+          active ? "opacity-100" : "opacity-0 group-hover/sort:opacity-100 group-focus-visible/sort:opacity-100",
+        )}
+      />
+    );
+    const suffix = c.headerSuffix;
+    const sc = stickyCell(cell, cn("flex h-full min-w-0 items-center whitespace-nowrap", c.sticky && "z-20 bg-muted", suffix != null && pad(cell), suffix != null && right && "justify-end"));
+    let body: React.ReactNode;
+    if (rc.sortable) {
+      const button = (
+        <button
+          type="button"
+          onClick={() => m.toggleSort(rc.key)}
+          tabIndex={bulk ? -1 : undefined}
+          className={cn(
+            "group/sort flex h-full min-w-0 items-center outline-none transition-colors hover:bg-accent/60",
+            // The whole cell is the button; with a suffix beside it, just the label.
+            suffix == null && cn("w-full", pad(cell)),
+            right && "justify-end",
+            active && "text-foreground",
           )}
-          {filters?.length ? (
-            <FilterButton defs={filters} values={filterValues} onChange={setFilterValues} />
-          ) : null}
-          {toolbarActions}
-          {(summary || exportFilename) && (
-            <div className="ml-auto flex items-center gap-3">
-              {summary}
-              {exportFilename && (
-                <div className="relative">
-                  <button
-                    type="button"
-                    onClick={() => setMenuOpen((v) => !v)}
-                    aria-expanded={menuOpen}
-                    aria-haspopup="menu"
-                    className={cn(dataTableToolbarButton, menuOpen && "border-foreground/20")}
-                  >
-                    <IconDownload />
-                    Export
-                    <IconChevronDown className={cn("transition-transform", menuOpen && "rotate-180")} />
-                  </button>
-                  {menuOpen && (
-                    <>
-                      <div className="fixed inset-0 z-40" aria-hidden onClick={() => setMenuOpen(false)} />
-                      <div role="menu" className="absolute right-0 z-50 mt-1 min-w-[160px] rounded-lg border border-border bg-popover p-1 shadow-lg">
-                        <button type="button" role="menuitem" className={menuRow} onClick={() => runExport("csv")}>Export CSV</button>
-                        <button type="button" role="menuitem" className={menuRow} onClick={() => runExport("pdf")}>Export PDF</button>
-                      </div>
-                    </>
-                  )}
-                </div>
+        >
+          <span className="-mx-1 inline-flex h-6 items-center gap-1 rounded-[4px] px-1 group-focus-visible/sort:ring-2 group-focus-visible/sort:ring-ring">
+            {right && arrow}
+            {label}
+            {!right && arrow}
+          </span>
+        </button>
+      );
+      body = c.description != null ? <Tooltip content={c.description}>{button}</Tooltip> : button;
+    } else {
+      const text =
+        c.description != null ? (
+          <Tooltip content={c.description}>
+            <span tabIndex={0} className="rounded-[4px] outline-none focus-visible:ring-2 focus-visible:ring-ring">
+              {label}
+            </span>
+          </Tooltip>
+        ) : (
+          label
+        );
+      body = suffix == null ? <div className={cn("flex h-full w-full items-center", pad(cell), right && "justify-end")}>{text}</div> : text;
+    }
+    return (
+      <div
+        key={rc.key}
+        role="columnheader"
+        aria-sort={!rc.sortable ? undefined : active ? (m.sort!.order === "asc" ? "ascending" : "descending") : "none"}
+        className={sc.className}
+        style={sc.style}
+      >
+        {body}
+        {suffix}
+      </div>
+    );
+  });
+
+  /* ---- rows ---- */
+
+  const renderGroupRow = (vi: { index: number; key: React.Key; start: number }, group: Extract<DataTableGroupItem<Row>, { kind: "group" }>) => {
+    const g = group.group;
+    const label = p.getGroupLabel ? p.getGroupLabel(g) : (g.key ?? p.ungroupedLabel ?? "Other");
+    const labelId = `${groupId}-${vi.index}`;
+    const contentId = `${labelId}-content`;
+    return (
+      <div
+        key={vi.key}
+        role="row"
+        aria-rowindex={vi.index + 2}
+        // Anywhere on the band toggles, except controls inside it and
+        // a drag-selection that ends here (that still fires a click).
+        onClick={(e) => {
+          if (window.getSelection()?.toString() || (e.target as HTMLElement).closest(GROUP_HEADER_SKIP)) return;
+          m.toggleGroup(g.key);
+        }}
+        className={cn(
+          "absolute left-0 top-0 grid w-full border-b border-border bg-muted/60 text-[13px] transition-colors",
+          !m.searching && "cursor-pointer hover:bg-muted",
+        )}
+        style={{ height: groupHeaderHeight, transform: `translateY(${vi.start}px)`, ...gridStyle }}
+      >
+        <div role="cell" aria-colspan={m.cellCount} className="min-w-0" style={{ gridColumn: "1 / -1" }}>
+          {/* `sticky left-0` keeps the label in view while the grid scrolls
+              sideways. It clips itself (overflow-hidden) — never an ancestor,
+              or that ancestor would become the sticky scroll container. Capped
+              at the scroll area's visible width (100cqw), not the grid's:
+              `max-w-full` would let a long header run off the right edge.
+              `pr-8` clears the 32px right-edge fade. The chevron sits on the
+              16px edge and the label at 36, over the rows' first column. */}
+          <div className="sticky left-0 flex h-full w-max items-center gap-0.5 overflow-hidden pl-4 pr-8" style={{ maxWidth: "100cqw" }}>
+            <button
+              type="button"
+              onClick={() => m.toggleGroup(g.key)}
+              disabled={m.searching}
+              aria-expanded={!g.collapsed}
+              // The default header's visible label names the button (one
+              // reading, not two); a custom header has none to point at, so
+              // `getGroupLabel` names it and the custom content describes it.
+              aria-labelledby={p.renderGroupHeader ? undefined : labelId}
+              aria-label={p.renderGroupHeader ? label : undefined}
+              aria-describedby={p.renderGroupHeader ? contentId : undefined}
+              className="-ml-1.5 grid size-6 shrink-0 place-items-center rounded-md text-muted-foreground transition-colors hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50"
+            >
+              <IconChevronDown className={cn("motion-safe:transition-transform motion-safe:duration-150 motion-safe:ease-[cubic-bezier(0.23,1,0.32,1)]", g.collapsed && "-rotate-90")} />
+            </button>
+            <div id={p.renderGroupHeader ? contentId : undefined} className="flex min-w-0 items-center gap-2 whitespace-nowrap">
+              {p.renderGroupHeader ? (
+                p.renderGroupHeader(g)
+              ) : (
+                <>
+                  <span id={labelId} className="font-medium text-foreground">{label}</span>
+                  {/* A real space: flex drops it from the layout, but text
+                      readers would run "PO-1" and "3" together without it. */}
+                  {" "}
+                  <span className="tabular-nums text-muted-foreground">{g.rows.length.toLocaleString()}</span>
+                </>
               )}
             </div>
-          )}
-        </div>
-      )}
-
-      {tabs?.length ? (
-        <div className="flex items-center overflow-x-auto border-b border-border px-3 py-2">
-          <SegmentedControl
-            aria-label="View"
-            size="sm"
-            value={activeTab}
-            onValueChange={setActiveTab}
-            items={tabs.map((t) => ({
-              value: t.key,
-              label: t.label,
-              // count: undefined → auto; a number → override; null → hidden
-              // (?? would wrongly treat null as "auto").
-              count: t.count === null ? undefined : (t.count ?? tabCounts[t.key]),
-            }))}
-          />
-        </div>
-      ) : null}
-
-      {filters?.length ? (
-        <ActiveFilterBar defs={filters} values={filterValues} onChange={setFilterValues} />
-      ) : null}
-
-      {mobileLayout === "cards" && <MobileRows columns={columns} rows={sorted} getRowId={getRowId} getRowHref={getRowHref} getRowLabel={getRowLabel} onRowClick={onRowClick} loading={loading} emptyLabel={emptyLabel} sort={sort} onSort={toggleSort} resetKey={JSON.stringify([query, sort, filterValues, activeTab])} />}
-      <div className={cn("relative", mobileLayout === "cards" && "hidden md:block")}>
-      {/* Grouped, the scroll area is a size container: a group header's sticky
-          content caps at its visible width (see below). Left off when flat. */}
-      <div ref={parentRef} onScroll={updateEdges} aria-busy={loading} className="overflow-auto" style={{ maxHeight, containerType: groupBy ? "inline-size" : undefined }}>
-        <div style={minWidth ? { minWidth } : undefined}>
-          {/* header */}
-          <div
-            className="sticky top-0 z-20 grid w-full min-w-min border-b border-border bg-muted/95 text-[12px] font-medium text-muted-foreground backdrop-blur"
-            style={{ gridTemplateColumns: grid }}
-          >
-            {columns.map((c, i) => {
-              const sortable = c.sortable ?? true;
-              const active = sort?.key === c.key;
-              const sc = stickyCell(
-                i,
-                cn("px-3 py-2.5", aligns[i] === "right" && "text-right", c.sticky && "z-20 bg-muted"),
-              );
-              return (
-                <div key={c.key} className={sc.className} style={sc.style}>
-                  {sortable ? (
-                    <button
-                      type="button"
-                      onClick={() => toggleSort(c.key)}
-                      aria-label={`Sort by ${c.header}`}
-                      className={cn(
-                        "inline-flex items-center gap-1 whitespace-nowrap transition hover:text-foreground",
-                        aligns[i] === "right" && "flex-row-reverse",
-                        active && "text-foreground",
-                      )}
-                    >
-                      {c.header}
-                      <IconSort dir={active ? sort!.order : null} />
-                    </button>
-                  ) : (
-                    <span className="whitespace-nowrap">{c.header}</span>
-                  )}
-                  {c.headerSuffix}
-                </div>
-              );
-            })}
           </div>
+        </div>
+      </div>
+    );
+  };
 
-          {/* virtualized rows */}
-          {loading ? (
-            <div aria-hidden>
-              {Array.from({ length: 8 }).map((_, r) => (
-                <div
-                  key={r}
-                  className="grid w-full min-w-min items-center border-b border-border"
-                  style={{ height: rowHeight, gridTemplateColumns: grid }}
+  // The row's hover / selected tint on an opaque pinned cell (it masks the row's own).
+  const tint = (selected: boolean) => (
+    <span
+      aria-hidden
+      className={cn(
+        "pointer-events-none absolute inset-0 -z-10 transition-opacity duration-150",
+        selected ? "bg-accent/50" : "bg-accent/30 opacity-0 group-hover:opacity-100",
+      )}
+    />
+  );
+
+  const renderRow = (vi: { index: number; key: React.Key; start: number }, row: Row, rowIndex: number) => {
+    const href = p.getRowHref?.(row);
+    const selected = m.selectable && m.isSelected(row);
+    return (
+      <div
+        key={p.getRowId ? p.getRowId(row, rowIndex) : vi.key}
+        role="row"
+        aria-rowindex={vi.index + 2}
+        aria-selected={m.selectable ? selected : undefined}
+        onClick={p.onRowClick ? (e) => { if (!(e.target as HTMLElement).closest(ROW_CLICK_SKIP)) p.onRowClick!(row); } : undefined}
+        className={cn(
+          "group absolute left-0 top-0 grid w-full items-center border-b border-border text-[13px] text-foreground hover:bg-accent/30",
+          selected && "bg-accent/50 hover:bg-accent/50",
+          (p.onRowClick || href) && "cursor-pointer",
+        )}
+        style={{ height: rowHeight, transform: `translateY(${vi.start}px)`, ...gridStyle }}
+      >
+        {/* Stretched row link — a SIBLING of the cells (never nest
+            anchors). z ladder within the row: overlay z-[1] <
+            TableLink/CopyButton/checkbox z-[2] < sticky cells z-10 — links
+            beat the overlay for clicks, sticky cells keep painting
+            over BOTH so scrolled content never bleeds past the
+            frozen edge. (The pinned area therefore doesn't row-
+            navigate — by convention the identity cell there is
+            itself a TableLink.) */}
+        {href && (
+          <a
+            href={href}
+            aria-label={p.getRowLabel ? p.getRowLabel(row) : String(accessor(p.columns[0], row) ?? "Open row")}
+            className="absolute inset-0 z-[1] focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-inset focus-visible:ring-foreground/30"
+          />
+        )}
+        {m.selectable &&
+          (() => {
+            const sc = stickyCell(0, cn("relative z-[2] flex items-center self-stretch pl-4", anySticky && "z-10 bg-card"));
+            return (
+              <div
+                role="cell"
+                className={sc.className}
+                style={sc.style}
+                // Shift-click selects a range; keep it from selecting page text too.
+                onMouseDown={(e) => {
+                  if (e.shiftKey) e.preventDefault();
+                }}
+                onClickCapture={(e) => {
+                  shiftRef.current = e.shiftKey;
+                }}
+              >
+                {anySticky && tint(selected)}
+                <SelectionCheckbox
+                  state={selected ? "all" : "none"}
+                  onCheckedChange={(on) => m.toggleRow(row, on, shiftRef.current)}
+                  label={`Select ${rowLabel(row)}`}
+                />
+              </div>
+            );
+          })()}
+        {visible.map((rc, j) => {
+          const cell = j + lead;
+          const c = rc.col;
+          const raw = c.render ? c.render(row) : cellText(rc, accessor(c, row));
+          const content = raw == null || raw === "" ? DASH : raw;
+          const right = rc.align === "right";
+          const indent = grouped && !m.selectable && j === 0 && "pl-9";
+          if (c.sticky) {
+            // A sticky cell fills the FULL row height (self-stretch): the row
+            // centres cells to content height, so an opaque cell only as tall
+            // as its text would let a taller badge behind it peek out. Flex
+            // re-centres the content; the -z-10 tint carries hover/selected.
+            const sc = stickyCell(
+              cell,
+              cn(
+                "z-10 flex items-center self-stretch overflow-hidden bg-card",
+                pad(cell),
+                indent,
+                j === 0 && "font-medium",
+                right && "justify-end tabular-nums",
+                c.className,
+              ),
+            );
+            return (
+              <div key={c.key} role="cell" className={sc.className} style={sc.style}>
+                {tint(selected)}
+                {href && <a href={href} tabIndex={-1} aria-hidden className="absolute inset-0 z-[1]" />}
+                <span className="min-w-0 truncate">{content}</span>
+              </div>
+            );
+          }
+          return (
+            <div
+              key={c.key}
+              role="cell"
+              className={cn(
+                // `min-w-0` lets the cell shrink to its track instead of its
+                // content; `overflow-hidden` clips tall custom content to the
+                // row. Content never breaks the grid.
+                "min-w-0 overflow-hidden",
+                pad(cell),
+                indent,
+                j === 0 && "font-medium",
+                right ? "whitespace-nowrap text-right tabular-nums" : "truncate",
+                c.className,
+              )}
+            >
+              {content}
+            </div>
+          );
+        })}
+      </div>
+    );
+  };
+
+  /* ---- the card ---- */
+
+  const fadeInset = { top: HEADER_HEIGHT, bottom: showTotals ? TOTALS_HEIGHT : 0 };
+  const selectedCount = m.selectedRows.length;
+  const bulkContent =
+    typeof p.bulkActions === "function" ? p.bulkActions(m.selectedRows, { clear: m.clearSelection }) : p.bulkActions;
+
+  return (
+    <div ref={rootRef} onKeyDown={onKeyDown} className={cn("flex flex-col overflow-hidden rounded-lg bg-card shadow-card", className)}>
+      {toolbar === "internal" && <DataTableToolbar />}
+
+      {p.filters?.length ? <ActiveFilterBar defs={p.filters} values={m.filterValues} onChange={m.setFilterValues} /> : null}
+
+      {mobileLayout === "cards" && (
+        <MobileRows
+          columns={p.columns}
+          rows={sorted}
+          getRowId={p.getRowId}
+          getRowHref={p.getRowHref}
+          getRowLabel={p.getRowLabel}
+          onRowClick={p.onRowClick}
+          loading={loading}
+          emptyLabel={emptyLabel}
+          sort={m.sort}
+          onSort={m.toggleSort}
+          resetKey={JSON.stringify([m.query, m.sort, m.filterValues, m.activeTab])}
+        />
+      )}
+      <div className={cn("relative", mobileLayout === "cards" && "hidden md:block")}>
+        {/* The scroll area publishes the one column template (--dt-cols) every
+            row reads. Grouped or selectable, it is also a size container: a
+            group label and the bulk bar cap at its visible width (100cqw). */}
+        <div
+          ref={parentRef}
+          onScroll={updateEdges}
+          aria-busy={loading}
+          className="overflow-auto"
+          style={{
+            maxHeight,
+            containerType: grouped || m.selectable ? "inline-size" : undefined,
+            ["--dt-cols" as string]: m.template.template,
+          }}
+        >
+          <div style={{ minWidth: Math.max(p.minWidth ?? 0, m.template.minWidth) }}>
+            {bulk && (
+              // Takes the header's place (same 36px band, same spot) without
+              // moving it: the column headers stay in the table for screen
+              // readers, their buttons out of the tab order meanwhile.
+              <div
+                role="toolbar"
+                aria-label="Bulk actions"
+                className="sticky left-0 top-0 z-30 -mb-9 flex h-9 items-center gap-3 border-b border-border bg-muted pl-4 pr-3"
+                style={{ width: "100cqw" }}
+              >
+                <SelectionCheckbox state={m.headerCheck} onCheckedChange={m.toggleAllInView} label={`Select all ${unit}`} />
+                <span className="whitespace-nowrap text-[13px] font-medium tabular-nums text-foreground">
+                  {selectedCount.toLocaleString()} selected
+                </span>
+                {bulkContent != null && <div className="flex min-w-0 items-center gap-1.5">{bulkContent}</div>}
+                <button
+                  type="button"
+                  onClick={m.clearSelection}
+                  className="ml-auto inline-flex h-7 shrink-0 items-center rounded-md px-2 text-[13px] text-muted-foreground transition-colors hover:bg-accent hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                 >
-                  {columns.map((c, i) => (
-                    <div key={c.key} className={cn("px-3", aligns[i] === "right" && "flex justify-end")}>
-                      <div
-                        className="h-3 animate-pulse rounded bg-muted"
-                        style={{ width: SKELETON_WIDTHS[(r + i) % SKELETON_WIDTHS.length] }}
-                      />
+                  Clear
+                </button>
+              </div>
+            )}
+            <div
+              role="table"
+              aria-label={p["aria-label"]}
+              aria-rowcount={loading ? -1 : 1 + count + (showTotals ? 1 : 0)}
+              aria-colcount={m.cellCount}
+            >
+              <div
+                role="row"
+                aria-rowindex={1}
+                className={cn("sticky top-0 z-20 grid w-full transition-shadow duration-150", tableHeaderRow)}
+                style={{ ...gridStyle, boxShadow: edges.top ? HEADER_SCROLLED : undefined }}
+              >
+                {m.selectable &&
+                  (() => {
+                    const sc = stickyCell(0, cn("flex items-center pl-4", anySticky && "z-20 bg-muted"));
+                    return (
+                      <div role="columnheader" className={sc.className} style={sc.style}>
+                        <SelectionCheckbox
+                          state={m.headerCheck}
+                          onCheckedChange={m.toggleAllInView}
+                          label={`Select all ${unit}`}
+                          tabIndex={bulk ? -1 : undefined}
+                          disabled={loading || sorted.length === 0}
+                        />
+                      </div>
+                    );
+                  })()}
+                {headerCells}
+              </div>
+
+              {loading ? (
+                <div aria-hidden>
+                  {Array.from({ length: 8 }).map((_, r) => (
+                    <div key={r} className="grid w-full items-center border-b border-border" style={{ height: rowHeight, ...gridStyle }}>
+                      {m.selectable && <div />}
+                      {visible.map((rc, j) => (
+                        <div key={rc.key} className={cn(pad(j + lead), rc.align === "right" && "flex justify-end")}>
+                          <Skeleton height={12} width={SKELETON_WIDTHS[(r + j) % SKELETON_WIDTHS.length]} />
+                        </div>
+                      ))}
                     </div>
                   ))}
                 </div>
-              ))}
-            </div>
-          ) : sorted.length === 0 ? (
-            <div className="px-3 py-12 text-center text-[13px] text-muted-foreground">{emptyLabel}</div>
-          ) : (
-            <div style={{ height: virt.getTotalSize(), position: "relative" }}>
-              {items.map((vi) => {
-                const item = listItems?.[vi.index];
-                if (item?.kind === "group") {
-                  const { group } = item;
-                  const label = getGroupLabel ? getGroupLabel(group) : (group.key ?? ungroupedLabel);
-                  const labelId = `${groupId}-${vi.index}`;
-                  const contentId = `${labelId}-content`;
-                  return (
-                    <div
-                      key={vi.key}
-                      // Anywhere on the band toggles, except controls inside it and
-                      // a drag-selection that ends here (that still fires a click).
-                      onClick={(e) => {
-                        if (window.getSelection()?.toString() || (e.target as HTMLElement).closest(GROUP_HEADER_SKIP)) return;
-                        toggleGroup(group.key);
-                      }}
-                      className={cn(
-                        "absolute left-0 top-0 grid w-full min-w-min border-b border-border bg-muted text-[13px] transition-colors",
-                        !searching && "cursor-pointer hover:bg-secondary",
-                      )}
-                      style={{ height: groupHeaderHeight, transform: `translateY(${vi.start}px)`, gridTemplateColumns: grid }}
-                    >
-                      <div className="min-w-0" style={{ gridColumn: "1 / -1" }}>
-                        {/* `sticky left-0` keeps the label in view while the grid scrolls
-                            sideways. It clips itself (overflow-hidden) — never an ancestor,
-                            or that ancestor would become the sticky scroll container. Capped
-                            at the scroll area's visible width (100cqw), not the grid's:
-                            `max-w-full` would let a long header run off the right edge.
-                            `pr-8` clears the 32px right-edge fade, so the end of a
-                            capped header (often the due date) never sits under it. */}
-                        <div className="sticky left-0 flex h-full w-max items-center gap-1 overflow-hidden pl-3 pr-8" style={{ maxWidth: "100cqw" }}>
-                          <button
-                            type="button"
-                            onClick={() => toggleGroup(group.key)}
-                            disabled={searching}
-                            aria-expanded={!group.collapsed}
-                            // The default header's visible label names the button (one
-                            // reading, not two); a custom header has none to point at, so
-                            // `getGroupLabel` names it and the custom content describes it.
-                            aria-labelledby={renderGroupHeader ? undefined : labelId}
-                            aria-label={renderGroupHeader ? label : undefined}
-                            aria-describedby={renderGroupHeader ? contentId : undefined}
-                            className="-ml-1.5 grid size-6 shrink-0 place-items-center rounded-md text-muted-foreground transition-colors hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50"
-                          >
-                            <IconChevronDown className={cn("motion-safe:transition-transform motion-safe:duration-150 motion-safe:ease-[cubic-bezier(0.23,1,0.32,1)]", group.collapsed && "-rotate-90")} />
-                          </button>
-                          <div id={renderGroupHeader ? contentId : undefined} className="flex min-w-0 items-center gap-2 whitespace-nowrap">
-                            {renderGroupHeader ? (
-                              renderGroupHeader(group)
-                            ) : (
-                              <>
-                                <span id={labelId} className="font-medium text-foreground">{label}</span>
-                                {/* A real space: flex drops it from the layout, but text
-                                    readers would run "PO-1" and "3" together without it. */}
-                                {" "}
-                                <span className="tabular-nums text-muted-foreground">{group.rows.length.toLocaleString()}</span>
-                              </>
-                            )}
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-                  );
-                }
-                const row = item ? item.row : sorted[vi.index];
-                // Grouped, vi.index counts headers too; getRowId gets the sorted-list index, as flat.
-                const rowIndex = item ? item.index : vi.index;
-                const href = getRowHref?.(row);
-                return (
-                  <div
-                    key={getRowId ? getRowId(row, rowIndex) : vi.key}
-                    onClick={onRowClick ? (e) => { if (!(e.target as HTMLElement).closest("a,button,input,select,textarea,[role=button]")) onRowClick(row); } : undefined}
-                    className={cn(
-                      "group absolute left-0 top-0 grid w-full min-w-min w-full items-center border-b border-border text-[13px] hover:bg-accent/30",
-                      (onRowClick || href) && "cursor-pointer",
-                    )}
-                    style={{ height: rowHeight, transform: `translateY(${vi.start}px)`, gridTemplateColumns: grid }}
-                  >
-                    {/* Stretched row link — a SIBLING of the cells (never nest
-                        anchors). z ladder within the row: overlay z-[1] <
-                        TableLink/CopyButton z-[2] < sticky cells z-10 — links
-                        beat the overlay for clicks, sticky cells keep painting
-                        over BOTH so scrolled content never bleeds past the
-                        frozen edge. (The pinned area therefore doesn't row-
-                        navigate — by convention the identity cell there is
-                        itself a TableLink.) */}
-                    {href && (
-                      <a
-                        href={href}
-                        aria-label={getRowLabel ? getRowLabel(row) : String(accessor(columns[0], row) ?? "Open row")}
-                        className="absolute inset-0 z-[1] focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-inset focus-visible:ring-foreground/30"
-                      />
-                    )}
-                    {columns.map((c, i) => {
-                      const content = c.render ? c.render(row) : (accessor(c, row) as React.ReactNode);
-                      if (c.sticky) {
-                        // Sticky cell must fill the FULL row height (self-stretch)
-                        // — the row centres cells to content height, so an opaque
-                        // cell only as tall as its text lets a taller badge behind
-                        // it peek above/below. Flex re-centres the content; the
-                        // -z-10 overlay (full-height now) carries the row hover tint.
-                        const sc = stickyCell(
-                          i,
-                          cn(
-                            "z-10 flex items-center self-stretch overflow-hidden bg-card px-3",
-                            aligns[i] === "right" && "justify-end tabular-nums",
-                            c.className,
-                          ),
-                        );
-                        return (
-                          <div key={c.key} className={sc.className} style={sc.style}>
-                            <span
-                              aria-hidden
-                              className="pointer-events-none absolute inset-0 -z-10 bg-accent/30 opacity-0 transition-opacity duration-150 group-hover:opacity-100"
-                            />
-                            {href && <a href={href} tabIndex={-1} aria-hidden className="absolute inset-0 z-[1]" />}
-                            <span className="min-w-0 truncate">{content}</span>
-                          </div>
-                        );
-                      }
-                      return (
-                        <div
-                          key={c.key}
-                          className={cn(
-                            // `min-w-0` lets the cell shrink to its grid track instead of
-                            // its content — without it, a long value (or a custom multi-line
-                            // `render`) forces the track wider and shoves every later column.
-                            // `overflow-hidden` clips tall custom content to the row height so
-                            // it can't overlap the next row. Together: content NEVER breaks the
-                            // grid — it truncates/clips inside its own cell, whatever it is.
-                            "min-w-0 overflow-hidden px-3",
-                            // Numbers never truncate — nowrap + a max-content track keep every
-                            // digit; text ellipsizes past its track.
-                            aligns[i] === "right" ? "whitespace-nowrap text-right tabular-nums" : "min-w-0 truncate",
-                            c.className,
-                          )}
-                        >
-                          {content}
-                        </div>
-                      );
-                    })}
+              ) : sorted.length === 0 ? (
+                <div role="row">
+                  <div role="cell" aria-colspan={m.cellCount}>
+                    {p.emptyState ?? <EmptyState size="sm" title={emptyLabel} className="py-12" />}
                   </div>
-                );
-              })}
+                </div>
+              ) : (
+                <div role="rowgroup" style={{ height: virt.getTotalSize(), position: "relative" }}>
+                  {items.map((vi) => {
+                    const item = listItems?.[vi.index];
+                    if (item?.kind === "group") return renderGroupRow(vi, item);
+                    // Grouped, vi.index counts headers too; getRowId gets the sorted-list index, as flat.
+                    return item ? renderRow(vi, item.row, item.index) : renderRow(vi, sorted[vi.index], vi.index);
+                  })}
+                </div>
+              )}
+
+              {showTotals && (
+                <div
+                  role="row"
+                  aria-rowindex={count + 2}
+                  // -mt-px: its top hairline lands on the last row's, not under it.
+                  className="sticky bottom-0 z-20 -mt-px grid h-11 w-full items-center border-t border-border bg-muted text-[13px] font-semibold text-foreground"
+                  style={gridStyle}
+                >
+                  {m.selectable &&
+                    (() => {
+                      const sc = stickyCell(0, cn("self-stretch", anySticky && "z-10 bg-muted"));
+                      return <div role="cell" className={sc.className} style={sc.style} />;
+                    })()}
+                  {visible.map((rc, j) => {
+                    const cell = j + lead;
+                    const right = rc.align === "right";
+                    const content =
+                      j === m.totalLabelAt ? (p.totalsLabel ?? "Total") : rc.key in totals ? totalText(rc, totals[rc.key]) : null;
+                    const sc = stickyCell(
+                      cell,
+                      cn(
+                        "flex min-w-0 items-center self-stretch overflow-hidden whitespace-nowrap",
+                        pad(cell),
+                        right && "justify-end tabular-nums",
+                        rc.col.sticky && "z-10 bg-muted",
+                      ),
+                    );
+                    return (
+                      <div key={rc.key} role="cell" className={sc.className} style={sc.style}>
+                        {content != null && <span className="min-w-0 truncate">{content}</span>}
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
             </div>
-          )}
+          </div>
         </div>
-      </div>
-        {/* horizontal-overflow fades (Linear pattern). A pinned identity column
-            already anchors the left, so only fade left when nothing is pinned. */}
-        {!hasSticky && (
+        {/* Horizontal-overflow fades (Linear pattern), below the header and
+            above the totals. A pinned identity column already anchors the
+            left, so only fade left when nothing is pinned. */}
+        {!anySticky && (
           <div
             aria-hidden
             className={cn(
-              "pointer-events-none absolute inset-y-0 left-0 w-8 bg-gradient-to-r from-card to-transparent transition-opacity duration-150",
+              "pointer-events-none absolute left-0 w-8 bg-gradient-to-r from-card to-transparent transition-opacity duration-150",
               edges.left ? "opacity-100" : "opacity-0",
             )}
+            style={fadeInset}
           />
         )}
         <div
           aria-hidden
           className={cn(
-            "pointer-events-none absolute inset-y-0 right-0 w-8 bg-gradient-to-l from-card to-transparent transition-opacity duration-150",
+            "pointer-events-none absolute right-0 w-8 bg-gradient-to-l from-card to-transparent transition-opacity duration-150",
             edges.right ? "opacity-100" : "opacity-0",
           )}
+          style={fadeInset}
         />
       </div>
 
-      <div className="flex shrink-0 items-center border-t border-border px-3 py-2 text-[12px] text-muted-foreground">
-        <span className="tabular-nums" role="status" aria-live="polite">
+      <div className="flex h-9 shrink-0 items-center border-t border-border px-4 text-[12px] tabular-nums text-muted-foreground">
+        <span role="status" aria-live="polite">
           {loading ? (
             "Loading…"
+          ) : selectedCount > 0 ? (
+            <>
+              <span>{selectedCount.toLocaleString()}</span> of {sorted.length.toLocaleString()} selected
+            </>
           ) : (
             <>
-              <span className="font-medium text-foreground">{sorted.length.toLocaleString()}</span> {unit}
+              <span>{sorted.length.toLocaleString()}</span> {unit}
+              {grouped && m.groupCount > 0 ? ` · ${m.groupCount.toLocaleString()} ${m.groupCount === 1 ? "group" : "groups"}` : null}
             </>
           )}
         </span>
       </div>
     </div>
   );
+}
+
+/* ---------- public components ---------- */
+
+/** `<DataTable toolbar="external" />` inside a `DataTableProvider`: the card, with the provider's table. */
+export interface DataTableConnectedProps {
+  toolbar: "external";
+  columns?: undefined;
+  className?: string;
+}
+
+function StandaloneDataTable<Row>(props: DataTableProps<Row>) {
+  const model = useDataTableModel(props);
+  return (
+    <DataTableContext.Provider value={model}>
+      <DataTableCard model={model} toolbar={props.toolbar ?? "internal"} className={props.className} />
+    </DataTableContext.Provider>
+  );
+}
+
+function ConnectedDataTable({ className }: { className?: string }) {
+  const model = useDataTableModelContext("DataTable toolbar=\"external\"");
+  return <DataTableCard model={model} toolbar="external" className={className} />;
+}
+
+/**
+ * The one table every OS uses. Search, filters, view tabs, a Columns picker,
+ * row selection, totals, grouping and CSV/PDF export, each optional;
+ * virtualized rows on one shared column template.
+ */
+export function DataTable<Row>(props: DataTableProps<Row>): React.ReactElement;
+export function DataTable(props: DataTableConnectedProps): React.ReactElement;
+export function DataTable<Row>(props: DataTableProps<Row> | DataTableConnectedProps): React.ReactElement {
+  if (props.columns === undefined) return <ConnectedDataTable className={props.className} />;
+  return <StandaloneDataTable {...(props as DataTableProps<Row>)} />;
+}
+
+export type DataTableProviderProps<Row> = Omit<DataTableProps<Row>, "toolbar" | "className"> & { children: React.ReactNode };
+
+/**
+ * Holds a table's state for a page that puts the toolbar in its own control
+ * row: the pieces (`DataTableViews`, `DataTableSearch`, `DataTableFilterButton`,
+ * `DataTableColumnsButton`, `DataTableExportMenu`) and `<DataTable toolbar="external" />`
+ * anywhere inside it share one table.
+ */
+export function DataTableProvider<Row>({ children, ...props }: DataTableProviderProps<Row>) {
+  const model = useDataTableModel(props as DataTableProps<Row>);
+  return <DataTableContext.Provider value={model}>{children}</DataTableContext.Provider>;
 }

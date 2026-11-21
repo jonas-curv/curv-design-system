@@ -2,7 +2,9 @@
 import * as React from "react";
 import { Select } from "../select";
 import { Skeleton } from "../skeleton";
-import type { DataTableColumn, DataTableProps } from "./data-table";
+import type { CellValue } from "./export";
+import { formatValue } from "./format";
+import type { DataTableColumn, DataTableProps } from "./types";
 
 export type MobilePriority = "primary" | "secondary" | "hidden";
 /** Same priority vocabulary as the table-customization branch; no separate data owner. */
@@ -18,7 +20,13 @@ export function MobileRows<Row>({ columns, rows, getRowId, getRowHref, getRowLab
   if (!primary.length && columns[0]) primary.push(columns[0]);
   const secondary = columns.filter(c => !primary.includes(c) && c.mobilePriority !== "hidden").sort((a, b) => Number(b.mobilePriority === "secondary") - Number(a.mobilePriority === "secondary")).slice(0, 3);
   const detail = columns.filter(c => !primary.includes(c) && !secondary.includes(c));
-  const cell = (c: DataTableColumn<Row>, row: Row) => c.render ? c.render(row) : c.value ? c.value(row) : (row as Record<string, React.ReactNode>)[c.key];
+  // A typed (or `format`ted) column reads the same as on desktop; untyped ones show the value as before.
+  const cell = (c: DataTableColumn<Row>, row: Row): React.ReactNode => {
+    if (c.render) return c.render(row);
+    const v = value(c, row);
+    if (c.format && v != null && v !== "") return c.format(v as CellValue);
+    return c.type ? formatValue(c.type, v) : (v as React.ReactNode);
+  };
   const value = (c: DataTableColumn<Row>, row: Row) => c.value ? c.value(row) : (row as Record<string, unknown>)[c.key];
   return <div className="md:hidden" aria-busy={loading}>
     {sortableColumns.length > 0 && <div className="flex items-center gap-2 border-b border-border px-3 py-2">

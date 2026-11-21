@@ -495,103 +495,154 @@ meaning is "progress".
 
 ## Tables
 
-- Container: card recipe, header row `border-b`.
-- Header cells: caption size, `font-medium text-muted-foreground`, sentence
-  case, on a subtly grayer band (`bg-muted/95` sticky) so the header reads as
-  separate from the body. Sortable via subtle chevron.
-- Progress/meter bars in cells carry a **meaningful** tint (brand accent, or
-  verdict color for good/bad) on a `bg-muted` track — not a flat gray.
-- Body: body size (13px); rows `py-2.5`, `border-b border-border`,
-  `hover:bg-accent/30`.
-- **Fixed column layout** — use `table-fixed` with a `<colgroup>` giving
-  every data column a constant width; let ONE identity column (Customer/Name)
-  flex to absorb the remainder. This stops columns resizing/jumping as rows
-  load. Consistent cell padding (`px-3`) across all columns — never eyeball
-  per-column spacing.
-- **The primary text column gets a comfortable min-width — never the numeric
-  floor.** In the shared `DataTable` (a CSS grid), an auto-sized column defaults
-  to `minmax(120px, 1fr)`. 120px is fine for a number but *crushes* a Name/Title
-  column, so it truncates **typical** values, not just long ones. Give the
-  identity/name column a **`minWidth`** (~240–320px): it then fills slack (`1fr`)
-  and only genuinely long values ellipsis at the edge — the Linear pattern (fit
-  the common case; cut the outlier with `…`, never let one 60-character name set
-  the whole column's width). `maxWidth` caps the growth. A column with a fixed
-  `width` (e.g. a sticky identity column) sizes to exactly that. Numbers must
-  never truncate — keep numeric columns wide enough for their longest value.
-- Numeric columns right-aligned with `tabular-nums`. Empty = `—` tertiary.
-- Identity columns use the **two-line cell**: primary in foreground medium,
-  meta line below in caption muted. Never cram badges next to the primary
-  text; never let a cell wrap accidentally.
-- **Filtering** for a table with 3+ facets uses the **Linear filter pattern**
-  (see `app/(app)/deals/deals-filter.tsx`): a single dashed **"Filter"**
-  button opening a menu of properties; **hovering a property opens a submenu**
-  with its multi-select values (base-ui `Menu` + `SubmenuRoot` +
-  `CheckboxItem`), so you switch facets without clicking back. Each active
-  filter is a **removable chip** ("Status is Confirmed ✕"); clicking the chip
-  re-opens its value picker. Don't line up N always-visible `field · all`
-  dropdowns. Keep free-text search as its own input.
-- **Never let a wide table scroll the page.** The scroll container
-  (`overflow-auto`) owns horizontal scroll; ancestors that are flex items
-  need `min-w-0` so the table's `min-w` can't force page-level scroll.
-- **Signal horizontal overflow** with a soft edge fade (Linear pattern): a
-  `bg-gradient-to-l from-card` overlay on the right (and `-to-r` on the left),
-  each shown only when the table can scroll that way (track `scrollLeft` vs
-  `scrollWidth - clientWidth`), `pointer-events-none`. **Built into `DataTable`**
-  automatically — the left fade is suppressed when a column is pinned, since the
-  frozen column already anchors the left edge.
+One table, one look. **`DataTable`** for anything people query (sort, filter,
+search, export, select), at any size; **`ReportTable`** for financial
+statements; a plain `<table>` only for a few read-only rows, and it borrows
+`tableHeaderRow` + `tableCellPadding` so it looks the same.
+
+- **Container.** The card recipe (`rounded-lg bg-card shadow-card`, no border),
+  full-bleed, `overflow-hidden`. The card owns vertical scroll (`maxHeight`) so
+  the header can stick. **Never let a wide table scroll the page:** the table's
+  scroll area owns horizontal scroll; ancestors that are flex items need
+  `min-w-0` so its min-width can't force page-level scroll.
+- **One column template.** `DataTable` rows are virtualized (absolutely
+  positioned), so the header, every row, the skeleton, group rows and totals are
+  separate grids. They read ONE resolved template, published once as
+  `--dt-cols` on the scroll area. Every track is px or `minmax(px, fr)`, never
+  content-sized, so every grid resolves the same widths and columns can't drift.
+- **Column widths.** Numbers, money, percentages, dates and statuses get a fixed
+  px track as wide as their longest formatted value (the total included):
+  **numbers never truncate**. Leave exactly ONE primary text column with no
+  `width`/`maxWidth`: it is the filler (`minmax(minWidth, 1fr)`), takes the
+  slack, and truncates with `…` past its floor. Give it a `minWidth`
+  (~240–320px; the default floor is 120). Give other text columns a `width`.
+  **No column is narrower than its header label** (plus the sort slot and
+  padding); a smaller `width` is raised to it. A `width` string may be `"240px"`,
+  `"1.5fr"` or `"minmax(220px,1.6fr)"`; `auto` and `max-content` are ignored.
+- **Column type.** `type: "text" | "number" | "money" | "percent" | "date" |
+  "status"` sets the alignment, the default formatting (when there is no
+  `render`) and the first sort direction, **even when the column has a
+  `render`**. An explicit `align` still wins. Untyped columns keep the old
+  guess: a plain numeric column without a `render` aligns right; a rendered one
+  (stars, a chip) stays left.
+- **Alignment.** Numbers, money, %, quantities and durations right with
+  `tabular-nums`; text, status and dates left. The header follows its column.
+- **Header row.** 36 (`h-9`), solid `bg-muted` (no transparency, no blur), a
+  hairline below, 12px/500 `text-muted-foreground`, sentence case, never wraps,
+  never truncates. Once rows scroll under it, a soft shadow joins the hairline.
+- **Padding.** 12 per side, 16 on the table's outer edges (in a real `<table>`:
+  `px-3 first:pl-4 last:pr-4`). Header, cells, totals and footer are identical.
+- **Sort.** The whole header cell is the button. A 12px arrow, 4px gap, its slot
+  always reserved. Idle: hidden. Hover / focus: visible, muted (the arrow shows
+  where a click sorts). Active: visible, label and arrow `text-foreground`. The
+  arrow sits after the label on left-aligned columns, before it on
+  right-aligned ones. **Numbers and dates sort high to low first, text A to Z;
+  the third click clears.** `aria-sort` on the header cell, a visible focus
+  ring, and no `aria-label` on the button: its visible label names it.
+- **Definitions.** A column's `description` becomes a dotted underline and a
+  tooltip on the header label. Never an info icon.
+- **Rows.** 44, 13px, the first column 500, hairline dividers,
+  `hover:bg-accent/30`, no zebra. An empty cell (null, undefined, `""`, or a
+  `render` returning nothing) shows a muted `—`. A selected row is
+  `bg-accent/50`. Identity columns may use the **two-line cell** (primary in
+  foreground medium, meta below in caption muted); never cram badges next to the
+  primary text, never let a cell wrap accidentally. A truncating text cell must
+  render inline content (a `<span>` fragment, not a wrapping `<div>`) or the `…`
+  won't show.
+- **Numbers.** A minus sign `−` (U+2212), never parentheses, no red for
+  negatives; the currency symbol in every cell; whole dollars in lists; percent
+  to one decimal; zero shows `0` (`$0`, `0%`); nothing shows `—`. Typed columns
+  format this way on their own; elsewhere use `formatMoney`, `formatNumber`,
+  `formatPercent` and `formatDate` ("Nov 21", the year only when it isn't this
+  year).
+- **Selection is opt-in** (`selectable`): only when a table has a genuine bulk
+  action (assign, change stage, export a subset). A 40px checkbox column;
+  selecting rows replaces the header with a 36px **bulk bar**: "3 selected"
+  (13/500), the actions (`DataTableBulkAction`, 28px), Clear on the right.
+  Select-all covers **every row in view** (search, filters and tabs applied), not
+  just the rendered ones; it shows a mixed state for some; shift-click selects a
+  range; Escape clears; the footer reads "3 of N selected". Ids come from
+  `getRowId`. Reporting surfaces (the P&L) never get selection.
+- **Totals** (`totals={{ value: "sum" }}`, or a function of the rows): a 44 row
+  sticky at the bottom of the scroll area, `bg-muted border-t font-semibold`,
+  "Total" in the first text column. It sums the rows in view, so it follows
+  search, filters and tabs. Give a totalled column a `type` (or `format`) so the
+  total reads like its cells.
+- **Footer.** 36 (`h-9 px-4`), the row count in 12px muted ("8 deals", grouped
+  "8 deals · 3 groups"). No pagination (see below).
+- **Loading and empty.** `loading` shows skeleton rows at 44 on the card (with
+  `aria-busy` and a polite "Loading…"), distinct from empty. Empty is an
+  `EmptyState` inside the card, the header kept: one line, at most one action
+  (`emptyLabel`, or your own `emptyState`).
+- **Toolbar.** By default it sits inside the card, above the header, as one
+  36px row: views (the `tabs`, a segmented control) · search (240) · Filter ·
+  your `toolbarActions` · spacer · `summary` · Columns · Export. **On an index
+  page the page owns ONE control row** (views · search · filter · spacer ·
+  columns · Export · primary action) and the card shows no toolbar: wrap the
+  page in a `DataTableProvider` with the table's props, place the pieces, and
+  render `<DataTable toolbar="external" />` below.
+
+  ```tsx
+  <DataTableProvider columns={columns} rows={deals} tabs={views} filters={filters} tableId="deals" exportFilename="deals">
+    <div className="flex items-center gap-2">
+      <DataTableViews /> <DataTableSearch /> <DataTableFilterButton />
+      <div className="flex-1" />
+      <DataTableColumnsButton /> <DataTableExportMenu /> <Button>New deal</Button>
+    </div>
+    <DataTable toolbar="external" />
+  </DataTableProvider>
+  ```
+- **Columns picker.** `tableId` adds a Columns button and keeps each person's
+  choice in their browser under that id (`columnVisibility` +
+  `onColumnVisibilityChange` to own it instead). The identity column (the first
+  one) and sticky columns can't be hidden; `defaultHidden` starts a column off;
+  `hideable: false` keeps one out of the picker. Export follows the shown
+  columns.
+- **Accessibility.** The grid carries ARIA table roles (`table`, `row`,
+  `columnheader`, `cell`); give it an `aria-label`. Row checkboxes are named
+  "Select <row>" (`getRowLabel`).
+- **Filtering** for a table with 3+ facets uses the **Linear filter pattern**:
+  a Filter button opening a menu of properties; **hovering a property opens a
+  submenu** with its multi-select values, so you switch facets without clicking
+  back. Each active filter is a **removable chip** ("Status is Confirmed ✕") in
+  a band at the top of the card; clicking the chip re-opens its value picker.
+  Don't line up N always-visible `field · all` dropdowns. Keep free-text search
+  as its own input.
+- **Signal horizontal overflow** with a soft edge fade (Linear pattern), only
+  on the sides that can scroll, below the header and above the totals.
+  **Built into `DataTable`**; the left fade is suppressed when a column is
+  pinned, since the frozen column already anchors the left edge.
 - **Clickable cells are the default; a whole-row link is opt-in — not the other
   way round.** Make the *specific* cells that represent entities clickable with
   **`TableLink`**: the identity column (customer, person) → *that entity's*
   profile, a secondary id → *its* record; never point two cells at the same
-  place. That is the baseline for every table. **Only add a whole-row link
-  (`getRowHref`) when the row is a single entity whose page is the primary click
-  target** — a deals/orders/issues list you open one at a time (the Linear /
-  Stripe pattern). There, the row anchor is just a big hit target for that one
-  destination, and `TableLink` cells override it for secondary entities (and stop
-  the double-fire). Do **not** make the row a link when its cells point to
-  *different* places with no single "open" destination, or when the table is
-  analytical data you *scan* rather than open (a catalog, a reporting matrix) — a
-  whole-row link there is confusing and defeats the point of the deliberate cell
-  links. When you do use one, it's a *real anchor* (`getRowHref`), never an
-  `onClick` div — cmd/middle-click, copy-link, and keyboard access come free.
-  **Navigate vs peek:** navigate when the entity has its own page and opening it
-  is the primary action; open a `Drawer` peek only for triage flows where losing
-  list position hurts — composed at page level, never baked into the table.
+  place. **Only add a whole-row link (`getRowHref`) when the row is a single
+  entity whose page is the primary click target** — a deals/orders/issues list
+  you open one at a time (the Linear / Stripe pattern). There, `TableLink` cells
+  override it for secondary entities. Do **not** make the row a link when its
+  cells point to *different* places, or when the table is analytical data you
+  *scan* rather than open. When you do use one, it's a *real anchor*
+  (`getRowHref`), never an `onClick` div. **Navigate vs peek:** navigate when the
+  entity has its own page; open a `Drawer` peek only for triage flows where
+  losing list position hurts — composed at page level, never baked into the
+  table.
 - **Copy affordance on identifiers only.** `CopyButton` (hover-revealed via
-  `group/copy`) belongs on order/quote #s, SKUs, and shareable links — things
-  people paste into other systems. Never on names, money, statuses, or free
-  text; copy-everything is noise.
-- **Sticky what you scroll past.** For a wide or long table scanned daily, make
-  the header sticky (`sticky top-0`) and the identity column(s) sticky
-  (`sticky left-0`) so labels never leave view (Customers, the P&L monthly grid).
-  In `DataTable`, mark **the identity column** — the name/id that says *which
-  row this is* — with `sticky: true` (the header is already sticky). **Freeze
-  only that by default**, the way Linear / Airtable / Notion / Stripe do; don't
-  pin data columns (status, amounts) just to keep them on screen — every frozen
-  column permanently eats horizontal room you're trying to scroll *into*, and
-  status isn't identity. The frozen block is opaque (scrolled cells never bleed
-  through) and takes the row's hover tint; its right edge shows a **hairline at
-  rest that deepens to a soft shadow once content scrolls under it**, so partial
-  cells read as sliding *under* the frozen block. An adjacent column — including
-  a status badge — may briefly fragment at that edge *while you scroll through
-  it*; that's normal and the shadow absorbs it. (`sticky` does accept multiple
-  leftmost columns if a product genuinely needs one always visible — but that's
-  a deliberate opt-in trading width for persistence, not the default.)
-- **Read-only by default; selection is opt-in.** Our tables display data — they
-  don't edit or remove rows from the table itself. So `DataTable` ships **no row
-  selection**; that's correct, not a gap. When (and only when) a table gains a
-  genuine bulk action (assign, export-subset, archive), selection + a
-  bulk-action bar get added as an **opt-in** capability (a `selectable` /
-  `rowActions` prop). Absence of that prop *is* "read-only" — never add a
-  `readOnly` mode flag. Reporting surfaces (the P&L) never get selection.
-- **Loading is a skeleton, not a spinner or a blank.** Pass `loading` to
-  `DataTable` for pulsing `bg-muted` skeleton rows on the `bg-card` surface
-  (distinct from the empty state), with `aria-busy` + a polite "Loading…" status
-  so it's not silent to a screen reader.
-- **Full-bleed row backgrounds.** When a row carries a background (selected, an
-  emphasized total), it should span the card edge-to-edge — put horizontal
-  padding on the *cells* (`pl-4` first, `pr-4` last), not on a wrapper. A padded
-  wrapper insets the fill and it reads as a cut-off band.
+  `group/copy`) belongs on order/quote #s, SKUs, and shareable links. Never on
+  names, money, statuses, or free text.
+- **Sticky what you scroll past.** The header is always sticky. Mark **the
+  identity column** (the name/id that says *which row this is*) `sticky: true`
+  and **freeze only that**, the way Linear / Airtable / Notion / Stripe do;
+  don't pin data columns just to keep them on screen. The frozen block is
+  opaque, takes the row's hover and selected tint, and its right edge shows a
+  **hairline at rest that deepens to a soft shadow once content scrolls under
+  it**. With selection on, the checkbox column pins with it. (`sticky` accepts
+  several leftmost columns, each before the last with a numeric `width`, as a
+  deliberate opt-in.)
+- **Full-bleed row backgrounds.** A row's background (selected, totals) spans
+  the card edge to edge: padding lives on the cells, never on a wrapper.
+- **No column resize, no density toggle, no zebra.**
+- **Progress/meter bars** in cells carry a **meaningful** tint (brand accent, or
+  verdict color for good/bad) on a `bg-muted` track — not a flat gray.
 - **Inline sparklines** (a "Trend" column) are line-only, one neutral color, no
   axes or fill, and **no red/green** — trend-at-a-glance, not a verdict
   (direction lives in the delta column). One identical stroke for every row.
@@ -645,8 +696,10 @@ per parent record, its rows underneath. Without `groupBy` nothing changes.
   skips collapsed ones), own it: pass `collapsedGroups` and
   `onCollapsedGroupsChange`. While a search is active nothing is collapsed, so
   "every visible row" is every match.
-- **The band hovers with `bg-secondary`**, not `bg-accent`: the band is already
-  muted and `accent` is translucent, so it washes out.
+- **A group row is 36:** a 12px chevron on the 16px edge, the label 13/500, the
+  count muted. The band is `bg-muted/60` and hovers to `bg-muted` (`accent` is
+  translucent and washes out on it). Rows under a header indent their first
+  column to the label (36px), so the hierarchy reads without a tree line.
 - **Phones stay flat.** `mobileLayout="cards"` ignores grouping.
 
 ### Pagination & virtualization — match the tool to the data
@@ -654,9 +707,9 @@ per parent record, its rows underneath. Without `groupBy` nothing changes.
 The **UX is the same for every data table**: scroll to browse + a row-count at
 the bottom. **No "Show 50/100/200", no Load-more, no page numbers.** Only the
 *implementation* changes with the realistic max row count — and virtualization is
-a performance tool, not a default (a virtualized div-grid loses `<table>`
-semantics, breaks Cmd+F / print / text-selection, and paints empty on the
-server). So reach for it only when scale actually demands it:
+a performance tool, not a default (a virtualized div-grid needs ARIA roles to
+stand in for `<table>` semantics, breaks Cmd+F / print / text-selection, and
+paints empty on the server). So reach for it only when scale actually demands it:
 
 | Realistic max rows | Implementation |
 | ------------------ | -------------- |
@@ -756,7 +809,10 @@ surface, not a spreadsheet. Keep the default calm:
   with a hover affordance and native keyboard access. A figure you can't drill
   into is a figure the reader can't trust.
 
-`ReportTable` implements this section's shell. Two chart details it pairs with:
+`ReportTable` implements this section's shell: a real `<table>` with the same
+header as `DataTable` (36, solid muted, 12 / 500, 16 on the outer edges), body
+and section rows 36, and the table number format by default (`formatNumber`:
+a real minus sign, `—` for nothing). Two chart details it pairs with:
 the current-vs-projected line is one `LineChart` series with **`partialFrom`**
 (solid up to the last closed month, dashed after — not two series); and when a
 chart carries a comparison, give `ChartCard`'s legend items a `key` + a

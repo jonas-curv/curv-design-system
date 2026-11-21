@@ -330,22 +330,17 @@ function AddFilterMenu<Row>({
   return (
     <Menu.Root>
       <Menu.Trigger
-        aria-label="Add filter"
+        aria-label={mode === "filter" ? "Filter" : "Add filter"}
         className={cn(
-          "inline-flex items-center gap-1.5 rounded-md border text-[13px] text-muted-foreground transition hover:bg-accent hover:text-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring data-[popup-open]:bg-accent data-[popup-open]:text-foreground",
+          "inline-flex items-center justify-center rounded-md border text-[13px] text-muted-foreground transition hover:bg-accent hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring data-[popup-open]:bg-accent data-[popup-open]:text-foreground",
+          // The toolbar's Filter is a 36px icon button, like Columns; the "+"
+          // in the active-filter band is a 28px in-table control.
           mode === "filter"
-            ? "h-9 border-dashed border-border px-2.5"
+            ? "size-11 border-border bg-card sm:size-9"
             : "h-7 border-transparent px-1.5 hover:border-border",
         )}
       >
-        {mode === "filter" ? (
-          <>
-            <IconFunnel className="size-3.5" />
-            Filter
-          </>
-        ) : (
-          <IconPlus className="size-3.5" />
-        )}
+        {mode === "filter" ? <IconFunnel className="size-4" /> : <IconPlus className="size-3.5" />}
       </Menu.Trigger>
       <Menu.Portal>
         <Menu.Positioner side="bottom" align="start" sideOffset={6} className="z-50">
@@ -420,7 +415,7 @@ export function ActiveFilterBar<Row>({
     onChange(Object.fromEntries(defs.map((d) => [d.key, isRangeDef(d) ? undefined : []])));
 
   return (
-    <div className="flex flex-wrap items-center gap-1.5 border-b border-border bg-muted/40 px-3 py-2">
+    <div className="flex flex-wrap items-center gap-1.5 border-b border-border bg-muted/40 px-4 py-2">
       {active.map((def) => (
         <FilterChip
           key={def.key}
