@@ -517,10 +517,16 @@ function DataTableCard<Row>({
             );
           }
           if (toggle) {
+            // The first cell with its chevron: measured and aligned like any other first cell.
             return (
-              <div key={c.key} role="cell" className={cn("flex min-w-0 items-center gap-0.5 overflow-hidden font-medium", pad(cell), indent, c.className)}>
+              <div
+                key={c.key}
+                role="cell"
+                data-dt-grow={m.growable.has(rc.key) ? rc.key : undefined}
+                className={cn("flex min-w-0 items-center gap-0.5 overflow-hidden font-medium", pad(cell), indent, right && "tabular-nums", c.className)}
+              >
                 {toggle}
-                <span className="min-w-0 truncate">{content}</span>
+                <span className={cn("min-w-0", right ? "ml-auto whitespace-nowrap" : "truncate")}>{content}</span>
               </div>
             );
           }

@@ -219,6 +219,16 @@ test('expandable rows: a chevron in the first cell, aria-expanded and aria-contr
  assert.equal(q(container, '[data-panel]'), null);
 });
 
+test('expandable rows: a content-sized first column keeps its measuring hook and its alignment', async () => {
+ const columns = [{ key: 'value', header: 'Value', type: 'money' }, ...COLUMNS.filter((c) => c.key !== 'value')];
+ const { container } = await mount(table({ columns, renderExpanded: (r) => r.deal }));
+ const cell = qa(bodyRows(container)[0], '[role=cell]')[0];
+ assert.ok(q(cell, 'button[aria-expanded]'), 'the chevron sits in the first cell');
+ assert.equal(cell.dataset.dtGrow, 'value', 'measured like any content-sized cell');
+ assert.ok(cell.classList.contains('tabular-nums'));
+ assert.ok(q(cell, 'span.ml-auto.whitespace-nowrap'), 'the figure sits right, after the chevron');
+});
+
 test('expandable rows: controlled `expanded`, and defaultExpanded', async () => {
  const render = (r) => h('p', { 'data-panel': r.id }, r.deal);
  const { container } = await mount(table({ renderExpanded: render, expanded: ['b'] }));
