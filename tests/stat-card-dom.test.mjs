@@ -63,6 +63,9 @@ test('Escape closes the breakdown and leaves focus where it was', async () => {
   await wait(250);
   assert.equal(breakdownShown(), false);
   assert.equal(document.activeElement, stat);
+  await fire(stat, 'mouseout');
+  await wait(250);
+  assert.equal(breakdownShown(), false, 'the pointer leaving does not reopen it while focus stays');
 });
 
 test('with a link, focusing the link opens the breakdown; the stat adds no tab stop of its own', async () => {

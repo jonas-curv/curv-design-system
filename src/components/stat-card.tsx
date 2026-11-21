@@ -185,8 +185,11 @@ export function StatCard({
       onKeyDown={(e) => {
         if (e.key !== "Escape" || !open) return;
         e.stopPropagation();
-        window.clearTimeout(timer.current);
-        setOpen(false);
+        // Dismissed until the stat is focused or hovered again: the pointer
+        // leaving it must not reopen the card while focus stays put.
+        hovered.current = false;
+        focused.current = false;
+        sync(0);
       }}
       tabIndex={focusable ? 0 : undefined}
       role={focusable ? "group" : undefined}
