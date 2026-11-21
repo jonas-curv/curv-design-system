@@ -119,7 +119,11 @@ off-colour, or with a hand-rolled `bg-neutral-100` shell.*
      render truncating text cells as inline/string content (a `<span>` Fragment,
      not a wrapping `<div>`) so `…` shows. Never hand-roll a table or the export
      button — use `DataTable` + `exportFilename`. (Full rules: `docs/cheatsheet.md`
-     → *DataTable column widths*.) The
+     → *DataTable column widths*.) A few read-only rows, an editable grid or a
+     server-rendered table use the `Table` parts (`Table`, `TableHeader`,
+     `TableBody`, `TableFooter`, `TableRow`, `TableHead`, `TableCell`, shadcn
+     API; sortable heads with `useTableSort`; server components import
+     `@curvgroup/design-system/table`) — never a bare `<table>`. The
      **reporting engine** — `StatCard`/`StatGroup`, `Sparkline`, `LineChart`,
      `BarChart`, `BarBreakdown`, `ChartCard` (the shell that hosts chart
      controls; chart stays a dumb primitive), `ReportTable` (P&L/matrix grid),

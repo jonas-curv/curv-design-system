@@ -53,10 +53,13 @@ component's TSDoc for the full surface. **Style through tokens, never raw hex.**
 
 | Use when | Component | Key props |
 | --- | --- | --- |
-| A sortable, searchable, filterable table (virtualized) | `DataTable` (+ `TableLink`, `DataTableBulkAction`) | `columns` (`type`, `width`/`minWidth`, `sticky`, `description`), `rows`, `getRowId`, `aria-label`, `searchable`, `filters`, `tabs`, `exportFilename`, `tableId` (Columns picker), `selectable` / `selected` / `onSelectedChange` / `bulkActions`, `totals`, `getRowHref`, `groupBy` / `renderGroupHeader` (also `defaultCollapsedGroups`, `ungroupedLabel`, `searchActive`, `collapsedGroups` / `onCollapsedGroupsChange`) |
+| A sortable, searchable, filterable table (virtualized) | `DataTable` (+ `TableLink`, `DataTableBulkAction`) | `columns` (`type`, `width`/`minWidth`, `sticky`, `description`, `sortFirst`, `sortValue`, `exportValue`, `exportHeader`, `exportable`, `exportOnly`), `rows`, `getRowId`, `aria-label`, `searchable`, `filters`, `tabs`, `exportFilename`, `tableId` (Columns picker), `selectable` / `selected` / `onSelectedChange` / `bulkActions`, `totals`, `getRowHref`, `getRowClassName`, `getRowPin`, `rowCap`, `renderExpanded` (+ `canExpand`, `expanded` / `onExpandedChange`), `groupBy` / `renderGroupHeader` (also `defaultCollapsedGroups`, `ungroupedLabel`, `searchActive`, `collapsedGroups` / `onCollapsedGroupsChange`) |
+| A DataTable whose view state you keep (URL, saved view, server sort) | `DataTable` | `sort` / `onSortChange` (+ `manualSort`), `query` / `onQueryChange` (`defaultQuery`), `filterValues` / `onFilterValuesChange` (`defaultFilterValues`), `tab` / `onTabChange`, `searchLabel`, `matchSearch` |
 | A table whose toolbar sits in the page's control row | `DataTableProvider` + `DataTableViews`, `DataTableSearch`, `DataTableFilterButton`, `DataTableColumnsButton`, `DataTableExportMenu` + `<DataTable toolbar="external" />` | the provider takes the `DataTable` props; the pieces take none |
 | Money, numbers, percentages and dates the table way | `formatMoney`, `formatNumber`, `formatPercent`, `formatDate` | `cents`, `decimals`, `ratio`, `today` · `MINUS` is U+2212 |
-| A plain read-only `<table>` that matches | `tableHeaderRow`, `tableCellPadding` | class strings for the `<tr>` in `<thead>` and each cell |
+| A small read-only table, an editable grid, a server-rendered table | `Table`, `TableHeader`, `TableBody`, `TableFooter`, `TableRow`, `TableHead`, `TableCell`, `TableCaption`, `TableNull` (server components: from `@curvgroup/design-system/table`) | shadcn props + Table: `card`, `maxHeight`, `dense`, `identityColumn` · Header/Footer: `sticky` · Row: `selected` · Head/Cell: `numeric`, `align`, `priority`, `sticky` · Head: `sort`, `onSort`, `sortFirst` |
+| Client-side sort for the Table parts | `useTableSort` | `useTableSort(rows, { columns, initialSort })` → `rows`, `getHeadProps(key)` (also `sort` / `onSortChange`) |
+| The header and cell classes for a cell the parts can't draw | `tableHeaderRow`, `tableCellPadding` | class strings for the `<tr>` in `<thead>` and each cell |
 | A P&L / period matrix with drill-down (same header, rows 36) | `ReportTable` | `sections`, `periods`, `summaryColumns`, `view`, `formatValue` |
 | A single KPI (label + value + delta + sparkline) | `StatCard` (+ `StatGroup`, `BreakdownRow`) | `label`, `value`, `delta`, `sparkline`, `href`, `breakdown` |
 | A headline total broken into shares with a bar | `SummaryStrip` | `label`, `total`, `caption`, `items`, `hideBar` |
@@ -73,6 +76,24 @@ component's TSDoc for the full surface. **Style through tokens, never raw hex.**
 
 `ChartSeries` (for the charts): `data: (number \| null)[]` (a `null` is a gap),
 `label`, `comparison`, `partialFrom`, `variant`.
+
+### Which table
+
+`DataTable` for a list people query (sort, search, filter, select, export);
+the `Table` parts for a few read-only rows, an editable grid or a server
+component; `ReportTable` for a financial statement. Never a hand-built `<table>`.
+
+```tsx
+<DataTable columns={columns} rows={deals} getRowId={(d) => d.id} aria-label="Deals" searchable unit="deals" />
+
+const { rows, getHeadProps } = useTableSort(stock, { columns: { name: (s) => s.name, qty: (s) => s.qty } });
+<Table card aria-label="Warehouses">
+  <TableHeader><TableRow><TableHead {...getHeadProps("name")}>Warehouse</TableHead><TableHead {...getHeadProps("qty")} numeric>On hand</TableHead></TableRow></TableHeader>
+  <TableBody>{rows.map((s) => <TableRow key={s.id}><TableCell>{s.name}</TableCell><TableCell numeric>{formatNumber(s.qty)}</TableCell></TableRow>)}</TableBody>
+</Table>
+
+<ReportTable sections={pnl} periods={months} view="monthly" />
+```
 
 ### DataTable column widths (the Linear model)
 
