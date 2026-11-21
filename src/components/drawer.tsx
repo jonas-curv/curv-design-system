@@ -62,7 +62,7 @@ export function Drawer({
           {(title || description || headerActions) && (
             <div className="flex items-start justify-between gap-3 border-b border-border px-5 py-4">
               <div className="min-w-0 flex-1">
-                {title && <D.Title className="truncate text-body font-semibold text-foreground">{title}</D.Title>}
+                {title && <D.Title className="truncate text-section font-semibold text-foreground">{title}</D.Title>}
                 {description && <D.Description className="mt-0.5 text-body text-muted-foreground">{description}</D.Description>}
               </div>
               <div className="-mr-1 -mt-1 flex shrink-0 items-center gap-1">

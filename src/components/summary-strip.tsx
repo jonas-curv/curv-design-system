@@ -61,7 +61,7 @@ export function SummaryStrip({
                 <span className={cn("size-1.5 shrink-0 rounded-full", it.colorClassName ?? "bg-muted-foreground/40")} />
                 <span className="truncate text-caption text-muted-foreground">{it.label}</span>
               </div>
-              <div className="mt-0.5 text-body font-semibold tabular-nums text-foreground">{it.value}</div>
+              <div className="mt-0.5 text-section font-semibold tabular-nums text-foreground">{it.value}</div>
               {it.share != null && (
                 <div className="text-caption tabular-nums text-muted-foreground">{it.share}%</div>
               )}

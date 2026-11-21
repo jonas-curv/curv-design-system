@@ -233,7 +233,8 @@ and then go. Every 0.5 prop still works; nothing an app passes changes meaning.
   `text-[13px]` became `text-body`, `text-[12px]` `text-caption`, and so on
   (`tableHeaderRow` now reads `text-caption`). Sizes that were off the scale
   fold to it: dialog and drawer titles and the summary strip's values go from 15
-  to 13, the chart card's value from 26 to 24, chart axes from 10 to 11. An app
+  to 16 (`text-section`), the chart card's value from 26 to 24, chart axes from
+  10 to 11. The lint rule suggests the same folds (15 → `text-section`). An app
   that matched `text-[13px]` in a selector inside a design-system component
   should match `text-body`.
 - **Which table:** `docs/design-system.md` → Tables.

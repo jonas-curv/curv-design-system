@@ -65,7 +65,7 @@ export function Dialog({
             "motion-safe:data-[starting-style]:scale-95 motion-safe:data-[ending-style]:scale-95",
           )}
         >
-          <D.Title className="text-body font-semibold tracking-tight text-foreground text-balance">
+          <D.Title className="text-section font-semibold tracking-tight text-foreground text-balance">
             {title}
           </D.Title>
           {description ? (
