@@ -50,7 +50,8 @@ export interface StatCardProps {
   href?: string;
   /**
    * Rich hover detail (the Curv pattern): period comparisons + per-brand
-   * breakdown, shown in a hover card under the stat after a short delay.
+   * breakdown, shown in a card under the stat after a short hover, or at once
+   * when the stat takes keyboard focus (Escape or moving focus away closes it).
    * Keep it to rows of label + tabular value — it's a glance, not a page.
    */
   breakdown?: React.ReactNode;
@@ -67,6 +68,15 @@ const SENTIMENT_CHIP: Record<NonNullable<StatDelta["sentiment"]>, string> = {
   negative: "bg-verdict-red-soft text-verdict-red",
   neutral: "bg-muted text-muted-foreground",
 };
+
+/** Whether focus on `el` is keyboard focus (`:focus-visible`); true where the selector is unsupported. */
+function focusVisible(el: Element): boolean {
+  try {
+    return el.matches(":focus-visible");
+  } catch {
+    return true;
+  }
+}
 
 function DeltaArrow({ direction }: { direction: StatDelta["direction"] }) {
   if (direction === "flat") {
@@ -121,6 +131,31 @@ export function StatCard({
   breakdown,
   className,
 }: StatCardProps) {
+  // The breakdown card is open while the stat is hovered or holds keyboard
+  // focus. Hover opens after a short rest and closes with a small grace so the
+  // cursor can travel without flicker; focus opens and closes at once.
+  const rootRef = React.useRef<HTMLDivElement>(null);
+  const [open, setOpen] = React.useState(false);
+  const hovered = React.useRef(false);
+  const focused = React.useRef(false);
+  const timer = React.useRef<number | undefined>(undefined);
+  React.useEffect(() => () => window.clearTimeout(timer.current), []);
+  const sync = (delay: number) => {
+    if (!breakdown) return;
+    window.clearTimeout(timer.current);
+    const next = hovered.current || focused.current;
+    if (delay === 0) setOpen(next);
+    else timer.current = window.setTimeout(() => setOpen(next), delay);
+  };
+  const hover = (next: boolean) => {
+    hovered.current = next;
+    sync(next ? 150 : 100);
+  };
+  const focus = (next: boolean) => {
+    focused.current = next;
+    sync(0);
+  };
+
   if (loading) {
     return (
       <div className={cn("flex min-w-0 flex-1 flex-col px-5 py-4", className)} aria-busy>
@@ -131,31 +166,43 @@ export function StatCard({
       </div>
     );
   }
-  // Hover-intent for the breakdown card: open after a short rest, close with a
-  // small grace so the cursor can travel without flicker.
-  const rootRef = React.useRef<HTMLDivElement>(null);
-  const [open, setOpen] = React.useState(false);
-  const timer = React.useRef<number | undefined>(undefined);
-  React.useEffect(() => () => window.clearTimeout(timer.current), []);
-  const hoverIntent = (next: boolean) => {
-    if (!breakdown) return;
-    window.clearTimeout(timer.current);
-    timer.current = window.setTimeout(() => setOpen(next), next ? 150 : 100);
-  };
+
+  // Without a link the stat itself takes focus, so the breakdown is reachable.
+  const focusable = !!breakdown && !href;
 
   return (
     <div
       ref={rootRef}
-      onMouseEnter={() => hoverIntent(true)}
-      onMouseLeave={() => hoverIntent(false)}
-      className={cn("group/stat relative flex min-w-0 flex-1 flex-col px-5 py-4", className)}
+      onMouseEnter={() => hover(true)}
+      onMouseLeave={() => hover(false)}
+      onFocus={(e) => {
+        // Keyboard focus only: a click keeps the hover-only behaviour.
+        if (focusVisible(e.target)) focus(true);
+      }}
+      onBlur={(e) => {
+        if (!e.currentTarget.contains(e.relatedTarget as Node | null)) focus(false);
+      }}
+      onKeyDown={(e) => {
+        if (e.key !== "Escape" || !open) return;
+        e.stopPropagation();
+        window.clearTimeout(timer.current);
+        setOpen(false);
+      }}
+      tabIndex={focusable ? 0 : undefined}
+      role={focusable ? "group" : undefined}
+      aria-label={focusable && typeof label === "string" ? label : undefined}
+      className={cn(
+        "group/stat relative flex min-w-0 flex-1 flex-col px-5 py-4",
+        focusable && "rounded-lg outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring",
+        className,
+      )}
     >
       {/* Stretched link (sibling of content, never nested interactives). */}
       {href && (
         <a
           href={href}
           aria-label={typeof label === "string" ? `Open ${label}` : "Open report"}
-          className="absolute inset-0 z-[1] rounded-lg focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-inset focus-visible:ring-foreground/30"
+          className="absolute inset-0 z-[1] rounded-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring"
         />
       )}
       {href && (
@@ -206,7 +253,7 @@ export function StatCard({
         />
       )}
 
-      {/* The Curv hover-breakdown card: period comparisons + per-segment rows. */}
+      {/* The Curv breakdown card: period comparisons + per-segment rows. */}
       {breakdown && (
         <Popover
           anchor={rootRef}
@@ -215,9 +262,10 @@ export function StatCard({
           side="bottom"
           align="start"
           sideOffset={4}
+          keepFocus
           className="min-w-[220px]"
         >
-          <div onMouseEnter={() => hoverIntent(true)} onMouseLeave={() => hoverIntent(false)}>
+          <div onMouseEnter={() => hover(true)} onMouseLeave={() => hover(false)}>
             {breakdown}
           </div>
         </Popover>
