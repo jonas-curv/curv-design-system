@@ -189,6 +189,10 @@ test('priority hides a column below md (2) or xl (3); sticky pins left or right 
  const [cItem, cSupplier, , cTotal] = qa(container, 'td');
  assert.ok(has(cSupplier, 'hidden', 'md:table-cell'));
  assert.ok(has(cItem, 'sticky', 'left-0', 'z-10', 'bg-card', 'shadow-[1px_0_0_0_var(--border)]'), 'opaque, with its edge');
+ const tints = classes(cItem).filter((c) => c.includes('linear-gradient'));
+ assert.equal(tints.length, 2, 'it carries the row hover and selected tints itself');
+ assert.ok(tints.some((c) => c.startsWith('[tbody>tr:not([data-state=selected]):hover>&]:') && c.includes('_30%')), 'hover: 30%, not on a selected row');
+ assert.ok(tints.some((c) => c.startsWith('[tr[data-state=selected]>&]:') && c.includes('_50%')), 'selected: 50%');
  assert.ok(has(cTotal, 'sticky', 'right-0', 'shadow-[-1px_0_0_0_var(--border)]'));
 });
 

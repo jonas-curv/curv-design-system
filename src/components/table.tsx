@@ -171,8 +171,9 @@ const CELL_EDGE = { left: "shadow-[1px_0_0_0_var(--border)]", right: "shadow-[-1
 
 // A pinned body cell is opaque (it masks what scrolls under it), so it carries
 // the row's hover and selected tint itself, as a layer over the card colour.
+// A selected row keeps its tint under the pointer, as the row itself does.
 const STICKY_BODY =
-  "z-10 bg-card [tbody>tr:hover>&]:bg-[linear-gradient(color-mix(in_oklab,var(--accent)_30%,transparent),color-mix(in_oklab,var(--accent)_30%,transparent))] [tr[data-state=selected]>&]:bg-[linear-gradient(color-mix(in_oklab,var(--accent)_50%,transparent),color-mix(in_oklab,var(--accent)_50%,transparent))]";
+  "z-10 bg-card [tbody>tr:not([data-state=selected]):hover>&]:bg-[linear-gradient(color-mix(in_oklab,var(--accent)_30%,transparent),color-mix(in_oklab,var(--accent)_30%,transparent))] [tr[data-state=selected]>&]:bg-[linear-gradient(color-mix(in_oklab,var(--accent)_50%,transparent),color-mix(in_oklab,var(--accent)_50%,transparent))]";
 
 interface CellLayout {
   /** Text, status and dates left (default); numbers, money, %, quantities and durations right. */
