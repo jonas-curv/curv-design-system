@@ -90,7 +90,7 @@ function Delta({ delta, style }: { delta: StatDelta; style: "text" | "chip" }) {
   if (style === "chip") {
     return (
       <span
-        className={cn("inline-flex items-center gap-1 rounded-md px-1.5 py-0.5 text-[12px] font-medium tabular-nums", SENTIMENT_CHIP[sentiment])}
+        className={cn("inline-flex items-center gap-1 rounded-md px-1.5 py-0.5 text-caption font-medium tabular-nums", SENTIMENT_CHIP[sentiment])}
         aria-label={label}
       >
         <DeltaArrow direction={delta.direction} />
@@ -99,7 +99,7 @@ function Delta({ delta, style }: { delta: StatDelta; style: "text" | "chip" }) {
     );
   }
   return (
-    <span className={cn("inline-flex items-center gap-1 text-[12px] font-medium tabular-nums", SENTIMENT[sentiment])} aria-label={label}>
+    <span className={cn("inline-flex items-center gap-1 text-caption font-medium tabular-nums", SENTIMENT[sentiment])} aria-label={label}>
       <DeltaArrow direction={delta.direction} />
       {delta.value}
     </span>
@@ -123,9 +123,9 @@ export function StatCard({
 }: StatCardProps) {
   if (loading) {
     return (
-      <div className={cn("flex min-w-0 flex-1 flex-col p-4", className)} aria-busy>
+      <div className={cn("flex min-w-0 flex-1 flex-col px-5 py-4", className)} aria-busy>
         <Skeleton width={72} height={12} />
-        <Skeleton width={104} height={26} className="mt-2" />
+        <Skeleton width={104} height={24} className="mt-2" />
         <Skeleton width={88} height={12} className="mt-2" />
         {sparkline && <Skeleton height={32} className="mt-3 w-full" />}
       </div>
@@ -148,7 +148,7 @@ export function StatCard({
       ref={rootRef}
       onMouseEnter={() => hoverIntent(true)}
       onMouseLeave={() => hoverIntent(false)}
-      className={cn("group/stat relative flex min-w-0 flex-1 flex-col p-4", className)}
+      className={cn("group/stat relative flex min-w-0 flex-1 flex-col px-5 py-4", className)}
     >
       {/* Stretched link (sibling of content, never nested interactives). */}
       {href && (
@@ -170,7 +170,7 @@ export function StatCard({
       )}
 
       <div className="flex items-center gap-1.5">
-        <span className="truncate text-[12px] text-muted-foreground">{label}</span>
+        <span className="truncate text-caption font-medium text-muted-foreground">{label}</span>
         {hint ? (
           <Tooltip content={hint}>
             <button type="button" aria-label={typeof label === "string" ? `About ${label}` : "More info"} className="relative z-[2] text-muted-foreground/60 transition-colors hover:text-muted-foreground focus-visible:outline-none focus-visible:text-muted-foreground">
@@ -186,7 +186,7 @@ export function StatCard({
       {/* Value + delta share one row (the number the delta describes) — the
           descriptor ("vs last mo") is demoted to its own muted line below. */}
       <div className={cn("mt-1 flex gap-2", deltaStyle === "chip" ? "items-center" : "items-baseline")}>
-        <span className="text-[26px] font-semibold leading-tight tracking-tight tabular-nums text-foreground">
+        <span className="text-figure font-semibold tracking-tight tabular-nums text-foreground">
           {value}
         </span>
         {delta && (
@@ -196,7 +196,7 @@ export function StatCard({
         )}
       </div>
 
-      {caption && <div className="mt-1 truncate text-[12px] text-muted-foreground">{caption}</div>}
+      {caption && <div className="mt-1 truncate text-caption text-muted-foreground">{caption}</div>}
 
       {sparkline && sparkline.length > 1 && (
         <Sparkline
@@ -240,7 +240,7 @@ export function BreakdownRow({
   delta?: StatDelta;
 }) {
   return (
-    <div className="flex items-center justify-between gap-6 py-0.5 text-[12px]">
+    <div className="flex items-center justify-between gap-6 py-0.5 text-caption">
       <span className="flex items-center gap-1.5 text-muted-foreground">{label}</span>
       <span className="flex items-center gap-1.5">
         <span className="font-medium tabular-nums text-foreground">{value}</span>

@@ -18,6 +18,26 @@
 
 @custom-variant dark (&:is(.dark *));
 
+/* The type scale: seven sizes, set by role (design-system.md → Type scale).
+ * Each token sets the size and its line height, so `text-body` replaces
+ * `text-[13px]`. 14px folds to body; 10px and 9px fold to micro. */
+@theme {
+  --text-display: 2rem;             /* 32 */
+  --text-display--line-height: 2.5rem;
+  --text-figure: 1.5rem;            /* 24, KPI values */
+  --text-figure--line-height: 2rem;
+  --text-title: 1.25rem;            /* 20, detail-page title */
+  --text-title--line-height: 1.75rem;
+  --text-section: 1rem;             /* 16 */
+  --text-section--line-height: 1.5rem;
+  --text-body: 0.8125rem;           /* 13 */
+  --text-body--line-height: 1.25rem;
+  --text-caption: 0.75rem;          /* 12 */
+  --text-caption--line-height: 1rem;
+  --text-micro: 0.6875rem;          /* 11 */
+  --text-micro--line-height: 1rem;
+}
+
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);

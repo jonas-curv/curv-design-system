@@ -1,6 +1,6 @@
 // @curvgroup/design-system — public API.
 // Add every shared component here as it's built (see README → Adding a component).
-export { cn } from "./lib/cn";
+export { cn, curvTailwindMergeConfig } from "./lib/cn";
 export { Card, type CardProps } from "./components/card";
 export { Button, type ButtonProps } from "./components/button";
 export { Avatar, AvatarGroup, type AvatarProps, type AvatarGroupProps } from "./components/avatar";
@@ -34,7 +34,7 @@ export { CopyButton, type CopyButtonProps } from "./components/copy-button";
 export { Kbd, type KbdProps } from "./components/kbd";
 export { Skeleton, type SkeletonProps } from "./components/skeleton";
 export { ConfirmDialog, type ConfirmDialogProps } from "./components/confirm-dialog";
-export { PageHeader, type PageHeaderProps } from "./components/page-header";
+export { PageHeader, PageToolbar, type PageHeaderProps, type PageToolbarProps } from "./components/page-header";
 export { Banner, type BannerProps, type BannerVariant } from "./components/banner";
 export { EmptyState, type EmptyStateProps } from "./components/empty-state";
 export { Popover, PopoverClose, type PopoverProps } from "./components/popover";
@@ -64,6 +64,7 @@ export {
 export { Dialog, DialogClose, type DialogProps } from "./components/dialog";
 export { ToastProvider, toast, type ToastOptions } from "./components/toast";
 export { TopBar, type TopBarProps } from "./components/shell/top-bar";
+export { Wordmark, type WordmarkProps } from "./components/shell/wordmark";
 export { ThemeToggle, type ThemeToggleProps } from "./components/shell/theme-toggle";
 export { AccountMenu, AccountMenuItem, type AccountMenuProps, type AccountMenuItemProps } from "./components/shell/account-menu";
 export { NotificationBell, type NotificationBellProps, type NotificationItem } from "./components/shell/notification-bell";
@@ -73,9 +74,13 @@ export {
   Sidebar,
   SidebarSection,
   SidebarItem,
+  SidebarToggle,
   type SidebarProps,
   type SidebarSectionProps,
   type SidebarItemProps,
+  type SidebarToggleProps,
+  type SidebarLinkProps,
+  type SidebarRenderLink,
 } from "./components/shell/sidebar";
 export {
   DataTable,

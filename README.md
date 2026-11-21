@@ -55,7 +55,7 @@ import { MonthClock, HomePanel, PanelLink, HOME_FEED_ROW } from "@curvgroup/desi
 @import "@curvgroup/design-system/home.css";
 ```
 
-It stands alone like the mobile entry. React is its only import, it uses no Tailwind classes, and colors come from the app's existing tokens with fallbacks. To vendor it, copy these into `vendor/curv-design-system/`:
+It stands alone like the mobile entry. React is its only import, it uses no Tailwind classes, and colors come from the app's existing tokens with fallbacks. `npm run vendor -- /path/to/app` vendors it with the rest of the package (see below). For a partial vendor, copy these into `vendor/curv-design-system/`:
 
 ```
 dist/home.js  dist/home.d.ts  dist/home-client.js  dist/home-client.d.ts  home.css
@@ -77,9 +77,20 @@ import { MorphStack, MorphStackButton } from "@curvgroup/design-system/morph";
 @import "@curvgroup/design-system/morph.css";
 ```
 
-It stands alone like the home and mobile entries. To vendor it, copy `dist/morph.js  dist/morph.d.ts  morph.css` into `vendor/curv-design-system/` and add the `"./morph"` and `"./morph.css"` exports. Leave `dist/index.js` alone.
+It stands alone like the home and mobile entries. `npm run vendor -- /path/to/app` vendors it with the rest of the package. For a partial vendor, copy `dist/morph.js  dist/morph.d.ts  morph.css` into `vendor/curv-design-system/` and add the `"./morph"` and `"./morph.css"` exports.
 
 ---
+
+## Vendoring into an app
+
+Every app runs one release, desktop and mobile, vendored by one script:
+
+```bash
+npm run vendor -- /path/to/app      # builds, writes <app>/vendor/curv-design-system + source.json
+bash scripts/vendor.sh --check /path/to/app   # exits 1 if the app's copy drifted
+```
+
+Full steps: [`docs/consuming-in-an-os.md`](docs/consuming-in-an-os.md).
 
 ## Staying up to date (how changes propagate)
 
@@ -113,8 +124,10 @@ first:
    structurally impossible. Consuming apps never rebuild a cradle or a sidebar,
    so that whole class of mistake disappears.
 2. **`@curvgroup/design-system/eslint`** — mechanical, deterministic, fails CI.
-   Bans `uppercase` / `tracking-wider`, `rounded-xl`+ (too round), and raw hex in
-   `className`. Wire it into an app's `eslint.config.js`:
+   Bans `uppercase` / `tracking-wider`, raw hex and palette colours in
+   `className`; warns on `text-[Npx]` (use the seven type tokens) and
+   `tracking-wide` (`strict` makes those errors, `migration` makes everything a
+   warning). Wire it into an app's `eslint.config.js`:
    ```js
    import curv from "@curvgroup/design-system/eslint";
    export default [ ...curv /*, your app rules */ ];

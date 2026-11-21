@@ -30,6 +30,8 @@ The panel pieces and row classes are hook-free and render in server components. 
 
 ## Vendoring into an app
 
+From 0.5.0, `scripts/vendor.sh` vendors the whole package, this kit included (`docs/consuming-in-an-os.md`). The manual steps below are for an app still on a partial vendor.
+
 The entry stands alone. It imports React and its own client half, never `dist/index.js` or the mobile files, so vendoring it changes no desktop or mobile surface. Copy these built files into `vendor/curv-design-system/`:
 
 ```
