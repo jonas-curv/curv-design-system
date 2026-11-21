@@ -142,10 +142,18 @@ const TYPE_SCALE = [
 // Relative sizes (`text-[0.55em]`, a superscript) are not a size on the scale.
 const ARBITRARY_TEXT_SIZE = /^!?text-\[(?:length:)?(\d*\.?\d+)(px|rem)\]!?$/;
 
-/** The scale token an arbitrary size folds to: 14 → body, 10 and 9 → micro. */
+/**
+ * The scale token an arbitrary size folds to: 10 and 9 → micro, 14 → body,
+ * 15 → section (the nearest step, so a title keeps its place above body text),
+ * then the nearest step, ties to the larger. The stream C codemod folds the same.
+ */
 function foldToScale(px) {
   if (px <= 11) return "text-micro";
-  if (px < 16) return px >= 12.5 ? "text-body" : "text-caption";
+  if (px < 12.5) return "text-caption";
+  if (px < 14.5) return "text-body";
+  if (px < 16) return "text-section";
+  // TYPE_SCALE runs large to small and only a strictly nearer step replaces
+  // the best so far, so a tie keeps the larger.
   let best = TYPE_SCALE[0];
   for (const entry of TYPE_SCALE) {
     if (Math.abs(entry[0] - px) < Math.abs(best[0] - px)) best = entry;
@@ -163,7 +171,7 @@ const rules = {
       "Disallow arbitrary font sizes (text-[13px]); use the seven type-scale tokens.",
     messageId: "noArbitraryTextSize",
     message:
-      'Arbitrary size "{{token}}": use {{suggestion}}. The type scale is text-display (32), text-figure (24), text-title (20), text-section (16), text-body (13), text-caption (12) and text-micro (11).',
+      'Arbitrary size "{{token}}": use {{suggestion}}. The type scale is text-display (32), text-figure (24), text-title (20), text-section (16), text-body (13), text-caption (12) and text-micro (11); 14 folds to body, 15 to section, 10 and 9 to micro.',
     test: (base) => {
       const m = base.match(ARBITRARY_TEXT_SIZE);
       if (!m) return null;

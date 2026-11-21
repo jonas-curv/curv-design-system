@@ -169,7 +169,7 @@ off-colour, or with a hand-rolled `bg-neutral-100` shell.*
 - **Seven type sizes, by role — never `text-[Npx]`.** `text-display` 32 ·
   `text-figure` 24 (KPI values) · `text-title` 20 (detail-page title) ·
   `text-section` 16 · `text-body` 13 · `text-caption` 12 · `text-micro` 11.
-  14 folds to 13; 10 and 9 fold to 11. Weights 400/500/600 only.
+  14 folds to 13; 15 folds to 16; 10 and 9 fold to 11. Weights 400/500/600 only.
   (`curv/no-arbitrary-text-size`, a warning in the default preset.)
 - **No full uppercase.** No `uppercase`, no `tracking-wide`/`-wider`/`-widest`.
   Labels are **sentence case** ("Gap to goal", not "GAP TO GOAL").

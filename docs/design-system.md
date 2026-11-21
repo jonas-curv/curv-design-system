@@ -127,8 +127,9 @@ sets the size **and** its line height, so the class is the whole decision:
 | caption | 12 / 16     | `text-caption` | Secondary/meta text, column headers, stat and section labels. |
 | micro   | 11 / 16     | `text-micro`   | Rare: dense annotations, chart axes, count badges.      |
 
-Anything else folds to the scale: 14px → `text-body`, 10px and 9px →
-`text-micro`. `text-xl` is the same 20 / 28 as `text-title` (the `PageHeader`
+Anything else folds to the scale: 14px → `text-body`, 15px → `text-section`
+(the nearest step, so a title stays above body text), 10px and 9px →
+`text-micro`; otherwise the nearest step, ties to the larger. `text-xl` is the same 20 / 28 as `text-title` (the `PageHeader`
 title uses it). Lint reports every `text-[Npx]` with the token it folds to
 (`curv/no-arbitrary-text-size`). An app with its own `cn()` must extend
 tailwind-merge with `curvTailwindMergeConfig` (exported), or it reads
