@@ -15,16 +15,19 @@ component's TSDoc for the full surface. **Style through tokens, never raw hex.**
 | Use when | Component | Key props |
 | --- | --- | --- |
 | You need the whole app shell (dark cradle, sticky top bar, sidebar + content) | `AppFrame` | `topBar`, `sidebar`, `children` |
-| Wrapping a page's content at the right width | `PageContainer` | `size`, `bleed` (edge-to-edge for wide tables) |
-| A page's title block (eyebrow, count, badge, actions) | `PageHeader` | `title`, `eyebrow`, `count`, `badge`, `actions` |
+| Wrapping a page's content at the right width (sides 24, top 28) | `PageContainer` | `size` (default 1280 · `narrow` 720 · `wide` 1600), `bleed` (edge-to-edge for wide tables) |
+| How an index page opens: no visible title, one 36px control row | `PageToolbar` | `title` (hidden h1), `controls` (views · search · filter), `actions` (Export · primary) |
+| A detail page's title block (20px title, status, actions) | `PageHeader` | `title`, `badge`, `actions` (`eyebrow`, `count`, `description`: legacy) |
 | A row of cards/chips scrolls sideways with edge-fades | `HScroll` | `children`, `containerClassName`, `fade` |
 
 ## Navigation
 
 | Use when | Component | Key props |
 | --- | --- | --- |
-| The global top bar (logo · search · actions) | `TopBar` | `logo`, `center`, `actions` |
-| The left nav with sections + items | `Sidebar`, `SidebarSection`, `SidebarItem` | Section: `label`, `collapsible` · Item: `icon`, `label`, `active`, `href`, `comingSoon` |
+| The global top bar (wordmark · centered search + Ask · actions) | `TopBar` | `logo`, `center`, `actions`, `mobileTitle` |
+| The OS name in the top bar ("sales" + superscript os) | `Wordmark` | `name`, `label` |
+| The left nav with sections + items (240, or the 56 rail) | `Sidebar`, `SidebarSection`, `SidebarItem` | Sidebar: `collapsed`, `header`, `footer`, `renderLink` · Section: `label`, `collapsible`, `open`/`onOpenChange` · Item: `icon`, `label`, `active`, `href`, `badge`, child items (nested), `comingSoon` |
+| The rail's collapse / expand button (sidebar footer) | `SidebarToggle` | `collapsed`, `onCollapsedChange` |
 | The account chip + dropdown | `AccountMenu`, `AccountMenuItem` | `name`, `email`, `role`, `theme`+`onThemeChange` |
 | The notification inbox bell | `NotificationBell` | `items`, `unreadCount`, `onMarkAllRead`, `onDismiss` |
 | A light/dark switch | `ThemeToggle` | `value`, `onValueChange`, `size` |
@@ -115,4 +118,22 @@ decided per column:
 | A keyboard-key hint | `Kbd` | `children` (+ native attrs) |
 
 **Utility:** `cn(...)` — the class-name merger (clsx + tailwind-merge). Use it
-anywhere you compose conditional Tailwind classes.
+anywhere you compose conditional Tailwind classes. An app with its own `cn()`
+extends tailwind-merge with `curvTailwindMergeConfig`, so `text-body` is kept as
+a size next to a text colour.
+
+## Type and heights
+
+| Use when | Class |
+| --- | --- |
+| The one hero number | `text-display` (32 / 40) |
+| A KPI value | `text-figure` (24 / 32) |
+| A detail-page title | `text-title` or `text-xl` (20 / 28) |
+| A section or card heading | `text-section` (16 / 24) |
+| Default UI text | `text-body` (13 / 20) |
+| Labels, meta, column headers | `text-caption` (12 / 16) |
+| Axes, count chips | `text-micro` (11 / 16) |
+| A control: button, input, select, segmented, search | `h-9` (36) |
+| A small control, a sidebar row | `h-8` (32) |
+| An in-table control | `h-7` (28) |
+| A table row, a tab, a touch target | `h-11` (44) |

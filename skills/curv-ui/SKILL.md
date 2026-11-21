@@ -90,9 +90,15 @@ off-colour, or with a hand-rolled `bg-neutral-100` shell.*
    large, current set — the **showcase site is the live catalogue** and
    `docs/design-system.md` → *Components to reuse* is the full index. Grouped:
    - **Shell / layout:** `AppFrame` (the whole dark cradle + sticky bar + sidebar
-     — never rebuild it), `TopBar`, `Sidebar`/`SidebarSection`/`SidebarItem`,
-     `PageContainer` (`bleed`=full width), `PageHeader` (eyebrow + title + badge +
-     an `actions` slot — it hosts controls, doesn't hardcode them), `Card`.
+     — never rebuild it), `TopBar` (wordmark · centered ⌘K search + Ask ·
+     feedback, approvals, notifications, account), `Wordmark`,
+     `Sidebar`/`SidebarSection`/`SidebarItem`/`SidebarToggle` (32px rows, 16px
+     icons, counts, nested items, the 56px rail), `PageContainer` (1280 default,
+     `narrow` 720, `wide` 1600, `bleed` full width; sides 24, top 28),
+     `PageToolbar` (how an **index page** opens: no visible title, a hidden h1,
+     ONE 36px control row — views · search · filter … Export · primary action),
+     `PageHeader` (a **detail page**'s 20 / 600 title + badge + an `actions`
+     slot — it hosts controls, doesn't hardcode them), `Card`.
    - **Navigation:** `Tabs` (view-navigation — switching between distinct
      *views/sections* of a page, e.g. Overview / Inventory / Sales; **always the
      full-width bar at the very top of the content, under the app bar** — the
@@ -156,10 +162,18 @@ off-colour, or with a hand-rolled `bg-neutral-100` shell.*
 
 ## Mechanical rules (lint enforces these)
 
-- **No full uppercase.** No `uppercase`, no `tracking-wider`/`tracking-widest`.
+- **Seven type sizes, by role — never `text-[Npx]`.** `text-display` 32 ·
+  `text-figure` 24 (KPI values) · `text-title` 20 (detail-page title) ·
+  `text-section` 16 · `text-body` 13 · `text-caption` 12 · `text-micro` 11.
+  14 folds to 13; 10 and 9 fold to 11. Weights 400/500/600 only.
+  (`curv/no-arbitrary-text-size`, a warning in the default preset.)
+- **No full uppercase.** No `uppercase`, no `tracking-wide`/`-wider`/`-widest`.
   Labels are **sentence case** ("Gap to goal", not "GAP TO GOAL").
 - **No raw hex in className.** Use tokens. (The single sanctioned exception is
   the top-bar chrome `bg-[#1b1b1b]`, which `AppFrame`/`TopBar` already own.)
+- **No titles on index pages.** A page reached from the sidebar opens on a
+  `PageToolbar`, not a heading, count, eyebrow or description (review enforces
+  this one).
 
 ## Radius — concentric, not fixed (a taste rule, review-enforced)
 
@@ -189,12 +203,16 @@ Concentricity can't be linted, so review owns it.)
 
 ## Polish details (the unseen correctness)
 
-- **Fixed control heights — never padding-derived.** Every control in a
-  toolbar/filter row gets an *explicit* height so the row aligns by rule, not by
-  luck. The main toolbar height is **`h-9` (36px)** — search inputs, filter
-  buttons, triggers, primary buttons all sit at `h-9`. A control whose height
-  comes from `py-*` + text is the classic source of 1–2px misalignment; set the
-  height, put padding inside it. (Dense in-table controls may drop to h-7/h-8.)
+- **Fixed control heights — never padding-derived.** Every control gets an
+  *explicit* height so a row aligns by rule, not by luck: controls **`h-9`
+  (36)** — search inputs, filter buttons, triggers, primary buttons, the control
+  row; small controls and sidebar rows **`h-8` (32)**; in-table controls
+  **`h-7` (28)**; table rows, tabs and touch targets **`h-11` (44)**. A control
+  whose height comes from `py-*` + text is the classic source of 1–2px
+  misalignment; set the height, put padding inside it.
+- **One rhythm (4px scale).** 8 inside a group, 12 in a card grid, 16 between
+  stacked blocks and from the control row to the content, 24 before a titled
+  section. Card padding `px-5 py-4`.
 - **Numbers get `tabular-nums`** wherever digits align in columns or update in
   place (KPIs, tables, counters) so they don't jitter.
 - **Optical alignment over geometric.** Icon + text buttons: the icon side gets

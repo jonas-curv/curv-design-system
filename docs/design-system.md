@@ -114,22 +114,35 @@ surfaces.
 
 ## Type scale — the ONLY allowed font sizes
 
-| Token        | Size | Tailwind      | Use                                                        |
-| ------------ | ---- | ------------- | ---------------------------------------------------------- |
-| display      | 32px | `text-[32px]` | THE hero number. At most one per page.                     |
-| title        | 24px | `text-2xl`    | Page title (`font-semibold tracking-tight`); large metric values. |
-| heading      | 16px | `text-base`   | Section/card headings (`font-medium`). Use sparingly.      |
-| body         | 13px | `text-[13px]` | Default UI text: table cells, labels, buttons, prose.      |
-| caption      | 12px | `text-[12px]` | Secondary/meta text, column headers, stat labels.          |
-| micro        | 11px | `text-[11px]` | Rare: dense annotations, chart axes, count badges.         |
+Seven sizes, set by role. Each is a Tailwind theme token in `theme.css` that
+sets the size **and** its line height, so the class is the whole decision:
 
-Weights: `font-semibold` for display/title/metric values, `font-medium` for
-headings/labels/emphasis, normal for everything else. Never `font-bold`.
+| Token   | Size / line | Class          | Use                                                     |
+| ------- | ----------- | -------------- | ------------------------------------------------------- |
+| display | 32 / 40     | `text-display` | THE hero number. At most one per page.                  |
+| figure  | 24 / 32     | `text-figure`  | KPI values (`StatCard`), large metric values.           |
+| title   | 20 / 28     | `text-title`   | The detail-page title (`PageHeader`). Index pages have none. |
+| section | 16 / 24     | `text-section` | Section and card headings. Use sparingly.               |
+| body    | 13 / 20     | `text-body`    | Default UI text: table cells, nav rows, buttons, prose. |
+| caption | 12 / 16     | `text-caption` | Secondary/meta text, column headers, stat and section labels. |
+| micro   | 11 / 16     | `text-micro`   | Rare: dense annotations, chart axes, count badges.      |
 
-**Never use full uppercase.** No `uppercase`, no `tracking-wider` label style,
-anywhere. Labels are sentence case ("Gap to goal", not "GAP TO GOAL"). The
-only exception is a proper name/acronym that is genuinely spelled that way
-(FK, CCM, AOV, GP).
+Anything else folds to the scale: 14px → `text-body`, 10px and 9px →
+`text-micro`. `text-xl` is the same 20 / 28 as `text-title` (the `PageHeader`
+title uses it). Lint reports every `text-[Npx]` with the token it folds to
+(`curv/no-arbitrary-text-size`). An app with its own `cn()` must extend
+tailwind-merge with `curvTailwindMergeConfig` (exported), or it reads
+`text-body` as a colour and drops it next to `text-foreground`.
+
+Weights: 400 / 500 / 600 only. `font-semibold` for display/figure/title and
+section headings, `font-medium` for labels and emphasis, normal for everything
+else. Never `font-bold`. **`tabular-nums` wherever digits align** (KPIs, table
+columns, counts, anything that updates in place).
+
+**Never use full uppercase.** No `uppercase`, no `tracking-wide`, no
+`tracking-wider` label style, anywhere. Labels are sentence case ("Gap to
+goal", not "GAP TO GOAL"). The only exception is a proper name/acronym that is
+genuinely spelled that way (FK, CCM, AOV, GP).
 
 ## Text color hierarchy (how hierarchy is made)
 
@@ -162,7 +175,7 @@ Application rules:
   dot for neutral, red-soft for bad. Works in table rows too. (A bare dot +
   word is the lighter alternative when even a pill is too much.)
 - Deltas = **small soft-filled pill** (`bg-verdict-green-soft
-  text-verdict-green` / red), `rounded-full px-1.5 py-0.5 text-[11px]` with a
+  text-verdict-green` / red), `rounded-full px-1.5 py-0.5 text-micro` with a
   direction arrow. The fill makes up/down a pre-readable shape — that's the
   one place soft-fill earns its keep on a data-dense surface.
 - Soft fill (`verdict-*-soft`) is allowed only on **small semantic
@@ -220,7 +233,7 @@ Pills are welcome — Linear uses them everywhere — but only the clean kind:
 
 ```
 inline-flex h-6 items-center gap-1.5 rounded-full border border-border
-bg-card px-2.5 text-[12px] font-medium text-foreground
+bg-card px-2.5 text-caption font-medium text-foreground
 ```
 
 - Optional leading `size-1.5 rounded-full bg-<semantic/brand>` dot.
@@ -244,17 +257,20 @@ degrade when stretched?
   no full-width charts anywhere (graphs live in bounded rails); Vercel
   centers its dashboards for the same reason.
 
-Three containers:
+`PageContainer` on every page, one of four widths:
 
-| Type      | Class                          | Use                                                                 |
-| --------- | ------------------------------ | ------------------------------------------------------------------- |
-| full      | `w-full px-6` (no max)         | Pages/views that are ONLY rows/boards: lists, tables, kanban (Linear). |
-| dashboard | `mx-auto max-w-[1280px] px-6`  | Any page containing charts / KPI tiles / hero numbers / mixed content (Vercel). |
-| narrow    | `mx-auto max-w-[720px] px-6`   | Settings, forms, prose (Linear settings).                            |
+| Type      | `PageContainer`  | Max width | Use                                                                 |
+| --------- | ---------------- | --------- | ------------------------------------------------------------------- |
+| full      | `bleed`          | none      | Pages/views that are ONLY rows/boards: lists, tables, kanban (Linear). |
+| dashboard | (default)        | 1280      | Any page containing charts / KPI tiles / hero numbers / mixed content (Vercel). |
+| narrow    | `size="narrow"`  | 720       | Settings, forms, prose (Linear settings).                            |
+| wide      | `size="wide"`    | 1600      | Dense dashboards that need the room.                                 |
 
 A page with a **chart** or big hero numbers uses `dashboard` for the whole page
 — those degrade when stretched, and mixing widths reads as broken. Don't invent
-other max-widths. Vertical rhythm: `py-7`, `xl:px-8` optional on dashboard/full.
+other max-widths. **One frame:** sides 24 (16 on a phone), top 28 (20 on a
+phone): `px-4 sm:px-6 py-5 sm:py-7`, owned by `PageContainer`. Never pad a page
+yourself.
 
 **Level 1 vs level 2 (the shared `PageContainer`).** The two ideas ship in
 `@curvgroup/design-system` as `PageContainer`: **level 2** is the default —
@@ -270,9 +286,11 @@ the point of the page and shouldn't be boxed into `dashboard`; a table page with
 a KPI strip on top (no chart) stays full-width. Example:
 `app/(app)/customers/page.tsx`.
 
-**KPI cards are ONE treatment across the app** — the same raised shadow cards
-everywhere (`rounded-lg bg-card px-5 py-4 shadow-card`, sentence-case `12px`
-label + `text-2xl font-semibold` value, `grid … lg:grid-cols-5 gap-3`), whether
+**KPI cards are ONE treatment across the app** — `StatCard`: the raised shadow
+card (`rounded-lg bg-card px-5 py-4 shadow-card`), a sentence-case 12 / 500
+muted label (`text-caption font-medium`) and a 24 / 600 tabular value
+(`text-figure font-semibold tabular-nums`), in a `StatGroup` or a
+`grid … gap-3`, whether
 the page is centered (`dashboard`, e.g. the deals overview) or full-width (e.g.
 customers). Don't invent a second KPI style (divided bars, bordered boxes) for
 one page — consistency across pages beats a per-page optimisation.
@@ -301,6 +319,24 @@ column, so it must stay fully readable — `whitespace-nowrap`, and if a label i
 too long, shorten the word (never "…" + tooltip; truncation is for cell values,
 not headers).
 
+## Page header — no titles on index pages
+
+A page reached from the sidebar (an **index page**: Deals, Creators, Cash)
+shows **no visible title, count, eyebrow or description**: the sidebar's active
+row already says where you are. It opens on **ONE control row**, `PageToolbar`:
+
+    views (SegmentedControl) · search (Input, w-60) · filter · ─ spacer ─ · columns · Export · primary action
+
+Every control is 36 tall (`h-9`), 8 apart (`gap-2`); the row wraps on a narrow
+window; the primary action is last. `PageToolbar` renders a visually hidden
+`<h1>` with the page name for screen readers. The content starts 16 below the
+row (`mt-4`). Counts live in the table footer, not next to a title.
+
+A **detail page** (one deal, one creator) keeps a title: `PageHeader`, 20 / 600
+(`text-xl font-semibold tracking-tight`), an optional status `Badge`, and its
+actions on the right. `PageHeader` still accepts `eyebrow`, `count` and
+`description` for pages that have not moved yet; new pages leave them out.
+
 ## App shell — dark top bar + gray sidebar
 
 The chrome is **Shopify-style**: a dark top bar spanning the width, with a gray
@@ -308,27 +344,50 @@ nav sidebar and whiter content "cradled" below it. Ships as the package
 `AppFrame` / `TopBar` / `Sidebar` (`src/components/shell/*`) — never rebuild it;
 the Customs OS mount (`app/(app)/layout.tsx`) is the reference implementation.
 
-**Top bar** — `sticky top-0 z-50`, `h-14` (56px), `bg-[#1b1b1b]`, light text.
-A `grid-cols-[1fr_auto_1fr]` layout so the search sits at the **true center**
-regardless of side widths:
+**Top bar** — `sticky top-0 z-50`, `h-14` (56px), `bg-topbar` (`#1b1b1b`),
+light text. From `md` the grid is
+`minmax(max-content,1fr) minmax(0,35rem) minmax(max-content,1fr)`: the two `1fr`
+sides are equal, so the search sits at the **true center** whatever the sides
+hold; the center is a definite 560px region (a `w-full` search fills it), and
+the sides never shrink below their content, so on a narrow window the search
+gives way instead of sliding under the actions. Same place, same behavior, in
+every OS:
 
-- **Left**: the logo (`h-4`).
-- **Center**: the global **⌘K search** — a wide (`w-[36rem]`) dark pill
-  (`bg-white/10`) with a light hairline shadow (the dark-surface analogue of the
-  card shadow). This is the only mount of the `CommandPalette` (⌘K).
-- **Right**: knowledge base + feedback (icon buttons), the notifications bell, a
-  divider, then the account chip (avatar + name → menu with Light/Dark toggle,
-  Access, Settings, Sign out). Icon buttons are `text-white/70 hover:bg-white/10`.
+- **Left**: the `Wordmark` — the lowercase app name with a superscript "os",
+  16 / 600, tracking -0.02em, the "os" at 0.55em in white/60. No bold, no caps,
+  no image logo. The product is "Sales OS", never "SalesOS".
+- **Center**: the global **⌘K search** (36 tall, ~480 wide, `rounded-[10px]`,
+  `bg-white/10`) with the **Ask** button directly beside it. This is the only
+  mount of the `CommandPalette` (⌘K).
+- **Right**, in this order: feedback, approvals, notifications (36px icon
+  buttons, 18px icons, `text-white/70 hover:bg-white/10`), then the account
+  (avatar only). The theme toggle lives in the account menu.
 
-**Sidebar** — `w-60`, `bg-sidebar` (recessed gray), `sticky top-14`,
-`h-[calc(100vh-3.5rem)]`, `rounded-tl-[12px]`, `border-r border-sidebar-border`.
-It is **nav only** — logo, search and profile all live in the top bar. Nav is
-`px-3 py-3`. Items: inactive `text-foreground/80`, `hover:bg-sidebar-accent`,
-active `bg-sidebar-active` + `text-foreground` + `font-medium`. Collapsible
-section headers (`text-foreground/70`, `text-[12px]`) with a **right-aligned**
-chevron (Vercel); **Home is pinned** at the top (`mb-2`, no header). Collapse
-state persists per-device (cookie) and the active section auto-opens on deep
-links.
+**Sidebar** — `w-60` (240), or the **icon rail** `w-14` (56) with `collapsed`;
+`bg-sidebar` (recessed gray), `sticky top-14`, `h-[calc(100vh-3.5rem)]`,
+`rounded-tl-[12px]`, `border-r border-sidebar-border`. It is **nav only** — the
+wordmark, search and profile live in the top bar; an optional `header` slot
+holds a sidebar search, the `footer` slot the `SidebarToggle`. Nav is
+`px-3 py-3`.
+
+- **Rows are a fixed 32** (`h-8`, never padding-derived), 13px (`text-body`),
+  **16px icons on every row**, indented ones included. Inactive
+  `text-foreground/80`, `hover:bg-sidebar-accent`; active `bg-sidebar-active`
+  + `text-foreground` + `font-medium`.
+- **Section labels** 12 / 500 `text-foreground/70`, sentence case, 28 tall
+  (`h-7 text-caption font-medium`); collapsible ones carry a right-aligned
+  chevron (Vercel). 12 between sections.
+- **Home and Flow come first**, pinned at the top with no header (`mb-2`).
+- **Nested items**: children of a `SidebarItem` make it expandable (Flow →
+  Inbox, Goals, Projects, Insights). The parent row navigates; the chevron
+  beside it folds. Children indent (`pl-7`) and keep 16px icons. A parent
+  holding the active page opens itself.
+- **Counts**: `badge` renders the neutral count chip (`text-micro`,
+  `tabular-nums`); in the rail it becomes a dot on the icon.
+- **The rail** shows icons only; each row names itself in a tooltip and keeps
+  its label for screen readers; section labels become hairlines.
+- The app owns state and permissions: which items show, collapse and rail state
+  (persisted per device in a cookie), and the router link (`renderLink`).
 
 **The "cradle" (rounded frame)** — the layout wrapper is the bar colour
 (`bg-[#1b1b1b]`), so it shows through the frame's rounded top corners for a soft
@@ -344,17 +403,32 @@ transition instead of a hard edge:
 
 ## Spacing & layout
 
-4px grid. Sections stacked with `mt-4` (16px). Card padding `px-5 py-4`
-(compact) or `px-5 py-5` (featured). Related stats become **sections of one
-card** separated by `border-t border-border` or `divide-x divide-border` —
-not a field of separate boxes.
+One 4px scale, one rhythm:
 
-**Control height** — interactive controls in a filter/toolbar row share one
-height: **`h-9` (36px)**. Triggers, dropdowns, segmented toggles, search
-inputs, primary buttons all sit at h-9 so a filter row reads as one aligned
-band. (Dense in-table controls may drop to h-7/h-8; a page's main toolbar
-does not.) Popovers/menus are generously sized — `text-[13px]` rows at
-`py-2`, not cramped `text-xs` at `py-1`.
+| Gap | Where |
+| --- | ----- |
+| 4   | Icon to label |
+| 8   | Inside a group (`gap-2`): controls in the control row, buttons in a footer |
+| 12  | A card grid (`gap-3`), between sidebar sections |
+| 16  | Between stacked blocks, and from the control row to the content (`mt-4`) |
+| 20 × 16 | Card padding (`px-5 py-4`) |
+| 24  | Before a titled section (`mt-6`), page sides |
+
+Related stats become **sections of one card** separated by `border-t
+border-border` or `divide-x divide-border` — not a field of separate boxes. A
+card is never nested in a card.
+
+**Fixed heights** — every control has a set height, never derived from padding:
+
+| Height | Class  | What |
+| ------ | ------ | ---- |
+| 36     | `h-9`  | Controls: buttons, inputs, selects, segmented toggles, the search, the control row |
+| 32     | `h-8`  | Small controls, sidebar rows |
+| 28     | `h-7`  | In-table controls |
+| 44     | `h-11` | Table rows, tabs, touch targets |
+
+Popovers/menus are generously sized — `text-body` rows at `py-2`, not cramped
+`text-xs` at `py-1`.
 
 ## Surface hierarchy (backgrounds)
 
@@ -836,11 +910,11 @@ When the control-selection rule says "dropdown," it's a base-ui `Menu`, styled
 one way so every dropdown in the app matches (never a native `<select>`):
 
 - **Trigger** — the shared toolbar chrome: `h-9 rounded-md border border-border
-  bg-card px-3 text-[13px] font-medium`, a trailing muted `ChevronDown` (14px),
+  bg-card px-3 text-body font-medium`, a trailing muted `ChevronDown` (14px),
   `data-[popup-open]:bg-accent`. A compact `h-7` variant is fine inside a card
   header — keep the border + chevron.
 - **Popup** — `z-50 min-w-[180px] rounded-lg border border-border bg-popover
-  p-1 text-[13px] text-foreground shadow-lg outline-none`.
+  p-1 text-body text-foreground shadow-lg outline-none`.
 - **Item** — `flex items-center justify-between gap-3 rounded px-2 py-1.5
   outline-none data-[highlighted]:bg-accent`; the selected item shows a trailing
   `Check` (14px). The P&L brand + chart-metric pickers are the reference.
@@ -947,7 +1021,10 @@ system and add it below — the second copy is the signal to extract, never to f
 **From `@curvgroup/design-system` — always the first choice:**
 
 - **Shell / layout**: `AppFrame` (the whole cradle — never rebuild it), `TopBar`,
-  `Sidebar` / `SidebarSection` / `SidebarItem`, `PageContainer`, `PageHeader`.
+  `Wordmark` (the OS name in the top bar), `Sidebar` / `SidebarSection` /
+  `SidebarItem` / `SidebarToggle` (rail, nested items, counts), `PageContainer`,
+  `PageToolbar` (how an index page opens: hidden h1 + one control row),
+  `PageHeader` (a detail page's 20px title).
 - **Primitives**: `Button`, `Badge`, `Avatar` / `AvatarGroup`, `Card`, `Kbd`,
   `Skeleton`, `CopyButton`, `cn`.
 - **Forms**: `Input`, `Textarea`, `Select`, `MultiSelect`, `Checkbox`,

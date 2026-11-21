@@ -39,6 +39,8 @@ The collapsed line is a real `<button>` with `aria-expanded`. Opening moves focu
 
 ## Vendoring into an app
 
+From 0.5.0, `scripts/vendor.sh` vendors the whole package, this kit included (`docs/consuming-in-an-os.md`). The manual steps below are for an app still on a partial vendor.
+
 The entry stands alone. It imports React only and never touches `dist/index.js`, the mobile files or the home kit. Copy these into `vendor/curv-design-system/`:
 
 ```
