@@ -83,17 +83,17 @@ export function KanbanColumn({
               dotFilled ? dotClassName : cn("border-[1.5px] bg-transparent", dotClassName),
             )}
           />
-          <span className="truncate text-[13px] font-medium text-foreground">{label}</span>
+          <span className="truncate text-body font-medium text-foreground">{label}</span>
           {count != null && (
-            <span className="ml-auto text-[12px] font-medium tabular-nums text-muted-foreground">{count}</span>
+            <span className="ml-auto text-caption font-medium tabular-nums text-muted-foreground">{count}</span>
           )}
         </div>
         {/* always rendered (nbsp when blank) so card tops line up across columns */}
-        <div className="mt-0.5 pl-4 text-[13px] font-semibold tabular-nums text-foreground">{value || " "}</div>
+        <div className="mt-0.5 pl-4 text-body font-semibold tabular-nums text-foreground">{value || " "}</div>
       </div>
       <div className="flex flex-col gap-2">
         {isEmpty ? (
-          <div className="rounded-lg border border-dashed border-border/50 px-3 py-6 text-center text-[11px] text-muted-foreground/50">
+          <div className="rounded-lg border border-dashed border-border/50 px-3 py-6 text-center text-micro text-muted-foreground/50">
             {emptyLabel}
           </div>
         ) : (

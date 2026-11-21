@@ -86,7 +86,7 @@ export function NotificationBell({
     >
       <Bell />
       {count > 0 ? (
-        <span className="absolute -right-0.5 -top-0.5 flex h-4 min-w-4 items-center justify-center rounded-full bg-primary px-1 text-[10px] font-semibold tabular-nums text-primary-foreground ring-2 ring-card">
+        <span className="absolute -right-0.5 -top-0.5 flex h-4 min-w-4 items-center justify-center rounded-full bg-primary px-1 text-micro font-semibold tabular-nums text-primary-foreground ring-2 ring-card">
           {count > 9 ? "9+" : count}
         </span>
       ) : null}
@@ -99,9 +99,9 @@ export function NotificationBell({
   return (
     <Popover trigger={trigger} open={open} onOpenChange={setOpen} align={align} sideOffset={8} className="w-[352px] max-w-none p-0">
       <div className="flex items-center justify-between border-b border-border px-3.5 py-2.5">
-        <span className="text-[13px] font-semibold text-foreground">Notifications</span>
+        <span className="text-body font-semibold text-foreground">Notifications</span>
         {count > 0 && onMarkAllRead ? (
-          <button type="button" onClick={onMarkAllRead} className="text-[11px] font-medium text-chart hover:underline">
+          <button type="button" onClick={onMarkAllRead} className="text-micro font-medium text-chart hover:underline">
             Mark all read
           </button>
         ) : null}
@@ -128,11 +128,11 @@ export function NotificationBell({
                 {n.icon ? <span className="shrink-0">{n.icon}</span> : null}
                 <span className="min-w-0 flex-1">
                   <span className="flex items-center gap-1.5">
-                    <span className="truncate text-[13px] font-medium text-foreground">{n.title}</span>
+                    <span className="truncate text-body font-medium text-foreground">{n.title}</span>
                     {n.unread ? <span className="size-1.5 shrink-0 rounded-full bg-chart" /> : null}
                   </span>
-                  {n.body ? <span className="mt-0.5 line-clamp-2 block text-[12px] text-muted-foreground">{n.body}</span> : null}
-                  {n.time ? <span className="mt-0.5 block text-[11px] text-muted-foreground/70">{n.time}</span> : null}
+                  {n.body ? <span className="mt-0.5 line-clamp-2 block text-caption text-muted-foreground">{n.body}</span> : null}
+                  {n.time ? <span className="mt-0.5 block text-micro text-muted-foreground/70">{n.time}</span> : null}
                 </span>
               </>
             );
@@ -162,7 +162,7 @@ export function NotificationBell({
           })}
         </div>
       ) : (
-        <div className="px-3.5 py-8 text-center text-[13px] text-muted-foreground">{emptyLabel}</div>
+        <div className="px-3.5 py-8 text-center text-body text-muted-foreground">{emptyLabel}</div>
       )}
 
       {footer ? <div className="border-t border-border">{footer}</div> : null}

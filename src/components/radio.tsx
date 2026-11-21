@@ -34,7 +34,7 @@ export function Radio({ value, disabled, id, children }: RadioProps) {
   const ctx = React.useContext(RadioCtx);
   const checked = ctx.value === value;
   return (
-    <label className={cn("inline-flex items-center gap-2 text-[13px] text-foreground", disabled ? "cursor-not-allowed opacity-50" : "cursor-pointer")}>
+    <label className={cn("inline-flex items-center gap-2 text-body text-foreground", disabled ? "cursor-not-allowed opacity-50" : "cursor-pointer")}>
       <button
         type="button"
         role="radio"

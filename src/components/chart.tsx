@@ -160,7 +160,7 @@ function TooltipDelta({ cur, base, tone }: { cur: number; base: number; tone: No
   const positive = dir === "flat" ? null : tone === "down-positive" ? dir === "down" : dir === "up";
   const color = positive == null ? "text-muted-foreground" : positive ? "text-verdict-green" : "text-verdict-red";
   return (
-    <div className="flex items-center gap-1 pl-3.5 text-[11px]">
+    <div className="flex items-center gap-1 pl-3.5 text-micro">
       <span className={cn("inline-flex items-center gap-0.5 font-medium tabular-nums", color)}>
         {dir === "flat" ? (
           <svg width="8" height="8" viewBox="0 0 12 12" fill="currentColor" aria-hidden><rect x="1.5" y="5.25" width="9" height="1.5" rx="0.75" /></svg>
@@ -300,7 +300,7 @@ export function LineChart({
             return (
               <g key={t}>
                 <line x1={padL} x2={width - padR} y1={gy} y2={gy} className="stroke-border" strokeWidth={1} />
-                <text x={padL - 8} y={gy} textAnchor="end" dominantBaseline="middle" className="fill-muted-foreground text-[10px] tabular-nums">
+                <text x={padL - 8} y={gy} textAnchor="end" dominantBaseline="middle" className="fill-muted-foreground text-micro tabular-nums">
                   {formatY(t)}
                 </text>
               </g>
@@ -310,7 +310,7 @@ export function LineChart({
           {/* x labels */}
           {xLabels.map((lbl, i) =>
             i % labelStep === 0 ? (
-              <text key={i} x={x(i)} y={height - 6} textAnchor="middle" className="fill-muted-foreground text-[10px]">
+              <text key={i} x={x(i)} y={height - 6} textAnchor="middle" className="fill-muted-foreground text-micro">
                 {lbl}
               </text>
             ) : null,
@@ -383,7 +383,7 @@ export function LineChart({
       {/* shared tooltip: x-label + each series value */}
       {active != null && tipRows.length > 0 && (
         <div
-          className="pointer-events-none absolute top-1 z-10 -translate-x-1/2 whitespace-nowrap rounded-lg border border-border bg-popover px-2.5 py-2 text-[12px] text-popover-foreground shadow-lg"
+          className="pointer-events-none absolute top-1 z-10 -translate-x-1/2 whitespace-nowrap rounded-lg border border-border bg-popover px-2.5 py-2 text-caption text-popover-foreground shadow-lg"
           style={{ left: Math.max(70, Math.min(width - 70, tipX)) }}
         >
           {tooltipTitle != null ? (
@@ -527,7 +527,7 @@ export function BarChart({
             return (
               <g key={t}>
                 <line x1={padL} x2={width - padR} y1={gy} y2={gy} className="stroke-border" strokeWidth={1} />
-                <text x={padL - 8} y={gy} textAnchor="end" dominantBaseline="middle" className="fill-muted-foreground text-[10px] tabular-nums">
+                <text x={padL - 8} y={gy} textAnchor="end" dominantBaseline="middle" className="fill-muted-foreground text-micro tabular-nums">
                   {formatY(t)}
                 </text>
               </g>
@@ -540,7 +540,7 @@ export function BarChart({
 
           {xLabels.map((lbl, i) =>
             i % labelStep === 0 ? (
-              <text key={i} x={cx(i)} y={height - 6} textAnchor="middle" className="fill-muted-foreground text-[10px]">
+              <text key={i} x={cx(i)} y={height - 6} textAnchor="middle" className="fill-muted-foreground text-micro">
                 {lbl}
               </text>
             ) : null,
@@ -590,7 +590,7 @@ export function BarChart({
 
       {active != null && (
         <div
-          className="pointer-events-none absolute top-1 z-10 -translate-x-1/2 whitespace-nowrap rounded-lg border border-border bg-popover px-2.5 py-2 text-[12px] text-popover-foreground shadow-lg"
+          className="pointer-events-none absolute top-1 z-10 -translate-x-1/2 whitespace-nowrap rounded-lg border border-border bg-popover px-2.5 py-2 text-caption text-popover-foreground shadow-lg"
           style={{ left: Math.max(70, Math.min(width - 70, cx(active))) }}
         >
           <div className="mb-1 font-medium text-foreground">{xLabels[active]}</div>

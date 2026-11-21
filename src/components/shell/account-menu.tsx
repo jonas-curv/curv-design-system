@@ -48,7 +48,7 @@ export function AccountMenu({ name, email, role, avatarSrc, theme, onThemeChange
       )}
     >
       <Avatar name={name} src={avatarSrc} size="md" className="rounded-lg" />
-      <span className="hidden max-w-[140px] truncate text-[13px] font-medium text-foreground sm:block">{name}</span>
+      <span className="hidden max-w-[140px] truncate text-body font-medium text-foreground sm:block">{name}</span>
       <ChevronDown />
     </button>
   );
@@ -58,9 +58,9 @@ export function AccountMenu({ name, email, role, avatarSrc, theme, onThemeChange
       <div className="flex items-center gap-2.5 p-3">
         <Avatar name={name} src={avatarSrc} size="lg" className="rounded-lg" />
         <div className="min-w-0">
-          <div className="truncate text-[13.5px] font-semibold text-foreground">{name}</div>
-          {role ? <div className="text-[11px] text-muted-foreground">{role}</div> : null}
-          <div className="truncate text-[11.5px] text-muted-foreground">{email}</div>
+          <div className="truncate text-body font-semibold text-foreground">{name}</div>
+          {role ? <div className="text-micro text-muted-foreground">{role}</div> : null}
+          <div className="truncate text-caption text-muted-foreground">{email}</div>
         </div>
       </div>
 
@@ -81,7 +81,7 @@ export function AccountMenu({ name, email, role, avatarSrc, theme, onThemeChange
 }
 
 const itemClass =
-  "flex w-full items-center gap-2.5 rounded-md px-2 py-1.5 text-left text-[13px] text-muted-foreground transition hover:bg-accent hover:text-foreground";
+  "flex w-full items-center gap-2.5 rounded-md px-2 py-1.5 text-left text-body text-muted-foreground transition hover:bg-accent hover:text-foreground";
 
 export interface AccountMenuItemProps {
   icon?: React.ReactNode;

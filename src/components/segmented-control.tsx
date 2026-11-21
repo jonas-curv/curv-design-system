@@ -75,12 +75,12 @@ export function SegmentedControl({
             "data-[checked]:bg-card data-[checked]:text-foreground data-[checked]:shadow-sm",
             "focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-0",
             "disabled:pointer-events-none",
-            size === "sm" ? "text-[12px]" : "text-[13px]",
+            size === "sm" ? "text-caption" : "text-body",
           )}
         >
           {it.label}
           {it.count != null && (
-            <span className="text-[12px] tabular-nums text-muted-foreground/60 group-data-[checked]:text-muted-foreground">
+            <span className="text-caption tabular-nums text-muted-foreground/60 group-data-[checked]:text-muted-foreground">
               {it.count}
             </span>
           )}

@@ -64,11 +64,11 @@ function ToastList() {
         <span className={cn("mt-1.5 size-1.5 shrink-0 rounded-full", DOT[t.type])} aria-hidden />
       ) : null}
       <div className="min-w-0 flex-1">
-        <Tst.Title className="text-[13px] font-medium text-foreground" />
-        <Tst.Description className="mt-0.5 text-[12.5px] leading-relaxed text-muted-foreground" />
+        <Tst.Title className="text-body font-medium text-foreground" />
+        <Tst.Description className="mt-0.5 text-body leading-relaxed text-muted-foreground" />
       </div>
       {t.actionProps ? (
-        <Tst.Action className="shrink-0 self-center rounded-md px-2 py-1 text-[12.5px] font-medium text-foreground underline-offset-2 transition-colors hover:bg-accent focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-foreground/20" />
+        <Tst.Action className="shrink-0 self-center rounded-md px-2 py-1 text-body font-medium text-foreground underline-offset-2 transition-colors hover:bg-accent focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-foreground/20" />
       ) : null}
       <Tst.Close
         aria-label="Dismiss"

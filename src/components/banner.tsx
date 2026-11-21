@@ -43,7 +43,7 @@ function DefaultIcon({ variant }: { variant: BannerVariant }) {
 export function Banner({ variant = "info", icon, title, children, actions, onDismiss, className }: BannerProps) {
   const v = VARIANT[variant];
   return (
-    <div role="status" className={cn("flex items-start gap-3 rounded-lg border p-3 text-[13px]", v.box, className)}>
+    <div role="status" className={cn("flex items-start gap-3 rounded-lg border p-3 text-body", v.box, className)}>
       {icon !== null && (
         <span className={cn("mt-px shrink-0", v.icon)}>{icon ?? <DefaultIcon variant={variant} />}</span>
       )}

@@ -60,7 +60,7 @@ export function Tooltip({ content, children, side = "top", sideOffset = 6, delay
         <T.Positioner side={side} sideOffset={sideOffset} className="z-50">
           <T.Popup
             className={cn(
-              "origin-[var(--transform-origin)] rounded-md bg-foreground px-2 py-1 text-[12px] font-medium text-background shadow-card",
+              "origin-[var(--transform-origin)] rounded-md bg-foreground px-2 py-1 text-caption font-medium text-background shadow-card",
               // Motion: 125–200ms, ease-out, origin-aware; reduced-motion keeps
               // the fade but drops the scale (motion-safe gate).
               "transition-[transform,opacity] duration-150 ease-[cubic-bezier(0.23,1,0.32,1)]",

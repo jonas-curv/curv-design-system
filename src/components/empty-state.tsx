@@ -26,9 +26,9 @@ export function EmptyState({ icon, title, description, actions, size = "md", cla
           {icon}
         </span>
       )}
-      <p className={cn("font-medium text-foreground text-balance", sm ? "text-[13px]" : "text-sm")}>{title}</p>
+      <p className={cn("font-medium text-foreground text-balance", sm ? "text-body" : "text-sm")}>{title}</p>
       {description && (
-        <p className={cn("max-w-sm text-muted-foreground text-pretty", sm ? "text-[12px]" : "text-[13px]")}>{description}</p>
+        <p className={cn("max-w-sm text-muted-foreground text-pretty", sm ? "text-caption" : "text-body")}>{description}</p>
       )}
       {actions && <div className={cn("flex items-center gap-2", sm ? "mt-1.5" : "mt-3")}>{actions}</div>}
     </div>

@@ -42,7 +42,7 @@ export function Menu({
         <M.Positioner side={side} align={align} sideOffset={sideOffset} className="z-50">
           <M.Popup
             className={cn(
-              "min-w-[10rem] max-h-[min(24rem,var(--available-height))] origin-[var(--transform-origin)] overflow-y-auto rounded-lg border border-border bg-popover p-1 text-[13px] text-popover-foreground shadow-lg outline-none",
+              "min-w-[10rem] max-h-[min(24rem,var(--available-height))] origin-[var(--transform-origin)] overflow-y-auto rounded-lg border border-border bg-popover p-1 text-body text-popover-foreground shadow-lg outline-none",
               "transition-[transform,opacity] duration-150 ease-[cubic-bezier(0.23,1,0.32,1)]",
               "data-[starting-style]:opacity-0 data-[ending-style]:opacity-0 data-[ending-style]:duration-100",
               "motion-safe:data-[starting-style]:scale-95 motion-safe:data-[ending-style]:scale-95",
@@ -91,7 +91,7 @@ export function MenuItem({
       {icon ? <span className="grid size-4 shrink-0 place-items-center">{icon}</span> : null}
       <span className="flex-1 truncate">{children}</span>
       {shortcut ? (
-        <span className="ml-4 text-[11px] tabular-nums text-muted-foreground">{shortcut}</span>
+        <span className="ml-4 text-micro tabular-nums text-muted-foreground">{shortcut}</span>
       ) : null}
     </M.Item>
   );
@@ -110,6 +110,6 @@ export function MenuSeparator() {
 
 export function MenuLabel({ children }: { children: React.ReactNode }) {
   return (
-    <div className="px-2 py-1 text-[11px] font-medium text-muted-foreground">{children}</div>
+    <div className="px-2 py-1 text-micro font-medium text-muted-foreground">{children}</div>
   );
 }

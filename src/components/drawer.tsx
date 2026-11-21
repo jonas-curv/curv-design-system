@@ -62,8 +62,8 @@ export function Drawer({
           {(title || description || headerActions) && (
             <div className="flex items-start justify-between gap-3 border-b border-border px-5 py-4">
               <div className="min-w-0 flex-1">
-                {title && <D.Title className="truncate text-[15px] font-semibold text-foreground">{title}</D.Title>}
-                {description && <D.Description className="mt-0.5 text-[13px] text-muted-foreground">{description}</D.Description>}
+                {title && <D.Title className="truncate text-body font-semibold text-foreground">{title}</D.Title>}
+                {description && <D.Description className="mt-0.5 text-body text-muted-foreground">{description}</D.Description>}
               </div>
               <div className="-mr-1 -mt-1 flex shrink-0 items-center gap-1">
                 {headerActions}
@@ -76,7 +76,7 @@ export function Drawer({
               </div>
             </div>
           )}
-          <div className="min-h-0 flex-1 overflow-y-auto px-5 py-4 text-[13px] text-foreground">{children}</div>
+          <div className="min-h-0 flex-1 overflow-y-auto px-5 py-4 text-body text-foreground">{children}</div>
           {footer && <div className="flex flex-wrap shrink-0 items-center justify-end gap-2 border-t border-border px-5 py-3">{footer}</div>}
         </D.Popup>
       </D.Portal>

@@ -50,7 +50,7 @@ export function Popover({ trigger, anchor, children, side = "bottom", align = "c
             initialFocus={keepFocus ? false : undefined}
             finalFocus={keepFocus ? false : undefined}
             className={cn(
-              "max-w-[min(24rem,var(--available-width))] origin-[var(--transform-origin)] rounded-lg border border-border bg-popover p-3 text-[13px] text-popover-foreground shadow-lg outline-none",
+              "max-w-[min(24rem,var(--available-width))] origin-[var(--transform-origin)] rounded-lg border border-border bg-popover p-3 text-body text-popover-foreground shadow-lg outline-none",
               "transition-[transform,opacity] duration-150 ease-[cubic-bezier(0.23,1,0.32,1)]",
               "data-[starting-style]:opacity-0 data-[ending-style]:opacity-0 data-[ending-style]:duration-100",
               "motion-safe:data-[starting-style]:scale-95 motion-safe:data-[ending-style]:scale-95",

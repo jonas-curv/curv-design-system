@@ -8,9 +8,9 @@ import { cn } from "../lib/cn";
  * comments — anywhere a person appears — so people never look hand-rolled.
  */
 const SIZES = {
-  sm: "size-5 text-[10px]",
-  md: "size-7 text-[12px]",
-  lg: "size-9 text-[14px]",
+  sm: "size-5 text-micro",
+  md: "size-7 text-caption",
+  lg: "size-9 text-body",
 } as const;
 
 // A small, muted, tasteful palette. Deterministic pick keeps a person's colour

@@ -143,7 +143,7 @@ export function ReportTable({
     <Card className={cn("flex flex-col overflow-hidden", className)}>
       {showViewToggle && periods.length > 0 && (
         <div className="flex items-center justify-between gap-2 border-b border-border px-4 py-3">
-          <span className="text-[13px] font-medium text-foreground">{metricLabel}</span>
+          <span className="text-body font-medium text-foreground">{metricLabel}</span>
           <SegmentedControl
             value={view}
             onValueChange={(v) => setView(v as "summary" | "monthly")}
@@ -156,7 +156,7 @@ export function ReportTable({
       )}
 
       <div className="overflow-auto" style={{ maxHeight }}>
-        <table className="w-full border-collapse text-[13px]">
+        <table className="w-full border-collapse text-body">
           {/* The same header as DataTable: 36, solid muted, a hairline below,
               12 / 500 muted; 12 per side, 16 on the outer edges. A collapsed
               border stays behind when the header sticks, so the hairline is an
@@ -200,13 +200,13 @@ export function ReportTable({
                             type="button"
                             onClick={() => toggle(section.key)}
                             aria-expanded={open}
-                            className="flex h-9 w-full items-center gap-1.5 px-4 text-left text-[12px] font-medium text-muted-foreground transition-colors hover:text-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-inset focus-visible:ring-foreground/25"
+                            className="flex h-9 w-full items-center gap-1.5 px-4 text-left text-caption font-medium text-muted-foreground transition-colors hover:text-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-inset focus-visible:ring-foreground/25"
                           >
                             <Chevron open={open} />
                             {section.label}
                           </button>
                         ) : (
-                          <div className="flex h-9 items-center px-4 text-[12px] font-medium text-muted-foreground">{section.label}</div>
+                          <div className="flex h-9 items-center px-4 text-caption font-medium text-muted-foreground">{section.label}</div>
                         )}
                       </td>
                     </tr>

@@ -2,7 +2,7 @@ import * as React from "react";
 import { cn } from "../lib/cn";
 
 const FIELD =
-  "w-full rounded-md border border-border bg-card text-base sm:text-[13px] text-foreground placeholder:text-muted-foreground/70 transition focus:outline-none focus:ring-1 focus:ring-foreground/20 disabled:cursor-not-allowed disabled:opacity-50";
+  "w-full rounded-md border border-border bg-card text-base sm:text-body text-foreground placeholder:text-muted-foreground/70 transition focus:outline-none focus:ring-1 focus:ring-foreground/20 disabled:cursor-not-allowed disabled:opacity-50";
 
 /** Single-line text input — fixed `h-9` (the toolbar/form control height). */
 export interface InputProps extends React.InputHTMLAttributes<HTMLInputElement> {}

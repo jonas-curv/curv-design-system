@@ -18,8 +18,8 @@ const VARIANTS: Record<ButtonVariant, string> = {
 };
 
 const SIZES: Record<ButtonSize, string> = {
-  sm: "h-11 sm:h-8 gap-1.5 px-2.5 text-[13px]",
-  default: "h-11 sm:h-9 gap-1.5 px-3.5 text-[13px]",
+  sm: "h-11 sm:h-8 gap-1.5 px-2.5 text-body",
+  default: "h-11 sm:h-9 gap-1.5 px-3.5 text-body",
   icon: "size-11 sm:size-9",
 };
 
