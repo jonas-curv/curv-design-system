@@ -1,4 +1,8 @@
 // Needs Node >= 22.18 (type stripping): it imports grouping.ts as-is, no build.
+// The table's other suites run from this entry too (package.json lists test
+// files one by one): its pure rules from source, and its DOM behaviour from dist/.
+import './data-table-layout.test.mjs';
+import './data-table-dom.test.mjs';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 // Node strips the types, so this runs the real helper, not a copy of it.

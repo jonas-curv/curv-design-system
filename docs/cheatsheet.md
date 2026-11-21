@@ -42,7 +42,7 @@ component's TSDoc for the full surface. **Style through tokens, never raw hex.**
 | A multi-line input | `Textarea` | native `<textarea>` attrs (`rows`, `value`, `onChange`) |
 | A single-choice dropdown | `Select` | `items`, `value`, `onValueChange`, `placeholder` |
 | A multi-choice dropdown with search | `MultiSelect` | `items`, `value`, `onValueChange`, `searchPlaceholder` |
-| A checkbox | `Checkbox` | `checked`, `onCheckedChange`, `aria-label` |
+| A checkbox | `Checkbox` | `checked`, `indeterminate` (mixed), `onCheckedChange`, `aria-label` |
 | A radio group | `RadioGroup`, `Radio` | Group: `value`, `onValueChange` · Radio: `value` |
 | An on/off switch | `Switch` | `checked`, `onCheckedChange`, `aria-label` |
 | A small view-swapper toggle | `SegmentedControl` | `items`, `value`, `onValueChange`, `size` |
@@ -53,8 +53,11 @@ component's TSDoc for the full surface. **Style through tokens, never raw hex.**
 
 | Use when | Component | Key props |
 | --- | --- | --- |
-| A sortable, searchable, filterable table (virtualized) | `DataTable` (+ `TableLink`, `downloadCsv`/`downloadPdf`) | `columns`, `rows`, `searchable`, `filters`, `tabs`, `getRowHref`, `groupBy` / `renderGroupHeader` (rows under a parent record; also `defaultCollapsedGroups`, `ungroupedLabel`, `searchActive`, `collapsedGroups` / `onCollapsedGroupsChange`), `exportFilename` |
-| A P&L / period matrix with drill-down | `ReportTable` | `sections`, `periods`, `summaryColumns`, `view`, `formatValue` |
+| A sortable, searchable, filterable table (virtualized) | `DataTable` (+ `TableLink`, `DataTableBulkAction`) | `columns` (`type`, `width`/`minWidth`, `sticky`, `description`), `rows`, `getRowId`, `aria-label`, `searchable`, `filters`, `tabs`, `exportFilename`, `tableId` (Columns picker), `selectable` / `selected` / `onSelectedChange` / `bulkActions`, `totals`, `getRowHref`, `groupBy` / `renderGroupHeader` (also `defaultCollapsedGroups`, `ungroupedLabel`, `searchActive`, `collapsedGroups` / `onCollapsedGroupsChange`) |
+| A table whose toolbar sits in the page's control row | `DataTableProvider` + `DataTableViews`, `DataTableSearch`, `DataTableFilterButton`, `DataTableColumnsButton`, `DataTableExportMenu` + `<DataTable toolbar="external" />` | the provider takes the `DataTable` props; the pieces take none |
+| Money, numbers, percentages and dates the table way | `formatMoney`, `formatNumber`, `formatPercent`, `formatDate` | `cents`, `decimals`, `ratio`, `today` · `MINUS` is U+2212 |
+| A plain read-only `<table>` that matches | `tableHeaderRow`, `tableCellPadding` | class strings for the `<tr>` in `<thead>` and each cell |
+| A P&L / period matrix with drill-down (same header, rows 36) | `ReportTable` | `sections`, `periods`, `summaryColumns`, `view`, `formatValue` |
 | A single KPI (label + value + delta + sparkline) | `StatCard` (+ `StatGroup`, `BreakdownRow`) | `label`, `value`, `delta`, `sparkline`, `href`, `breakdown` |
 | A headline total broken into shares with a bar | `SummaryStrip` | `label`, `total`, `caption`, `items`, `hideBar` |
 | A ranked list of values as horizontal bars | `BarBreakdown` | `items`, `formatValue`, `showPercent`, `max` |
@@ -73,27 +76,30 @@ component's TSDoc for the full surface. **Style through tokens, never raw hex.**
 
 ### DataTable column widths (the Linear model)
 
-Columns never wrap and never push each other — content clips with `…`. Width is
-decided per column:
+Header, rows, group rows and totals share ONE column template (`--dt-cols`):
+px or `minmax(px, fr)` tracks only, so columns never drift, wrap or push each
+other — content clips with `…`. Per column:
 
-- **Leave exactly ONE primary text column with no `width` and no `maxWidth`** — it
-  is the **filler**: it stretches to fill the row when there's space, and shrinks
-  + truncates (down to `minWidth`, default 120px) when there isn't. This is what
-  keeps the table full *and* prevents a runaway column. (Miss this and you get
-  dead space on the right, or — if you cap the only text column — nothing fills.)
-- **Give every other column a `width`** (fixed) — numbers, dates, badges, status.
-  A numeric column auto-aligns right + sizes tight; a column with a custom
-  `render` keeps left alignment (set `align` to override).
-- **Set `minWidth` on the filler** if 120px is too tight before it truncates.
-- **When the table is wider than its container**, the filler sits at its
-  `minWidth` and truncates; horizontal scroll is driven by the fixed columns —
-  the filler never blows out to its full content.
+- **Set `type`** (`text`, `number`, `money`, `percent`, `date`, `status`). It
+  aligns the column (numbers right + tabular, the rest left) even with a
+  `render`, formats the value when there is no `render` (`−$1,240`, `12.5%`,
+  `Nov 21`, `—` for nothing), and sets the first sort direction (numbers and
+  dates high to low, text A to Z; the third click clears). `align` still wins.
+- **Numbers, dates and statuses size themselves** to their longest formatted
+  value. Numbers never truncate.
+- **Leave exactly ONE primary text column with no `width` and no `maxWidth`** —
+  the filler: it stretches to fill the row and truncates down to `minWidth`
+  (default 120px; set ~240–320). Give other text columns a `width`.
+- **A column is never narrower than its header label**; a smaller `width` is
+  raised to fit it. Header labels never wrap or truncate.
 - **A truncating text cell must render inline/string content** (a Fragment of
-  `<span>`s, not a wrapping `<div>`) or the `…` won't show — CSS only ellipsizes
-  inline content. Set `value` for search/export.
-- **Never hand-roll a table or the export button** — use `DataTable` +
-  `exportFilename`/`pdfTitle`; the Export control is the built-in right-aligned
-  dropdown and must not be moved or replaced.
+  `<span>`s, not a wrapping `<div>`) or the `…` won't show. Set `value` for
+  search, sort and export.
+- **A `render` that shows more than the formatted value** (a badge plus a
+  number) should set `width`.
+- **Never hand-roll a table, a toolbar or the Export menu** — `DataTable` owns
+  them; to place them in the page's control row, use `DataTableProvider` and the
+  `DataTable…` pieces with `<DataTable toolbar="external" />`.
 
 ## Surfaces
 
