@@ -4,7 +4,8 @@
 // the module loads, which a React Server Components build cannot evaluate. This
 // entry holds only what needs no hooks and no context: the Table parts, the
 // table class tokens and the number formats. Client code may import the same
-// names from the package root; `useTableSort` lives there.
+// names from the package root; `useTableSort` lives there, and so does the
+// TableHead with `description` (its tooltip is a client component).
 export {
   Table,
   TableHeader,

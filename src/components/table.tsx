@@ -10,8 +10,9 @@ import { tableCellPadding } from "./data-table/tokens";
 //
 // No hooks, no context and no "use client": server components render these
 // (import them from "@curvgroup/design-system/table"; the package root also
-// exports them). Density and the identity column are set on <Table> and reach
-// the cells through CSS, never through React state.
+// exports them, with a client TableHead that adds `description`). Density and
+// the identity column are set on <Table> and reach the cells through CSS,
+// never through React state.
 
 type Align = "left" | "right";
 /** 1 shows always; 2 hides below md (768px); 3 hides below xl (1280px). Give a head and its cells the same one. */
@@ -215,22 +216,68 @@ export interface TableHeadProps extends Omit<React.ThHTMLAttributes<HTMLTableCel
   onSort?: () => void;
   /** Where a first click sorts, for the arrow shown on hover. Default: numeric columns high to low, others A to Z. Dates: `"desc"`. */
   sortFirst?: TableSortOrder;
+  /**
+   * A control after the label, beside the sort button: a filter funnel, a
+   * month toggle (28, `h-7`). With it the sort button is the label alone, as
+   * DataTable's column `headerSuffix`.
+   */
+  suffix?: React.ReactNode;
 }
 
 /**
- * `<th scope="col">`: 36 tall, solid `bg-muted`, 12 / 500 muted, sentence
- * case, never wraps; a hairline below. Sortable with `sort` + `onSort`: the
- * whole cell is the button, a 12px arrow in a reserved slot (hidden at rest,
- * muted on hover and focus, foreground when sorted), after the label on left
- * columns and before it on right ones, `aria-sort` on the cell.
+ * How the client `TableHead` (package root) adds a definition: the label gets
+ * the dotted underline and `wrap` puts the tooltip around its trigger (the sort
+ * button, or a focusable label). Not exported from the package.
  */
-export const TableHead = React.forwardRef<HTMLTableCellElement, TableHeadProps>(
-  ({ className, align, numeric = false, priority, sticky, sort, onSort, sortFirst, scope = "col", "aria-sort": ariaSort, children, ...props }, ref) => {
+export interface TableHeadDefinition {
+  wrap: (trigger: React.ReactElement) => React.ReactNode;
+}
+
+/**
+ * The head with the client `TableHead`'s definition hook. The entries export
+ * it as `TableHead`, typed without `definition`.
+ */
+export const TableHeadBase = React.forwardRef<HTMLTableCellElement, TableHeadProps & { definition?: TableHeadDefinition }>(
+  (
+    { className, align, numeric = false, priority, sticky, sort, onSort, sortFirst, suffix, definition, scope = "col", "aria-sort": ariaSort, children, ...props },
+    ref,
+  ) => {
     const right = numeric || align === "right";
     const side = stickySide(sticky);
     const sortable = onSort != null;
     const active = sortable && sort != null;
     const dir: TableSortOrder = active ? sort! : (sortFirst ?? (right ? "desc" : "asc"));
+    const hasSuffix = suffix != null && suffix !== false;
+    const label = definition ? <span className="underline decoration-dotted underline-offset-4">{children}</span> : children;
+    let body: React.ReactNode = label;
+    if (sortable) {
+      const button = (
+        <button
+          type="button"
+          onClick={onSort}
+          className={cn(
+            "group/sort flex h-9 min-w-0 items-center outline-none transition-colors hover:bg-accent/60",
+            // The whole cell is the button and carries the cell's padding;
+            // beside a suffix, just the label.
+            !hasSuffix && "w-full px-3 [th:first-child>&]:pl-4 [th:last-child>&]:pr-4",
+            right && !hasSuffix && "justify-end",
+          )}
+        >
+          <span className="-mx-1 inline-flex h-6 items-center gap-1 rounded-[4px] px-1 group-focus-visible/sort:ring-2 group-focus-visible/sort:ring-ring">
+            {right && <HeadArrow dir={dir} active={active} />}
+            {label}
+            {!right && <HeadArrow dir={dir} active={active} />}
+          </span>
+        </button>
+      );
+      body = definition ? definition.wrap(button) : button;
+    } else if (definition) {
+      body = definition.wrap(
+        <span tabIndex={0} className="rounded-[4px] outline-none focus-visible:ring-2 focus-visible:ring-ring">
+          {label}
+        </span>,
+      );
+    }
     return (
       <th
         ref={ref}
@@ -240,7 +287,7 @@ export const TableHead = React.forwardRef<HTMLTableCellElement, TableHeadProps>(
         className={cn(
           "h-9 whitespace-nowrap bg-muted py-0 text-left text-caption font-medium text-muted-foreground",
           HEAD_SHADOW[side ?? "none"],
-          sortable ? "p-0" : tableCellPadding,
+          sortable && !hasSuffix ? "p-0" : tableCellPadding,
           right && "text-right",
           active && "text-foreground",
           priority && PRIORITY[priority],
@@ -249,31 +296,30 @@ export const TableHead = React.forwardRef<HTMLTableCellElement, TableHeadProps>(
         )}
         {...props}
       >
-        {sortable ? (
-          <button
-            type="button"
-            onClick={onSort}
-            className={cn(
-              // The whole cell is the button; it carries the cell's padding.
-              "group/sort flex h-9 w-full min-w-0 items-center px-3 outline-none transition-colors hover:bg-accent/60",
-              "[th:first-child>&]:pl-4 [th:last-child>&]:pr-4",
-              right && "justify-end",
-            )}
-          >
-            <span className="-mx-1 inline-flex h-6 items-center gap-1 rounded-[4px] px-1 group-focus-visible/sort:ring-2 group-focus-visible/sort:ring-ring">
-              {right && <HeadArrow dir={dir} active={active} />}
-              {children}
-              {!right && <HeadArrow dir={dir} active={active} />}
-            </span>
-          </button>
+        {hasSuffix ? (
+          <div className={cn("flex h-9 items-center gap-1", right && "justify-end")}>
+            {body}
+            {suffix}
+          </div>
         ) : (
-          children
+          body
         )}
       </th>
     );
   },
 );
-TableHead.displayName = "TableHead";
+TableHeadBase.displayName = "TableHead";
+
+/**
+ * `<th scope="col">`: 36 tall, solid `bg-muted`, 12 / 500 muted, sentence
+ * case, never wraps; a hairline below. Sortable with `sort` + `onSort`: the
+ * whole cell is the button, a 12px arrow in a reserved slot (hidden at rest,
+ * muted on hover and focus, foreground when sorted), after the label on left
+ * columns and before it on right ones, `aria-sort` on the cell. `suffix` puts
+ * a control after the label. A definition (`description`) needs the client
+ * `TableHead` from the package root.
+ */
+export const TableHead = TableHeadBase as React.ForwardRefExoticComponent<TableHeadProps & React.RefAttributes<HTMLTableCellElement>>;
 
 function HeadArrow({ dir, active }: { dir: TableSortOrder; active: boolean }) {
   return (

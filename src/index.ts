@@ -110,7 +110,6 @@ export {
   TableBody,
   TableFooter,
   TableRow,
-  TableHead,
   TableCell,
   TableCaption,
   TableNull,
@@ -118,11 +117,12 @@ export {
   type TableHeaderProps,
   type TableFooterProps,
   type TableRowProps,
-  type TableHeadProps,
   type TableCellProps,
   type TableColumnPriority,
   type TableSortOrder,
 } from "./components/table";
+// The client TableHead: the server-safe one plus `description` (a tooltip).
+export { TableHead, type TableHeadProps } from "./components/table-head";
 export {
   useTableSort,
   type TableSortState,

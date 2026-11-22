@@ -327,6 +327,68 @@ test('sortable head: a click calls onSort', async () => {
  assert.equal(n, 1);
 });
 
+/* ---------- head suffix and definitions ---------- */
+
+const funnel = (label = 'Filter value') => h('button', { type: 'button', 'aria-label': label, className: 'size-7' }, 'f');
+
+test('suffix: a control after the label, outside the sort button; the button is then the label alone', async () => {
+ const { container } = await mount(sortTable([
+  h(TableHead, { key: 'a', suffix: funnel('Filter customer') }, 'Customer'),
+  h(TableHead, { key: 'b', sort: 'desc', onSort: () => {}, numeric: true, suffix: funnel() }, 'Value'),
+  h(TableHead, { key: 'c', sort: null, onSort: () => {} }, 'Due'),
+ ]));
+ const [customer, value, due] = qa(container, 'th');
+ const row = customer.firstElementChild;
+ assert.ok(has(row, 'flex', 'h-9', 'items-center', 'gap-1'));
+ assert.ok(has(customer, 'px-3', 'first:pl-4', 'last:pr-4'), 'a plain head keeps its padding');
+ assert.equal(row.textContent, 'Customerf');
+ assert.equal(row.lastElementChild.getAttribute('aria-label'), 'Filter customer');
+ assert.ok(has(value, 'px-3') && !has(value, 'p-0'), 'beside a suffix the cell carries the padding');
+ assert.ok(has(value.firstElementChild, 'justify-end'), 'a right column keeps its label at the right');
+ const [sortButton, control] = value.firstElementChild.children;
+ assert.equal(sortButton.textContent, 'Value');
+ assert.ok(!has(sortButton, 'w-full') && !has(sortButton, 'px-3'), 'the sort button is the label alone');
+ assert.equal(control.getAttribute('aria-label'), 'Filter value');
+ assert.equal(q(sortButton, 'button'), null, 'no control inside the sort button');
+ assert.equal(value.getAttribute('aria-sort'), 'descending');
+ assert.equal(due.firstElementChild.tagName.toLowerCase(), 'button', 'without a suffix the DOM is as before');
+ assert.ok(has(due.firstElementChild, 'w-full', 'px-3'));
+});
+
+test('description (package root): a dotted underline on the label; the label, or the sort button, is the tooltip trigger', async () => {
+ const { container } = await mount(sortTable([
+  h(TableHead, { key: 'a', numeric: true, description: 'Gross profit ÷ revenue' }, 'GP margin'),
+  h(TableHead, { key: 'b', sort: null, onSort: () => {}, description: 'Days since the order' }, 'Age'),
+  h(TableHead, { key: 'c', description: '' }, 'Notes'),
+ ]));
+ const [gp, age, notes] = qa(container, 'th');
+ const trigger = gp.firstElementChild;
+ assert.equal(trigger.getAttribute('tabindex'), '0', 'a head that does not sort gets a focus stop for its definition');
+ assert.ok(has(trigger, 'focus-visible:ring-2', 'focus-visible:ring-ring'));
+ assert.ok(has(trigger.firstElementChild, 'underline', 'decoration-dotted', 'underline-offset-4'));
+ assert.equal(gp.getAttribute('description'), null, 'the prop never reaches the DOM');
+ const button = q(age, 'button');
+ assert.equal(q(button, '[tabindex]'), null, 'no focus stop inside the sort button');
+ assert.ok(has(q(button, 'span > span'), 'decoration-dotted'));
+ assert.equal(q(notes, 'span'), null, 'an empty description draws nothing');
+ await act(async () => { trigger.focus(); });
+ await act(async () => { await new Promise((r) => setTimeout(r, 50)); });
+ assert.match(document.body.textContent, /Gross profit ÷ revenue/, 'focus opens the definition');
+});
+
+test('the /table entry has no description: its TableHead stays server-safe and draws no underline', async () => {
+ const html = renderToStaticMarkup(
+  h(server.Table, null, h(server.TableHeader, null, h(server.TableRow, null,
+   h(server.TableHead, { suffix: h('span', null, 'Nov') }, 'Revenue'),
+  ))),
+ );
+ assert.match(html, /<th[^>]*><div class="flex h-9 items-center gap-1">Revenue<span>Nov<\/span><\/div><\/th>/);
+ assert.doesNotMatch(html, /decoration-dotted/);
+ const src = readFileSync(new URL('../dist/table.js', import.meta.url), 'utf8');
+ assert.doesNotMatch(src, /@base-ui|Tooltip/, 'no tooltip in the server entry');
+ assert.notEqual(ds.TableHead, server.TableHead, 'the root TableHead is the client one');
+});
+
 /* ---------- useTableSort ---------- */
 
 const ROWS = [
