@@ -122,7 +122,8 @@ off-colour, or with a hand-rolled `bg-neutral-100` shell.*
      → *DataTable column widths*.) A few read-only rows, an editable grid or a
      server-rendered table use the `Table` parts (`Table`, `TableHeader`,
      `TableBody`, `TableFooter`, `TableRow`, `TableHead`, `TableCell`, shadcn
-     API; sortable heads with `useTableSort`; server components import
+     API; sortable heads with `useTableSort`, a head's definition with
+     `description`, a head control with `suffix`; server components import
      `@curvgroup/design-system/table`) — never a bare `<table>`. The
      **reporting engine** — `StatCard`/`StatGroup`, `Sparkline`, `LineChart`,
      `BarChart`, `BarBreakdown`, `ChartCard` (the shell that hosts chart

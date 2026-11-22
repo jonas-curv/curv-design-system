@@ -12,6 +12,7 @@ import {
   Target,
   WavesHorizontal,
   FolderKanban,
+  Funnel,
   ChartColumn,
   MessageSquarePlus,
   Pencil,
@@ -64,6 +65,7 @@ import {
   TableRow,
   formatDate,
   formatMoney,
+  formatPercent,
   useTableSort,
   type ReportSection as ReportSectionT,
   TableLink,
@@ -602,6 +604,74 @@ function TablePartsDemo() {
           <TableCell numeric>{formatMoney(LINE_ROWS.reduce((n, r) => n + r.value, 0))}</TableCell>
         </TableRow>
       </TableFooter>
+    </Table>
+  );
+}
+
+const MONTHS = ["Oct", "Nov"] as const;
+const MONTH_ROWS = [
+  { id: "1", customer: "Adventure Works", status: "Confirmed", gp: { Oct: 0.312, Nov: 0.298 }, revenue: { Oct: 41200, Nov: 48200 } },
+  { id: "2", customer: "Wingtip Toys", status: "To collect", gp: { Oct: 0.274, Nov: 0.304 }, revenue: { Oct: 35400, Nov: 31900 } },
+  { id: "3", customer: "Proseware", status: "Confirmed", gp: { Oct: 0.301, Nov: 0.295 }, revenue: { Oct: 18800, Nov: 22400 } },
+];
+
+function TableHeadControlsDemo() {
+  const [month, setMonth] = React.useState<(typeof MONTHS)[number]>("Nov");
+  const [status, setStatus] = React.useState<string | null>(null);
+  const rows = status ? MONTH_ROWS.filter((r) => r.status === status) : MONTH_ROWS;
+  const { rows: sorted, getHeadProps } = useTableSort(rows, {
+    columns: React.useMemo(() => ({ customer: (r: (typeof MONTH_ROWS)[number]) => r.customer, revenue: (r: (typeof MONTH_ROWS)[number]) => r.revenue[month] }), [month]),
+    initialSort: { key: "revenue", order: "desc" },
+  });
+  const control = "inline-flex h-7 items-center gap-1 rounded-md px-1.5 text-caption font-medium text-muted-foreground transition-colors hover:bg-accent hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring";
+  return (
+    <Table card aria-label="Revenue by customer" className="min-w-[560px]">
+      <TableHeader>
+        <TableRow>
+          <TableHead {...getHeadProps("customer")}>Customer</TableHead>
+          <TableHead
+            className="w-36"
+            suffix={
+              <Menu trigger={<button type="button" aria-label="Filter status" className={cn(control, status && "text-foreground")}><Funnel className="size-3.5" aria-hidden /></button>}>
+                <MenuItem onClick={() => setStatus(null)}>All statuses</MenuItem>
+                <MenuItem onClick={() => setStatus("Confirmed")}>Confirmed</MenuItem>
+                <MenuItem onClick={() => setStatus("To collect")}>To collect</MenuItem>
+              </Menu>
+            }
+          >
+            Status
+          </TableHead>
+          <TableHead numeric className="w-28" description="Gross profit ÷ revenue">GP margin</TableHead>
+          <TableHead
+            {...getHeadProps("revenue")}
+            numeric
+            className="w-44"
+            suffix={
+              <button type="button" aria-label={`Month: ${month}`} className={control} onClick={() => setMonth(month === "Nov" ? "Oct" : "Nov")}>
+                {month}
+                <ChevronDown className="size-3" aria-hidden />
+              </button>
+            }
+          >
+            Revenue
+          </TableHead>
+        </TableRow>
+      </TableHeader>
+      <TableBody>
+        {sorted.map((r) => (
+          <TableRow key={r.id}>
+            <TableCell>{r.customer}</TableCell>
+            <TableCell>{r.status}</TableCell>
+            <TableCell numeric>{formatPercent(r.gp[month], { ratio: true })}</TableCell>
+            <TableCell numeric>{formatMoney(r.revenue[month])}</TableCell>
+          </TableRow>
+        ))}
+        {sorted.length === 0 && (
+          <TableRow>
+            <TableCell colSpan={4} className="text-muted-foreground">No customers</TableCell>
+          </TableRow>
+        )}
+      </TableBody>
     </Table>
   );
 }
@@ -1844,6 +1914,12 @@ const { rows, getHeadProps } = useTableSort(lines, {
         description: "Numbers and dates sort high to low first, text A to Z, the third click clears. The card caps at 320 and owns the scroll, so the header and the totals hold.",
         canvas: "plain",
         render: () => <TablePartsDemo />,
+      },
+      {
+        title: "Head controls and definitions",
+        description: "suffix puts a 28 control after the label, beside the sort button. description draws the dotted underline and its tooltip (package root only).",
+        canvas: "plain",
+        render: () => <TableHeadControlsDemo />,
       },
       {
         title: "Dense rows (statements)",
