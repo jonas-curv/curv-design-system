@@ -299,7 +299,8 @@ export const TableHeadBase = React.forwardRef<HTMLTableCellElement, TableHeadPro
         {...props}
       >
         {hasSuffix ? (
-          <div className={cn("flex h-9 items-center gap-1", right && "justify-end")}>
+          // No gap: the same layout as DataTable's `headerSuffix`.
+          <div className={cn("flex h-9 items-center", right && "justify-end")}>
             {body}
             {suffix}
           </div>

@@ -352,7 +352,7 @@ test('sortable head: a click calls onSort', async () => {
 
 const funnel = (label = 'Filter value') => h('button', { type: 'button', 'aria-label': label, className: 'size-7' }, 'f');
 
-test('suffix: a control after the label, outside the sort button; the button is then the label alone', async () => {
+test('suffix: a control after the label, outside the sort button; the button is then the label alone (as DataTable headerSuffix)', async () => {
  const { container } = await mount(sortTable([
   h(TableHead, { key: 'a', suffix: funnel('Filter customer') }, 'Customer'),
   h(TableHead, { key: 'b', sort: 'desc', onSort: () => {}, numeric: true, suffix: funnel() }, 'Value'),
@@ -360,7 +360,8 @@ test('suffix: a control after the label, outside the sort button; the button is 
  ]));
  const [customer, value, due] = qa(container, 'th');
  const row = customer.firstElementChild;
- assert.ok(has(row, 'flex', 'h-9', 'items-center', 'gap-1'));
+ assert.ok(has(row, 'flex', 'h-9', 'items-center'));
+ assert.ok(!classes(row).some((c) => c.startsWith('gap-')), "no gap: DataTable's headerSuffix sits flush too");
  assert.ok(has(customer, 'px-3', 'first:pl-4', 'last:pr-4'), 'a plain head keeps its padding');
  assert.equal(row.textContent, 'Customerf');
  assert.equal(row.lastElementChild.getAttribute('aria-label'), 'Filter customer');
@@ -403,7 +404,7 @@ test('the /table entry has no description: its TableHead stays server-safe and d
    h(server.TableHead, { suffix: h('span', null, 'Nov') }, 'Revenue'),
   ))),
  );
- assert.match(html, /<th[^>]*><div class="flex h-9 items-center gap-1">Revenue<span>Nov<\/span><\/div><\/th>/);
+ assert.match(html, /<th[^>]*><div class="flex h-9 items-center">Revenue<span>Nov<\/span><\/div><\/th>/);
  assert.doesNotMatch(html, /decoration-dotted/);
  const src = readFileSync(new URL('../dist/table.js', import.meta.url), 'utf8');
  assert.doesNotMatch(src, /@base-ui|Tooltip/, 'no tooltip in the server entry');
