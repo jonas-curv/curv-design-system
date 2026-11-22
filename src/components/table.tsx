@@ -228,10 +228,13 @@ export interface TableHeadProps extends Omit<React.ThHTMLAttributes<HTMLTableCel
 
 /**
  * How the client `TableHead` (package root) adds a definition: the label gets
- * the dotted underline and `wrap` puts the tooltip around its trigger (the sort
- * button, or a focusable label). Not exported from the package.
+ * the dotted underline, `wrap` puts the tooltip around its trigger (the sort
+ * button, or a focusable label) and renders a hidden copy of the text with
+ * this `id`, which the trigger names in `aria-describedby` so screen readers
+ * hear it too. Not exported from the package.
  */
 export interface TableHeadDefinition {
+  id: string;
   wrap: (trigger: React.ReactElement) => React.ReactNode;
 }
 
@@ -257,6 +260,7 @@ export const TableHeadBase = React.forwardRef<HTMLTableCellElement, TableHeadPro
         <button
           type="button"
           onClick={onSort}
+          aria-describedby={definition?.id}
           className={cn(
             "group/sort flex h-9 min-w-0 items-center outline-none transition-colors hover:bg-accent/60",
             // The whole cell is the button and carries the cell's padding;
@@ -275,7 +279,7 @@ export const TableHeadBase = React.forwardRef<HTMLTableCellElement, TableHeadPro
       body = definition ? definition.wrap(button) : button;
     } else if (definition) {
       body = definition.wrap(
-        <span tabIndex={0} className="rounded-[4px] outline-none focus-visible:ring-2 focus-visible:ring-ring">
+        <span tabIndex={0} aria-describedby={definition.id} className="rounded-[4px] outline-none focus-visible:ring-2 focus-visible:ring-ring">
           {label}
         </span>,
       );

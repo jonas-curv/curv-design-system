@@ -377,7 +377,7 @@ test('suffix: a control after the label, outside the sort button; the button is 
  assert.ok(has(due.firstElementChild, 'w-full', 'px-3'));
 });
 
-test('description (package root): a dotted underline on the label; the label, or the sort button, is the tooltip trigger', async () => {
+test('description (package root): a dotted underline on the label; the label, or the sort button, is the tooltip trigger and is described by it', async () => {
  const { container } = await mount(sortTable([
   h(TableHead, { key: 'a', numeric: true, description: 'Gross profit ÷ revenue' }, 'GP margin'),
   h(TableHead, { key: 'b', sort: null, onSort: () => {}, description: 'Days since the order' }, 'Age'),
@@ -393,9 +393,18 @@ test('description (package root): a dotted underline on the label; the label, or
  assert.equal(q(button, '[tabindex]'), null, 'no focus stop inside the sort button');
  assert.ok(has(q(button, 'span > span'), 'decoration-dotted'));
  assert.equal(q(notes, 'span'), null, 'an empty description draws nothing');
+ // Screen readers: the trigger names a hidden copy of the definition.
+ const described = (el) => document.getElementById(el.getAttribute('aria-describedby'));
+ assert.equal(described(trigger).textContent, 'Gross profit ÷ revenue');
+ assert.ok(described(trigger).hidden, 'hidden: a description, never part of the column name');
+ assert.equal(described(button).textContent, 'Days since the order');
+ assert.notEqual(trigger.getAttribute('aria-describedby'), button.getAttribute('aria-describedby'));
+ assert.equal(q(notes, '[aria-describedby]'), null);
+ const shown = () => document.body.textContent.split('Gross profit ÷ revenue').length - 1;
+ assert.equal(shown(), 1, 'only the hidden copy until focus');
  await act(async () => { trigger.focus(); });
  await act(async () => { await new Promise((r) => setTimeout(r, 50)); });
- assert.match(document.body.textContent, /Gross profit ÷ revenue/, 'focus opens the definition');
+ assert.equal(shown(), 2, 'focus opens the definition');
 });
 
 test('the /table entry has no description: its TableHead stays server-safe and draws no underline', async () => {
