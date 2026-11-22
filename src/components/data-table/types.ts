@@ -215,6 +215,12 @@ export interface DataTableProps<Row> {
   minWidth?: number;
   /** Keep spatial report/workbook comparison scrollable on phones. */
   mobileLayout?: "cards" | "scroll";
+  /**
+   * Opens something for the row (a drawer, a slide-over). The row takes a
+   * keyboard stop, a button named by `getRowLabel`, that Enter and Space press;
+   * clicks on the cells' own controls (links, buttons, checkboxes) don't fire it.
+   * A row that navigates is a link: use `getRowHref`.
+   */
   onRowClick?: (row: Row) => void;
   /**
    * Extra classes for a row (a muted archived row, an attention tint). Color
@@ -257,7 +263,7 @@ export interface DataTableProps<Row> {
    * `TableLink` and `CopyButton` handle this themselves.
    */
   getRowHref?: (row: Row) => string | undefined;
-  /** Accessible name for the row link and its checkbox; defaults to the first column's value. */
+  /** Accessible name for the row's link (or button, with `onRowClick`) and its checkbox; defaults to the first column's value. */
   getRowLabel?: (row: Row) => string;
   emptyLabel?: string;
   /** Replaces the default empty state (an `EmptyState` with one line and at most one action). */

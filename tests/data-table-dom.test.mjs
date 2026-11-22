@@ -288,3 +288,74 @@ test('Checkbox: indeterminate is mixed, and a click reports checked', async () =
  await click(box);
  assert.deepEqual(seen, [true]);
 });
+
+/* ---------- clickable rows and the keyboard ---------- */
+
+// The row's own stop: a direct child of the row, not inside a cell.
+const rowStop = (row) => [...row.children].find((el) => el.tagName === 'BUTTON' || el.tagName === 'A');
+
+test('onRowClick: each row takes a keyboard stop, a native button named by getRowLabel', async () => {
+ const { container } = await mount(table({ onRowClick: () => {}, getRowLabel: (r) => `${r.deal} deal` }));
+ const stop = rowStop(bodyRows(container)[0]);
+ assert.equal(stop.tagName, 'BUTTON');
+ assert.equal(stop.getAttribute('type'), 'button', 'Enter and Space press it natively');
+ assert.equal(stop.getAttribute('tabindex'), null, 'in the tab order');
+ assert.equal(stop.getAttribute('aria-label'), 'Keychains deal');
+ assert.ok(stop.className.includes('pointer-events-none'), 'the pointer passes through to the cells');
+ assert.ok(stop.className.includes('focus-visible:ring-2') && stop.className.includes('focus-visible:ring-ring'), 'the standard focus ring');
+ assert.ok(stop.className.includes('z-[1]') && stop.className.includes('focus-visible:z-20'), 'under cell controls, over sticky cells while focused');
+ await act(async () => { stop.focus(); });
+ assert.equal(document.activeElement, stop);
+ // Without getRowLabel, the first column names it.
+ const plain = await mount(table({ onRowClick: () => {} }));
+ assert.equal(rowStop(bodyRows(plain.container)[1]).getAttribute('aria-label'), 'Wallets');
+});
+
+test('onRowClick: pressing the stop (Enter or Space) fires once; a click on a cell fires once; a cell control never fires the row', async () => {
+ const opened = [];
+ const copied = [];
+ const columns = [
+  ...COLUMNS,
+  { key: 'copy', header: 'Copy', render: (r) => h('button', { type: 'button', 'data-copy': r.id, onClick: () => copied.push(r.id) }, 'Copy') },
+ ];
+ const { container } = await mount(table({ columns, onRowClick: (r) => opened.push(r.id) }));
+ const [first, second] = bodyRows(container);
+ // A native button's keyboard activation is its click.
+ await click(rowStop(first));
+ assert.deepEqual(opened, ['a'], 'once: the row skips a click from its own stop');
+ await click(qa(second, '[role=cell]')[1]);
+ assert.deepEqual(opened, ['a', 'b'], 'a pointer click on a cell opens the row, once');
+ await click(q(second, '[data-copy]'));
+ assert.deepEqual(copied, ['b']);
+ assert.deepEqual(opened, ['a', 'b'], 'the nested button does not open the row');
+});
+
+test('a row with getRowHref keeps its link and gets no extra button', async () => {
+ const { container } = await mount(table({ onRowClick: () => {}, getRowHref: (r) => `/deals/${r.id}` }));
+ const row = bodyRows(container)[0];
+ assert.equal(rowStop(row).tagName, 'A');
+ assert.equal([...row.children].filter((el) => el.tagName === 'BUTTON').length, 0);
+ const none = await mount(table());
+ assert.equal(rowStop(bodyRows(none.container)[0]), undefined, 'a row that opens nothing takes no stop');
+});
+
+test('virtualized: the focused row stays rendered while it scrolls out of view, then goes once focus leaves', async () => {
+ const many = Array.from({ length: 300 }, (_, i) => ({ id: String(i), deal: `Deal ${i}` }));
+ const { container } = await mount(h(ds.DataTable, { columns: [{ key: 'deal', header: 'Deal' }], rows: many, getRowId: (r) => r.id, 'aria-label': 'Deals', onRowClick: () => {} }));
+ const scroller = q(container, '.overflow-auto');
+ const scrollTo = async (top) => {
+  await act(async () => { scroller.scrollTop = top; scroller.dispatchEvent(new Event('scroll')); });
+  await act(async () => { await new Promise((r) => setTimeout(r, 20)); });
+ };
+ const stop = rowStop(bodyRows(container)[0]);
+ await act(async () => { stop.focus(); });
+ await scrollTo(9000);
+ assert.ok(stop.isConnected, 'still rendered');
+ assert.equal(document.activeElement, stop, 'focus stays on it');
+ const texts = bodyRows(container).map((r) => r.textContent);
+ assert.equal(texts[0], 'Deal 0', 'kept in DOM order, so Tab carries on to the rows in view');
+ assert.ok(texts.length < 60, 'the rest is still virtualized');
+ await act(async () => { stop.blur(); });
+ await scrollTo(9100);
+ assert.ok(!stop.isConnected, 'released once focus leaves');
+});
