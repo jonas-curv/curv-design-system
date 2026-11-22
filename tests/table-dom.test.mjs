@@ -109,12 +109,18 @@ const identityCells = (container) => {
  return qa(container, selector).map((td) => td.textContent);
 };
 
-test('heights: a 44 row includes its hairline, so the cell keeps 4px above and below for a 28 control (rows 44 / 36, measured in Chromium)', async () => {
+// Cells keep 6px above and below, 4 in a dense table (through a variable the
+// table sets). Measured in Chromium: a row of text, a badge or a 28 control is
+// 44 with its hairline, a dense row of text or a badge 36. py-2 made a 28
+// control row 45 and every dense row 37; py-1.5 everywhere made a dense badge 37.
+const CELL_PY = 'py-[var(--table-cell-py,calc(var(--spacing)*1.5))]';
+
+test('heights: a 44 row includes its hairline: 6px above and below, 4 dense (rows 44 / 36, measured in Chromium)', async () => {
  const { container } = await mount(lines({ dense: true }));
  const td = q(container, 'tbody td');
- assert.ok(has(td, 'h-11', 'py-1'), 'a 44 minimum, 4px vertical padding: 28 + 8 + the 1px hairline fits 44, text fits 36');
- assert.ok(!has(td, 'py-2'), 'py-2 made a 28 control row 45 and every dense row 37');
- assert.ok(has(q(container, 'table'), '[&>tbody>tr>td]:h-9'));
+ assert.ok(has(td, 'h-11', CELL_PY), 'a 44 minimum, 6px unless the table sets the variable');
+ assert.ok(!classes(td).some((c) => /^py-\d/.test(c)), 'no fixed padding to fight the dense one');
+ assert.ok(has(q(container, 'table'), '[&>tbody>tr>td]:h-9', '[--table-cell-py:var(--spacing)]'), 'dense: 36 rows, 4px');
  const th = q(container, 'thead th');
  assert.ok(has(th, 'h-9', 'py-0', 'shadow-[inset_0_-1px_0_var(--border)]'), 'the header hairline is a shadow: 36 includes it');
 });
@@ -225,10 +231,25 @@ test('dense: rows 36, the header stays 36; identityColumn={false} drops the 500'
  const { container } = await mount(lines({ dense: true, identityColumn: false }));
  const table = q(container, 'table');
  assert.equal(table.getAttribute('data-density'), 'compact');
- assert.ok(has(table, '[&>tbody>tr>td]:h-9'));
+ assert.ok(has(table, '[&>tbody>tr>td]:h-9', '[--table-cell-py:var(--spacing)]'));
+ const plain = await mount(lines());
+ assert.ok(!has(q(plain.container, 'table'), '[--table-cell-py:var(--spacing)]'), 'only dense sets it');
  assert.equal(identityToken(table), undefined);
  assert.ok(!classes(table).some((c) => c.endsWith(':font-medium')));
  assert.ok(has(q(container, 'th'), 'h-9'));
+});
+
+test("a cell's own padding replaces the default, dense too (the variable never outranks it)", async () => {
+ const { container } = await mount(
+  h(Table, { dense: true }, h(TableBody, null, h(TableRow, null,
+   h(TableCell, { className: 'p-0' }, 'A'), h(TableCell, { className: 'py-3' }, 'B'), h(TableCell, null, 'C'),
+  ))),
+ );
+ const [a, b, c] = qa(container, 'td');
+ assert.ok(has(a, 'p-0') && !has(a, CELL_PY), 'p-0 drops the default');
+ assert.ok(has(b, 'py-3') && !has(b, CELL_PY));
+ assert.ok(has(c, CELL_PY));
+ assert.ok(!classes(q(container, 'table')).some((c) => /td\]:p[ytb]?-/.test(c)), 'the table sets no padding on its cells');
 });
 
 test('className merges onto every part (tailwind-merge), refs reach the element', async () => {

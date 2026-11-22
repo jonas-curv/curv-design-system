@@ -89,7 +89,9 @@ export const Table = React.forwardRef<HTMLTableElement, TableProps>(
         data-density={dense ? "compact" : undefined}
         className={cn(
           "w-full caption-bottom border-collapse text-body text-foreground",
-          dense && "[&>tbody>tr>td]:h-9",
+          // Through a variable, not a cell selector, so a dense cell's own
+          // padding (`p-0`, `py-3`) still wins.
+          dense && "[--table-cell-py:var(--spacing)] [&>tbody>tr>td]:h-9",
           identityColumn && IDENTITY,
           className,
         )}
@@ -344,7 +346,8 @@ export interface TableCellProps extends Omit<React.TdHTMLAttributes<HTMLTableCel
 
 /**
  * `<td>`: a 44 row (36 in a `dense` table) including its hairline, 13px, 12 a
- * side and 16 on the outer edges. Vertical alignment comes from its row.
+ * side and 16 on the outer edges, 6 above and below (4 dense). Vertical
+ * alignment comes from its row.
  */
 export const TableCell = React.forwardRef<HTMLTableCellElement, TableCellProps>(
   ({ className, align, numeric = false, priority, sticky, identity, ...props }, ref) => {
@@ -356,9 +359,10 @@ export const TableCell = React.forwardRef<HTMLTableCellElement, TableCellProps>(
         data-slot="table-cell"
         data-identity={identity === false ? "false" : undefined}
         className={cn(
-          // 4px above and below: a 28 control (or a 32 button) fits a 44 row
-          // with its hairline, and wrapped text still clears the dividers.
-          "h-11 py-1",
+          // 6px above and below (4 in a dense table, which sets the variable):
+          // a 28 control fits a 44 row with its hairline, a badge a 36 one, and
+          // wrapped text keeps some air. A cell's own padding class replaces it.
+          "h-11 py-[var(--table-cell-py,calc(var(--spacing)*1.5))]",
           identity && "font-medium",
           tableCellPadding,
           right && "whitespace-nowrap text-right tabular-nums",
