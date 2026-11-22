@@ -238,3 +238,42 @@ and then go. Every 0.5 prop still works; nothing an app passes changes meaning.
   that matched `text-[13px]` in a selector inside a design-system component
   should match `text-body`.
 - **Which table:** `docs/design-system.md` → Tables.
+
+## Upgrading to 0.6.1
+
+A patch to the `Table` parts from wave 2's table reviews. Every 0.6.0 prop still
+works and means the same; existing workarounds keep working, so delete them at
+your own pace.
+
+- **Rows measure 44 (36 `dense`) including the hairline.** Cells keep 4px above
+  and below (was 8), so a row holding a 28 control, a badge or a 32
+  `Button size="sm"` is 44, and a dense row of text is 36 (they measured 45 and
+  37). Rows of wrapped text are 8px shorter. A 36 input in a row still makes it
+  45: in-table controls are 28 (`h-7`).
+- **A row's alignment reaches its cells.** `TableCell` and `TableHead` no longer
+  set `align-middle`; `TableRow` does, and its cells inherit it. So
+  `<TableRow className="align-top">` works. **Delete** `[&>td]:align-top` on
+  rows (it still works, it's just no longer needed). A cell's own `align-*`
+  still wins.
+- **The identity column yields.** The first body cell is still 500, but a
+  weight class on the cell (`font-normal`, `font-semibold`) or on its row now
+  wins, and a cell with `colSpan` greater than 1 no longer takes it. New:
+  `identity={false}` on a `TableRow` or `TableCell` to opt one out, `identity`
+  on a `TableCell` to set it 500 wherever it sits. **Delete**
+  `identityColumn={false}` where it was there only for an empty-state row, a
+  detail panel or a row with its own weight; keep it where the first column
+  really isn't the identity (a date, a number, a checkbox).
+- **Check after upgrading:** a `colSpan` cell that leads a body row and relied
+  on the 500 (a group label spanning columns) now renders 400; give it
+  `identity` or `font-medium`. A test that pinned the old identity class
+  `[&>tbody>tr>td:first-child]:font-medium` should assert the weight another
+  way (the rule is now a `:where()` selector).
+- **New on `TableHead`:** `suffix`, one 28 control after the label (a filter
+  funnel, a month toggle), beside the sort button rather than inside it, so a
+  head with a control keeps `sort` / `onSort` instead of a hand-built sort
+  button. `description` draws the standard definition (dotted underline and a
+  tooltip): it is on the package root's `TableHead` only. A server component
+  keeps importing the parts from `@curvgroup/design-system/table` and renders a
+  head that needs a definition from a client component, for example a one-line
+  file: `"use client"; export { TableHead } from "@curvgroup/design-system";`.
+  Replace hand-wrapped `<Tooltip>` labels in heads with `description`.
