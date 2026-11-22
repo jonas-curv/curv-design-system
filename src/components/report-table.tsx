@@ -193,6 +193,8 @@ export function ReportTable({
               return (
                 <React.Fragment key={section.key}>
                   {section.label != null && (
+                    // Rows are 36 with their hairline: what fills a cell (a
+                    // label, a button) is 35, or the row grows to 37.
                     <tr className="h-9">
                       <td colSpan={colCount} className="sticky left-0 z-[1] border-b border-border bg-muted/40 p-0">
                         {section.collapsible ? (
@@ -200,13 +202,13 @@ export function ReportTable({
                             type="button"
                             onClick={() => toggle(section.key)}
                             aria-expanded={open}
-                            className="flex h-9 w-full items-center gap-1.5 px-4 text-left text-caption font-medium text-muted-foreground transition-colors hover:text-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-inset focus-visible:ring-foreground/25"
+                            className="flex h-[35px] w-full items-center gap-1.5 px-4 text-left text-caption font-medium text-muted-foreground transition-colors hover:text-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-inset focus-visible:ring-foreground/25"
                           >
                             <Chevron open={open} />
                             {section.label}
                           </button>
                         ) : (
-                          <div className="flex h-9 items-center px-4 text-caption font-medium text-muted-foreground">{section.label}</div>
+                          <div className="flex h-[35px] items-center px-4 text-caption font-medium text-muted-foreground">{section.label}</div>
                         )}
                       </td>
                     </tr>
@@ -226,7 +228,7 @@ export function ReportTable({
                               type="button"
                               onClick={() => onCellClick(row, colKey)}
                               className={cn(
-                                "h-9 w-full whitespace-nowrap text-right transition-colors hover:bg-accent/50 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-inset focus-visible:ring-foreground/25",
+                                "h-[35px] w-full whitespace-nowrap text-right transition-colors hover:bg-accent/50 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-inset focus-visible:ring-foreground/25",
                                 last ? "pl-3 pr-4" : "px-3",
                               )}
                             >
@@ -244,7 +246,7 @@ export function ReportTable({
                                 type="button"
                                 onClick={() => onRowClick(row)}
                                 style={{ paddingLeft: labelPad }}
-                                className="flex h-9 w-full items-center truncate pr-3 text-left transition-colors hover:bg-accent/50 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-inset focus-visible:ring-foreground/25"
+                                className="flex h-[35px] w-full items-center truncate pr-3 text-left transition-colors hover:bg-accent/50 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-inset focus-visible:ring-foreground/25"
                               >
                                 {row.label}
                               </button>
