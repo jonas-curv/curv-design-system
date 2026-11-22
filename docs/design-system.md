@@ -639,9 +639,10 @@ standard look.
   ring, and no `aria-label` on the button: its visible label names it. A
   column with an empty `header` (icons, actions) gets no sort button, unless it
   sets `sortable: true` and an `ariaLabel` to name it.
-- **Definitions.** A column's `description` becomes a dotted underline and a
-  tooltip on the header label. Never an info icon.
-- **Rows.** 44, 13px, the first column 500, hairline dividers,
+- **Definitions.** A column's `description` (a `TableHead`'s, in the parts)
+  becomes a dotted underline and a tooltip on the header label. Never an info
+  icon.
+- **Rows.** 44 including the hairline, 13px, the first column 500, hairline dividers,
   `hover:bg-accent/30`, no zebra. An empty cell (null, undefined, `""`, or a
   `render` returning nothing) shows a muted `—`. A selected row is
   `bg-accent/50`. Identity columns may use the **two-line cell** (primary in
@@ -725,7 +726,9 @@ standard look.
   (`getRowHref`), never an `onClick` div. **Navigate vs peek:** navigate when the
   entity has its own page; open a `Drawer` peek only for triage flows where
   losing list position hurts — composed at page level, never baked into the
-  table.
+  table. A peek row uses `onRowClick`: the row then takes a keyboard stop (a
+  button named by `getRowLabel`, Enter or Space opens it, the standard focus
+  ring), and clicks on its cells' own controls don't fire it.
 - **Copy affordance on identifiers only.** `CopyButton` (hover-revealed via
   `group/copy`) belongs on order/quote #s, SKUs, and shareable links. Never on
   names, money, statuses, or free text.
@@ -755,7 +758,11 @@ tailwind-merge, refs forwarded, so an app's `ui/table.tsx` copy is replaced by a
 import. They carry the spec above on their own: the 36 solid header (12 / 500,
 never wraps, a hairline drawn on each head cell so it travels when the header
 sticks), 44 rows at 13px with hairlines and `hover:bg-accent/30` on body rows
-only, 12 a side and 16 on the outer edges, the first column 500.
+only, 12 a side and 16 on the outer edges, the first column 500. Cells keep 6px
+above and below (4 in a `dense` table), and heights include the hairline: the
+header measures 36, a row of text, a badge or a 28 control 44, a dense row of
+text or a badge 36. In-table controls are 28 (`h-7`): a 32 `Button size="sm"`
+makes its row 45.
 
 - **Numbers.** `numeric` on a `TableHead` and its `TableCell`s: right, tabular,
   never wraps (`align="right"` does the same). An empty value is `<TableNull />`,
@@ -781,17 +788,42 @@ only, 12 a side and 16 on the outer edges, the first column 500.
   });
   <TableHead {...getHeadProps("value")} numeric>Value</TableHead>
   ```
+- **Head controls.** `suffix` puts one 28 control (`h-7`) after the label: a
+  filter funnel, a month toggle. On a sortable head the sort button is then the
+  label alone and the control sits beside it, outside it, as DataTable's column
+  `headerSuffix`. Never build your own sort button to make room for one.
+- **Definitions.** `description` on a `TableHead` draws the dotted underline
+  and a tooltip on the label; on a sortable head the sort button is the
+  trigger (hover or focus), otherwise the label takes a focus stop. Screen
+  readers hear it as the trigger's description. It is on the package root's
+  `TableHead` only (the tooltip is a client component).
+
+  ```tsx
+  <TableHead numeric description="Gross profit ÷ revenue">GP margin</TableHead>
+  <TableHead {...getHeadProps("revenue")} numeric suffix={<MonthToggle />}>Revenue</TableHead>
+  ```
 - **Rows.** `selected` on a `TableRow` (`bg-accent/50`, `data-state="selected"`).
   `dense` on `Table` makes rows 36 for statements and dense read-outs (the header
-  stays 36). `identityColumn={false}` when the first column isn't the row's
-  identity (a date, a checkbox).
+  stays 36). A row's vertical alignment reaches its cells: middle by default,
+  `<TableRow className="align-top">` for rows of multi-line cells (a cell's own
+  `align-*` still wins).
+- **The identity column.** The first body cell of each row is 500. A weight
+  class on the cell (`font-normal`, `font-semibold`) or on its row wins, a cell
+  that spans columns (an empty state, a detail panel) keeps its own weight, and
+  `identity={false}` on a `TableRow` or a `TableCell` opts one out.
+  `identityColumn={false}` on `Table` when the first column isn't the row's
+  identity (a date, a number, a checkbox); then `identity` on the cell that is
+  sets it 500.
 - **Columns.** `priority={2}` hides a column below `md`, `priority={3}` below
   `xl` (give the head and its cells the same one). `sticky` pins the identity
   column left (`"right"` pins a total), opaque, with a hairline on its edge.
 - **Server components.** The parts have no hooks and no context. Import them
   from `@curvgroup/design-system/table` in a server component (the package root
   holds client components a server build can't load); client code may use
-  either. `useTableSort` is in the root only.
+  either. `useTableSort` and the `TableHead` with `description` are in the root
+  only: a server-rendered table whose heads need a definition renders those
+  heads from a small client component that imports `TableHead` from the root.
+  `suffix` works in both.
 
 ### Grouping — a list people scan by a parent record
 

@@ -90,13 +90,91 @@ test('rows and cells: 44, 13px, hairlines, body-only hover, no zebra, edge paddi
  const { container } = await mount(lines());
  const table = q(container, 'table');
  assert.ok(has(table, 'w-full', 'text-body', 'border-collapse'));
- assert.ok(has(table, '[&>tbody>tr>td:first-child]:font-medium'), 'the identity column is 500');
+ assert.ok(identityToken(table), 'the identity column is 500');
  const tr = q(container, 'tbody tr');
  assert.ok(has(tr, 'border-b', 'border-border', '[tbody>&:not([data-state=selected])]:hover:bg-accent/30'));
  assert.ok(!classes(tr).some((c) => /even:|odd:/.test(c)), 'no zebra');
  const td = q(container, 'tbody td');
  assert.ok(has(td, 'h-11', 'px-3', 'first:pl-4', 'last:pr-4'));
  assert.ok(has(q(container, 'tbody'), '[&>tr:last-child]:border-b-0'));
+});
+
+// The identity rule's token, and the cells it reaches (its selector run on the
+// DOM; happy-dom can't match inside :where, and :where only drops specificity).
+const identityToken = (table) => classes(table).find((c) => c.startsWith('[:where(&>tbody>tr') && c.endsWith(')]:font-medium'));
+const identityCells = (container) => {
+ const table = q(container, 'table');
+ table.id = 'identity-probe';
+ const selector = identityToken(table).slice(':where('.length + 1, -')]:font-medium'.length).replace('&', '#identity-probe');
+ return qa(container, selector).map((td) => td.textContent);
+};
+
+// Cells keep 6px above and below, 4 in a dense table (through a variable the
+// table sets). Measured in Chromium: a row of text, a badge or a 28 control is
+// 44 with its hairline, a dense row of text or a badge 36. py-2 made a 28
+// control row 45 and every dense row 37; py-1.5 everywhere made a dense badge 37.
+const CELL_PY = 'py-[var(--table-cell-py,calc(var(--spacing)*1.5))]';
+
+test('heights: a 44 row includes its hairline: 6px above and below, 4 dense (rows 44 / 36, measured in Chromium)', async () => {
+ const { container } = await mount(lines({ dense: true }));
+ const td = q(container, 'tbody td');
+ assert.ok(has(td, 'h-11', CELL_PY), 'a 44 minimum, 6px unless the table sets the variable');
+ assert.ok(!classes(td).some((c) => /^py-\d/.test(c)), 'no fixed padding to fight the dense one');
+ assert.ok(has(q(container, 'table'), '[&>tbody>tr>td]:h-9', '[--table-cell-py:var(--spacing)]'), 'dense: 36 rows, 4px');
+ const th = q(container, 'thead th');
+ assert.ok(has(th, 'h-9', 'py-0', 'shadow-[inset_0_-1px_0_var(--border)]'), 'the header hairline is a shadow: 36 includes it');
+});
+
+test('row alignment: the row is middle and its cells inherit it, so a row class lifts every cell', async () => {
+ const { container, render } = await mount(lines());
+ for (const tr of qa(container, 'tr')) assert.ok(has(tr, 'align-middle'), 'every row, head and foot too');
+ for (const cell of qa(container, 'td, th')) assert.ok(!classes(cell).some((c) => /^align-/.test(c)), 'no cell forces its own alignment');
+ await render(
+  h(Table, null, h(TableBody, null,
+   h(TableRow, { className: 'align-top' }, h(TableCell, null, 'A'), h(TableCell, { className: 'align-bottom' }, 'B')),
+   h(TableRow, { className: '[&>td]:align-top' }, h(TableCell, null, 'C')),
+  )),
+ );
+ const [top, workaround] = qa(container, 'tr');
+ assert.ok(has(top, 'align-top') && !has(top, 'align-middle'), 'the row class replaces the default');
+ assert.ok(has(top.children[1], 'align-bottom'), "a cell's own alignment still wins");
+ assert.ok(has(workaround, '[&>td]:align-top', 'align-middle'), 'the 0.6.0 workaround still reaches the cells');
+});
+
+test('identity column: zero specificity, so a weight class on the cell wins; spans and opt-outs keep their own weight', async () => {
+ const { container } = await mount(
+  h(Table, null, h(TableBody, null,
+   h(TableRow, null, h(TableCell, null, 'plain'), h(TableCell, null, 'x')),
+   h(TableRow, null, h(TableCell, { colSpan: 2 }, 'span')),
+   h(TableRow, null, h(TableCell, { colSpan: 1 }, 'one'), h(TableCell, null, 'x')),
+   h(TableRow, { identity: false }, h(TableCell, null, 'row-off'), h(TableCell, null, 'x')),
+   h(TableRow, null, h(TableCell, { identity: false }, 'cell-off'), h(TableCell, null, 'x')),
+   h(TableRow, { className: 'font-semibold' }, h(TableCell, null, 'Total'), h(TableCell, null, 'x')),
+   h(TableRow, { className: 'hover:font-semibold' }, h(TableCell, null, 'variant'), h(TableCell, null, 'x')),
+  )),
+ );
+ const token = identityToken(q(container, 'table'));
+ assert.ok(token.startsWith('[:where('), 'all of it inside :where, so font-normal / font-semibold on a cell beats it');
+ assert.deepEqual(identityCells(container), ['plain', 'one', 'variant']);
+ const [, , , rowOff, cellOff] = qa(container, 'tr');
+ assert.equal(rowOff.getAttribute('data-identity'), 'false');
+ assert.equal(cellOff.firstElementChild.getAttribute('data-identity'), 'false');
+ assert.equal(rowOff.getAttribute('identity'), null, 'the prop never reaches the DOM');
+ assert.equal(q(container, 'tr').getAttribute('data-identity'), null, 'nothing set by default');
+ assert.equal(q(container, 'td').getAttribute('data-identity'), null);
+});
+
+test('identity on a cell: true sets it 500 wherever it sits; it merges with a weight class', async () => {
+ const { container } = await mount(
+  h(Table, { identityColumn: false }, h(TableBody, null,
+   h(TableRow, null, h(TableCell, null, 'Nov 4'), h(TableCell, { identity: true }, 'Acme'), h(TableCell, { identity: true, className: 'font-semibold' }, 'Globex')),
+  )),
+ );
+ assert.equal(identityToken(q(container, 'table')), undefined, 'identityColumn={false} drops the rule');
+ const [date, acme, globex] = qa(container, 'td');
+ assert.ok(!has(date, 'font-medium'));
+ assert.ok(has(acme, 'font-medium'));
+ assert.ok(has(globex, 'font-semibold') && !has(globex, 'font-medium'), 'the caller wins');
 });
 
 test('numbers: align right with tabular figures on head and cell; align="right" does the same', async () => {
@@ -153,9 +231,25 @@ test('dense: rows 36, the header stays 36; identityColumn={false} drops the 500'
  const { container } = await mount(lines({ dense: true, identityColumn: false }));
  const table = q(container, 'table');
  assert.equal(table.getAttribute('data-density'), 'compact');
- assert.ok(has(table, '[&>tbody>tr>td]:h-9'));
- assert.ok(!classes(table).includes('[&>tbody>tr>td:first-child]:font-medium'));
+ assert.ok(has(table, '[&>tbody>tr>td]:h-9', '[--table-cell-py:var(--spacing)]'));
+ const plain = await mount(lines());
+ assert.ok(!has(q(plain.container, 'table'), '[--table-cell-py:var(--spacing)]'), 'only dense sets it');
+ assert.equal(identityToken(table), undefined);
+ assert.ok(!classes(table).some((c) => c.endsWith(':font-medium')));
  assert.ok(has(q(container, 'th'), 'h-9'));
+});
+
+test("a cell's own padding replaces the default, dense too (the variable never outranks it)", async () => {
+ const { container } = await mount(
+  h(Table, { dense: true }, h(TableBody, null, h(TableRow, null,
+   h(TableCell, { className: 'p-0' }, 'A'), h(TableCell, { className: 'py-3' }, 'B'), h(TableCell, null, 'C'),
+  ))),
+ );
+ const [a, b, c] = qa(container, 'td');
+ assert.ok(has(a, 'p-0') && !has(a, CELL_PY), 'p-0 drops the default');
+ assert.ok(has(b, 'py-3') && !has(b, CELL_PY));
+ assert.ok(has(c, CELL_PY));
+ assert.ok(!classes(q(container, 'table')).some((c) => /td\]:p[ytb]?-/.test(c)), 'the table sets no padding on its cells');
 });
 
 test('className merges onto every part (tailwind-merge), refs reach the element', async () => {
@@ -252,6 +346,78 @@ test('sortable head: a click calls onSort', async () => {
  const { container } = await mount(sortTable([h(TableHead, { key: 'a', sort: null, onSort: () => { n++; } }, 'Customer')]));
  await click(q(container, 'th button'));
  assert.equal(n, 1);
+});
+
+/* ---------- head suffix and definitions ---------- */
+
+const funnel = (label = 'Filter value') => h('button', { type: 'button', 'aria-label': label, className: 'size-7' }, 'f');
+
+test('suffix: a control after the label, outside the sort button; the button is then the label alone (as DataTable headerSuffix)', async () => {
+ const { container } = await mount(sortTable([
+  h(TableHead, { key: 'a', suffix: funnel('Filter customer') }, 'Customer'),
+  h(TableHead, { key: 'b', sort: 'desc', onSort: () => {}, numeric: true, suffix: funnel() }, 'Value'),
+  h(TableHead, { key: 'c', sort: null, onSort: () => {} }, 'Due'),
+ ]));
+ const [customer, value, due] = qa(container, 'th');
+ const row = customer.firstElementChild;
+ assert.ok(has(row, 'flex', 'h-9', 'items-center'));
+ assert.ok(!classes(row).some((c) => c.startsWith('gap-')), "no gap: DataTable's headerSuffix sits flush too");
+ assert.ok(has(customer, 'px-3', 'first:pl-4', 'last:pr-4'), 'a plain head keeps its padding');
+ assert.equal(row.textContent, 'Customerf');
+ assert.equal(row.lastElementChild.getAttribute('aria-label'), 'Filter customer');
+ assert.ok(has(value, 'px-3') && !has(value, 'p-0'), 'beside a suffix the cell carries the padding');
+ assert.ok(has(value.firstElementChild, 'justify-end'), 'a right column keeps its label at the right');
+ const [sortButton, control] = value.firstElementChild.children;
+ assert.equal(sortButton.textContent, 'Value');
+ assert.ok(!has(sortButton, 'w-full') && !has(sortButton, 'px-3'), 'the sort button is the label alone');
+ assert.equal(control.getAttribute('aria-label'), 'Filter value');
+ assert.equal(q(sortButton, 'button'), null, 'no control inside the sort button');
+ assert.equal(value.getAttribute('aria-sort'), 'descending');
+ assert.equal(due.firstElementChild.tagName.toLowerCase(), 'button', 'without a suffix the DOM is as before');
+ assert.ok(has(due.firstElementChild, 'w-full', 'px-3'));
+});
+
+test('description (package root): a dotted underline on the label; the label, or the sort button, is the tooltip trigger and is described by it', async () => {
+ const { container } = await mount(sortTable([
+  h(TableHead, { key: 'a', numeric: true, description: 'Gross profit ÷ revenue' }, 'GP margin'),
+  h(TableHead, { key: 'b', sort: null, onSort: () => {}, description: 'Days since the order' }, 'Age'),
+  h(TableHead, { key: 'c', description: '' }, 'Notes'),
+ ]));
+ const [gp, age, notes] = qa(container, 'th');
+ const trigger = gp.firstElementChild;
+ assert.equal(trigger.getAttribute('tabindex'), '0', 'a head that does not sort gets a focus stop for its definition');
+ assert.ok(has(trigger, 'focus-visible:ring-2', 'focus-visible:ring-ring'));
+ assert.ok(has(trigger.firstElementChild, 'underline', 'decoration-dotted', 'underline-offset-4'));
+ assert.equal(gp.getAttribute('description'), null, 'the prop never reaches the DOM');
+ const button = q(age, 'button');
+ assert.equal(q(button, '[tabindex]'), null, 'no focus stop inside the sort button');
+ assert.ok(has(q(button, 'span > span'), 'decoration-dotted'));
+ assert.equal(q(notes, 'span'), null, 'an empty description draws nothing');
+ // Screen readers: the trigger names a hidden copy of the definition.
+ const described = (el) => document.getElementById(el.getAttribute('aria-describedby'));
+ assert.equal(described(trigger).textContent, 'Gross profit ÷ revenue');
+ assert.ok(described(trigger).hidden, 'hidden: a description, never part of the column name');
+ assert.equal(described(button).textContent, 'Days since the order');
+ assert.notEqual(trigger.getAttribute('aria-describedby'), button.getAttribute('aria-describedby'));
+ assert.equal(q(notes, '[aria-describedby]'), null);
+ const shown = () => document.body.textContent.split('Gross profit ÷ revenue').length - 1;
+ assert.equal(shown(), 1, 'only the hidden copy until focus');
+ await act(async () => { trigger.focus(); });
+ await act(async () => { await new Promise((r) => setTimeout(r, 50)); });
+ assert.equal(shown(), 2, 'focus opens the definition');
+});
+
+test('the /table entry has no description: its TableHead stays server-safe and draws no underline', async () => {
+ const html = renderToStaticMarkup(
+  h(server.Table, null, h(server.TableHeader, null, h(server.TableRow, null,
+   h(server.TableHead, { suffix: h('span', null, 'Nov') }, 'Revenue'),
+  ))),
+ );
+ assert.match(html, /<th[^>]*><div class="flex h-9 items-center">Revenue<span>Nov<\/span><\/div><\/th>/);
+ assert.doesNotMatch(html, /decoration-dotted/);
+ const src = readFileSync(new URL('../dist/table.js', import.meta.url), 'utf8');
+ assert.doesNotMatch(src, /@base-ui|Tooltip/, 'no tooltip in the server entry');
+ assert.notEqual(ds.TableHead, server.TableHead, 'the root TableHead is the client one');
 });
 
 /* ---------- useTableSort ---------- */

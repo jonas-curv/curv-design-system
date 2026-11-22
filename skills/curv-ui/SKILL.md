@@ -110,7 +110,7 @@ off-colour, or with a hand-rolled `bg-neutral-100` shell.*
      `MultiSelect`, `Checkbox`, `Radio`/`RadioGroup`, `Switch`, `Field`,
      `DateRangePicker`.
    - **Data display:** `DataTable` (+ filter bar, `TableLink`/`getRowHref` for
-     real row links, CSV/PDF export, sticky columns, loading skeleton, opt-in
+     real row links, `onRowClick` for a peek (keyboard reachable), CSV/PDF export, sticky columns, loading skeleton, opt-in
      row grouping via `groupBy` + `renderGroupHeader` — never hand-roll group
      rows). **Column
      widths follow the Linear model:** leave exactly ONE primary text column with
@@ -122,7 +122,8 @@ off-colour, or with a hand-rolled `bg-neutral-100` shell.*
      → *DataTable column widths*.) A few read-only rows, an editable grid or a
      server-rendered table use the `Table` parts (`Table`, `TableHeader`,
      `TableBody`, `TableFooter`, `TableRow`, `TableHead`, `TableCell`, shadcn
-     API; sortable heads with `useTableSort`; server components import
+     API; sortable heads with `useTableSort`, a head's definition with
+     `description`, a head control with `suffix`; server components import
      `@curvgroup/design-system/table`) — never a bare `<table>`. The
      **reporting engine** — `StatCard`/`StatGroup`, `Sparkline`, `LineChart`,
      `BarChart`, `BarBreakdown`, `ChartCard` (the shell that hosts chart

@@ -53,11 +53,11 @@ component's TSDoc for the full surface. **Style through tokens, never raw hex.**
 
 | Use when | Component | Key props |
 | --- | --- | --- |
-| A sortable, searchable, filterable table (virtualized) | `DataTable` (+ `TableLink`, `DataTableBulkAction`) | `columns` (`type`, `width`/`minWidth`, `sticky`, `description`, `sortFirst`, `sortValue`, `exportValue`, `exportHeader`, `exportable`, `exportOnly`), `rows`, `getRowId`, `aria-label`, `searchable`, `filters`, `tabs`, `exportFilename`, `tableId` (Columns picker), `selectable` / `selected` / `onSelectedChange` / `bulkActions`, `totals`, `getRowHref`, `getRowClassName`, `getRowPin`, `rowCap`, `renderExpanded` (+ `canExpand`, `expanded` / `onExpandedChange`), `groupBy` / `renderGroupHeader` (also `defaultCollapsedGroups`, `ungroupedLabel`, `searchActive`, `collapsedGroups` / `onCollapsedGroupsChange`) |
+| A sortable, searchable, filterable table (virtualized) | `DataTable` (+ `TableLink`, `DataTableBulkAction`) | `columns` (`type`, `width`/`minWidth`, `sticky`, `description`, `sortFirst`, `sortValue`, `exportValue`, `exportHeader`, `exportable`, `exportOnly`), `rows`, `getRowId`, `aria-label`, `searchable`, `filters`, `tabs`, `exportFilename`, `tableId` (Columns picker), `selectable` / `selected` / `onSelectedChange` / `bulkActions`, `totals`, `getRowHref`, `onRowClick` (a peek; the row takes a keyboard stop named by `getRowLabel`), `getRowClassName`, `getRowPin`, `rowCap`, `renderExpanded` (+ `canExpand`, `expanded` / `onExpandedChange`), `groupBy` / `renderGroupHeader` (also `defaultCollapsedGroups`, `ungroupedLabel`, `searchActive`, `collapsedGroups` / `onCollapsedGroupsChange`) |
 | A DataTable whose view state you keep (URL, saved view, server sort) | `DataTable` | `sort` / `onSortChange` (+ `manualSort`), `query` / `onQueryChange` (`defaultQuery`), `filterValues` / `onFilterValuesChange` (`defaultFilterValues`), `tab` / `onTabChange`, `searchLabel`, `matchSearch` |
 | A table whose toolbar sits in the page's control row | `DataTableProvider` + `DataTableViews`, `DataTableSearch`, `DataTableFilterButton`, `DataTableColumnsButton`, `DataTableExportMenu` + `<DataTable toolbar="external" />` | the provider takes the `DataTable` props; the pieces take none |
 | Money, numbers, percentages and dates the table way | `formatMoney`, `formatNumber`, `formatPercent`, `formatDate` | `cents`, `decimals`, `ratio`, `today` · `MINUS` is U+2212 |
-| A small read-only table, an editable grid, a server-rendered table | `Table`, `TableHeader`, `TableBody`, `TableFooter`, `TableRow`, `TableHead`, `TableCell`, `TableCaption`, `TableNull` (server components: from `@curvgroup/design-system/table`) | shadcn props + Table: `card`, `maxHeight`, `dense`, `identityColumn` · Header/Footer: `sticky` · Row: `selected` · Head/Cell: `numeric`, `align`, `priority`, `sticky` · Head: `sort`, `onSort`, `sortFirst` |
+| A small read-only table, an editable grid, a server-rendered table | `Table`, `TableHeader`, `TableBody`, `TableFooter`, `TableRow`, `TableHead`, `TableCell`, `TableCaption`, `TableNull` (server components: from `@curvgroup/design-system/table`) | shadcn props + Table: `card`, `maxHeight`, `dense`, `identityColumn` · Header/Footer: `sticky` · Row: `selected`, `identity={false}`, `className="align-top"` (its cells follow) · Head/Cell: `numeric`, `align`, `priority`, `sticky` · Head: `sort`, `onSort`, `sortFirst`, `suffix` (a 28 control after the label), `description` (root only: dotted underline + tooltip) · Cell: `identity` (`true` sets 500, `false` opts out) |
 | Client-side sort for the Table parts | `useTableSort` | `useTableSort(rows, { columns, initialSort })` → `rows`, `getHeadProps(key)` (also `sort` / `onSortChange`) |
 | The header and cell classes for a cell the parts can't draw | `tableHeaderRow`, `tableCellPadding` | class strings for the `<tr>` in `<thead>` and each cell |
 | A P&L / period matrix with drill-down (same header, rows 36) | `ReportTable` | `sections`, `periods`, `summaryColumns`, `view`, `formatValue` |
@@ -82,13 +82,16 @@ component's TSDoc for the full surface. **Style through tokens, never raw hex.**
 `DataTable` for a list people query (sort, search, filter, select, export);
 the `Table` parts for a few read-only rows, an editable grid or a server
 component; `ReportTable` for a financial statement. Never a hand-built `<table>`.
+A server component takes the parts from `@curvgroup/design-system/table`; a
+head with a `description` is the root's `TableHead`, so it renders from a client
+component.
 
 ```tsx
 <DataTable columns={columns} rows={deals} getRowId={(d) => d.id} aria-label="Deals" searchable unit="deals" />
 
 const { rows, getHeadProps } = useTableSort(stock, { columns: { name: (s) => s.name, qty: (s) => s.qty } });
 <Table card aria-label="Warehouses">
-  <TableHeader><TableRow><TableHead {...getHeadProps("name")}>Warehouse</TableHead><TableHead {...getHeadProps("qty")} numeric>On hand</TableHead></TableRow></TableHeader>
+  <TableHeader><TableRow><TableHead {...getHeadProps("name")}>Warehouse</TableHead><TableHead {...getHeadProps("qty")} numeric description="Units on the shelf, not allocated">On hand</TableHead></TableRow></TableHeader>
   <TableBody>{rows.map((s) => <TableRow key={s.id}><TableCell>{s.name}</TableCell><TableCell numeric>{formatNumber(s.qty)}</TableCell></TableRow>)}</TableBody>
 </Table>
 

@@ -1,7 +1,7 @@
 "use client";
 
 import * as React from "react";
-import { useVirtualizer } from "@tanstack/react-virtual";
+import { defaultRangeExtractor, useVirtualizer, type Range } from "@tanstack/react-virtual";
 import { cn } from "../../lib/cn";
 import { EmptyState } from "../empty-state";
 import { Skeleton } from "../skeleton";
@@ -149,6 +149,24 @@ function DataTableCard<Row>({
     [listItems, rowHeight, groupHeaderHeight],
   );
 
+  // The row holding focus stays rendered while it scrolls out of view, so
+  // focus isn't dropped to the page and Tab carries on from it.
+  const focusedIndexRef = React.useRef<number | null>(null);
+  const rangeExtractor = React.useCallback((range: Range) => {
+    const indexes = defaultRangeExtractor(range);
+    const f = focusedIndexRef.current;
+    if (f == null || f >= range.count || indexes.includes(f)) return indexes;
+    return [...indexes, f].sort((a, b) => a - b);
+  }, []);
+  const keepFocus = (index: number) => ({
+    onFocus: () => {
+      focusedIndexRef.current = index;
+    },
+    onBlur: (e: React.FocusEvent<HTMLElement>) => {
+      if (!e.currentTarget.contains(e.relatedTarget as Node | null)) focusedIndexRef.current = null;
+    },
+  });
+
   const parentRef = React.useRef<HTMLDivElement>(null);
   const virt = useVirtualizer({
     count,
@@ -159,6 +177,7 @@ function DataTableCard<Row>({
     },
     getItemKey: listItems ? getItemKey : undefined,
     overscan: 12,
+    rangeExtractor,
   });
   const items = virt.getVirtualItems();
 
@@ -227,6 +246,8 @@ function DataTableCard<Row>({
   // Shift on the click that toggles a row's checkbox (the Checkbox reports only on/off).
   const shiftRef = React.useRef(false);
   const rowLabel = (row: Row) => (p.getRowLabel ? p.getRowLabel(row) : String(accessor(visible[0]?.col ?? p.columns[0], row) ?? "row"));
+  // The name of the row's link or button (the row itself, when it opens something).
+  const rowName = (row: Row) => (p.getRowLabel ? p.getRowLabel(row) : String(accessor(p.columns[0], row) ?? "Open row"));
 
   const gridStyle = { gridTemplateColumns: "var(--dt-cols)" } as const;
   const anySticky = m.lastSticky >= 0;
@@ -319,6 +340,7 @@ function DataTableCard<Row>({
         key={vi.key}
         role="row"
         aria-rowindex={vi.index + 2}
+        {...keepFocus(vi.index)}
         // Anywhere on the band toggles, except controls inside it and
         // a drag-selection that ends here (that still fires a click).
         onClick={(e) => {
@@ -396,6 +418,7 @@ function DataTableCard<Row>({
       id={detailId(rowIndex)}
       role="row"
       aria-rowindex={vi.index + 2}
+      {...keepFocus(vi.index)}
       className="absolute left-0 top-0 w-full border-b border-border bg-muted/30 text-body text-foreground"
       style={{ transform: `translateY(${vi.start}px)` }}
     >
@@ -433,6 +456,7 @@ function DataTableCard<Row>({
         role="row"
         aria-rowindex={vi.index + 2}
         aria-selected={m.selectable ? selected : undefined}
+        {...keepFocus(vi.index)}
         onClick={p.onRowClick ? (e) => { if (!(e.target as HTMLElement).closest(ROW_CLICK_SKIP)) p.onRowClick!(row); } : undefined}
         className={cn(
           "group absolute left-0 top-0 grid w-full items-center border-b border-border text-body text-foreground hover:bg-accent/30",
@@ -453,8 +477,22 @@ function DataTableCard<Row>({
         {href && (
           <a
             href={href}
-            aria-label={p.getRowLabel ? p.getRowLabel(row) : String(accessor(p.columns[0], row) ?? "Open row")}
+            aria-label={rowName(row)}
             className="absolute inset-0 z-[1] focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-inset focus-visible:ring-foreground/30"
+          />
+        )}
+        {/* A clickable row's keyboard stop: a stretched button on the
+            overlay's rung that the pointer passes through, so mouse clicks
+            still land on the row and its cells' controls as before. Enter
+            and Space press it; the row's own click skips it (a button), so
+            it fires once. Focused, it rises over the sticky cells to show
+            its ring (the row is its own stacking context). */}
+        {p.onRowClick && !href && (
+          <button
+            type="button"
+            onClick={() => p.onRowClick!(row)}
+            aria-label={rowName(row)}
+            className="pointer-events-none absolute inset-0 z-[1] focus-visible:z-20 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring"
           />
         )}
         {m.selectable &&
