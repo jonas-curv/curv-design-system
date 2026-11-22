@@ -241,20 +241,23 @@ and then go. Every 0.5 prop still works; nothing an app passes changes meaning.
 
 ## Upgrading to 0.6.1
 
-A patch to the `Table` parts from wave 2's table reviews. Every 0.6.0 prop still
-works and means the same; existing workarounds keep working, so delete them at
-your own pace.
+A patch to the `Table` parts, `ReportTable` and `DataTable` from wave 2's table
+reviews. Every 0.6.0 prop still works and means the same; existing workarounds
+keep working, so delete them at your own pace.
 
-- **Rows measure 44 (36 `dense`) including the hairline.** Cells keep 4px above
-  and below (was 8), so a row holding a 28 control, a badge or a 32
-  `Button size="sm"` is 44, and a dense row of text is 36 (they measured 45 and
-  37). Rows of wrapped text are 8px shorter. A 36 input in a row still makes it
-  45: in-table controls are 28 (`h-7`).
+- **Rows measure 44 (36 `dense`) including the hairline.** Cells keep 6px above
+  and below (4 in a `dense` table; was 8), so a row holding text, a badge or a
+  28 control is 44, and a dense row of text or a badge is 36 (in 0.6.0 a row
+  with a 28 control measured 45, a dense row 37 to 41). Rows of wrapped text
+  are 4px shorter (8 dense). In-table controls
+  are 28 (`h-7`): a 32 `Button size="sm"` makes a row 45 (was 49). A cell's own
+  padding class (`p-0`, `py-3`) still replaces the default, dense too.
 - **A row's alignment reaches its cells.** `TableCell` and `TableHead` no longer
   set `align-middle`; `TableRow` does, and its cells inherit it. So
-  `<TableRow className="align-top">` works. **Delete** `[&>td]:align-top` on
-  rows (it still works, it's just no longer needed). A cell's own `align-*`
-  still wins.
+  `<TableRow className="align-top">` works. **Delete** `[&>td]:align-top` and
+  `[&>*]:align-top` on rows (they still work, they're just no longer needed). A
+  cell's own `align-*` still wins. A test that asserted `align-middle` on a
+  cell should assert it on the row.
 - **The identity column yields.** The first body cell is still 500, but a
   weight class on the cell (`font-normal`, `font-semibold`) or on its row now
   wins, and a cell with `colSpan` greater than 1 no longer takes it. New:
@@ -269,11 +272,23 @@ your own pace.
   `[&>tbody>tr>td:first-child]:font-medium` should assert the weight another
   way (the rule is now a `:where()` selector).
 - **New on `TableHead`:** `suffix`, one 28 control after the label (a filter
-  funnel, a month toggle), beside the sort button rather than inside it, so a
-  head with a control keeps `sort` / `onSort` instead of a hand-built sort
-  button. `description` draws the standard definition (dotted underline and a
-  tooltip): it is on the package root's `TableHead` only. A server component
+  funnel, a month toggle), beside the sort button rather than inside it and
+  flush with it (DataTable's `headerSuffix` layout), so a head with a control
+  keeps `sort` / `onSort` instead of a hand-built sort button. `description`
+  draws the standard definition (dotted underline and a tooltip; screen readers
+  hear it as the trigger's description): it is on the package root's
+  `TableHead` only. A server component
   keeps importing the parts from `@curvgroup/design-system/table` and renders a
   head that needs a definition from a client component, for example a one-line
   file: `"use client"; export { TableHead } from "@curvgroup/design-system";`.
   Replace hand-wrapped `<Tooltip>` labels in heads with `description`.
+- **`ReportTable` rows are 36 with their hairline.** Section labels and
+  clickable rows (`onRowClick`, `onCellClick`) measured 36.5 to 37.
+- **`DataTable` rows with `onRowClick` are keyboard reachable.** Each such row
+  (without `getRowHref`) takes a stop: a button named by `getRowLabel` (or the
+  first column) that Enter and Space press, with the standard focus ring. The
+  pointer passes through it, so clicks land on the cells as before, and the
+  cells' own controls never fire the row. A focused row stays rendered while it
+  scrolls out of view. **Check after upgrading:** a test that counts a row's
+  buttons, or queries a button by a name that is also a row's label, now finds
+  the row's stop too; scope it with `within(cell)`.

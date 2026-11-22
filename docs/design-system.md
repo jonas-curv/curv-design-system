@@ -726,7 +726,9 @@ standard look.
   (`getRowHref`), never an `onClick` div. **Navigate vs peek:** navigate when the
   entity has its own page; open a `Drawer` peek only for triage flows where
   losing list position hurts — composed at page level, never baked into the
-  table.
+  table. A peek row uses `onRowClick`: the row then takes a keyboard stop (a
+  button named by `getRowLabel`, Enter or Space opens it, the standard focus
+  ring), and clicks on its cells' own controls don't fire it.
 - **Copy affordance on identifiers only.** `CopyButton` (hover-revealed via
   `group/copy`) belongs on order/quote #s, SKUs, and shareable links. Never on
   names, money, statuses, or free text.
@@ -756,10 +758,11 @@ tailwind-merge, refs forwarded, so an app's `ui/table.tsx` copy is replaced by a
 import. They carry the spec above on their own: the 36 solid header (12 / 500,
 never wraps, a hairline drawn on each head cell so it travels when the header
 sticks), 44 rows at 13px with hairlines and `hover:bg-accent/30` on body rows
-only, 12 a side and 16 on the outer edges, the first column 500. Heights
-include the hairline: the header measures 36, a row 44 (36 `dense`) with
-anything up to a 28 control in it (a 32 `Button size="sm"` too; text and
-badges in a dense row).
+only, 12 a side and 16 on the outer edges, the first column 500. Cells keep 6px
+above and below (4 in a `dense` table), and heights include the hairline: the
+header measures 36, a row of text, a badge or a 28 control 44, a dense row of
+text or a badge 36. In-table controls are 28 (`h-7`): a 32 `Button size="sm"`
+makes its row 45.
 
 - **Numbers.** `numeric` on a `TableHead` and its `TableCell`s: right, tabular,
   never wraps (`align="right"` does the same). An empty value is `<TableNull />`,
@@ -791,8 +794,9 @@ badges in a dense row).
   `headerSuffix`. Never build your own sort button to make room for one.
 - **Definitions.** `description` on a `TableHead` draws the dotted underline
   and a tooltip on the label; on a sortable head the sort button is the
-  trigger (hover or focus), otherwise the label takes a focus stop. It is on the
-  package root's `TableHead` only (the tooltip is a client component).
+  trigger (hover or focus), otherwise the label takes a focus stop. Screen
+  readers hear it as the trigger's description. It is on the package root's
+  `TableHead` only (the tooltip is a client component).
 
   ```tsx
   <TableHead numeric description="Gross profit ÷ revenue">GP margin</TableHead>
