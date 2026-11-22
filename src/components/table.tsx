@@ -55,9 +55,21 @@ export interface TableProps extends React.TableHTMLAttributes<HTMLTableElement> 
   card?: boolean;
   /** Rows 36 instead of 44: financial statements and dense read-outs. The header stays 36. */
   dense?: boolean;
-  /** The first body column is the row's identity and is set 500. Default true; pass false when a date or a checkbox leads. */
+  /**
+   * The first body column is the row's identity and is set 500. Default true;
+   * pass false when a date, a number or a checkbox leads. A weight class on the
+   * cell or its row wins, a cell spanning columns (an empty state, a detail
+   * panel) keeps its own weight, and `identity={false}` on a `TableRow` or a
+   * `TableCell` opts one out.
+   */
   identityColumn?: boolean;
 }
+
+// The identity column, at zero specificity (:where) so a cell's own weight
+// class wins. Not for a row or cell that opts out (data-identity="false"), a
+// row with its own weight class, or a cell spanning columns.
+const IDENTITY =
+  "[:where(&>tbody>tr:not([data-identity=false],[class~=font-normal],[class~=font-medium],[class~=font-semibold],[class~=font-bold])>td:first-child:not([data-identity=false],[colspan]:not([colspan='1'])))]:font-medium";
 
 /**
  * The scroll container and the `<table>`. Full-bleed in its card: padding
@@ -77,7 +89,7 @@ export const Table = React.forwardRef<HTMLTableElement, TableProps>(
         className={cn(
           "w-full caption-bottom border-collapse text-body text-foreground",
           dense && "[&>tbody>tr>td]:h-9",
-          identityColumn && "[&>tbody>tr>td:first-child]:font-medium",
+          identityColumn && IDENTITY,
           className,
         )}
         {...props}
@@ -138,17 +150,24 @@ TableFooter.displayName = "TableFooter";
 export interface TableRowProps extends React.HTMLAttributes<HTMLTableRowElement> {
   /** A selected row (`bg-accent/50`). Sets `data-state="selected"` and `aria-selected`, as shadcn's selection does. */
   selected?: boolean;
+  /** `false`: this row's first cell doesn't take the identity column's 500 (a group label, a form row). */
+  identity?: boolean;
 }
 
-/** `<tr>`: a hairline below, `hover:bg-accent/30` on body rows only, no zebra. */
-export const TableRow = React.forwardRef<HTMLTableRowElement, TableRowProps>(({ className, selected, ...props }, ref) => (
+/**
+ * `<tr>`: a hairline below, `hover:bg-accent/30` on body rows only, no zebra.
+ * Its cells inherit its vertical alignment (middle), so `className="align-top"`
+ * lifts the whole row.
+ */
+export const TableRow = React.forwardRef<HTMLTableRowElement, TableRowProps>(({ className, selected, identity, ...props }, ref) => (
   <tr
     ref={ref}
     data-slot="table-row"
     data-state={selected ? "selected" : undefined}
+    data-identity={identity === false ? "false" : undefined}
     aria-selected={selected}
     className={cn(
-      "border-b border-border transition-colors",
+      "border-b border-border align-middle transition-colors",
       "[tbody>&:not([data-state=selected])]:hover:bg-accent/30 data-[state=selected]:bg-accent/50",
       className,
     )}
@@ -219,7 +238,7 @@ export const TableHead = React.forwardRef<HTMLTableCellElement, TableHeadProps>(
         data-slot="table-head"
         aria-sort={sortable ? (active ? (sort === "asc" ? "ascending" : "descending") : "none") : ariaSort}
         className={cn(
-          "h-9 whitespace-nowrap bg-muted py-0 text-left align-middle text-caption font-medium text-muted-foreground",
+          "h-9 whitespace-nowrap bg-muted py-0 text-left text-caption font-medium text-muted-foreground",
           HEAD_SHADOW[side ?? "none"],
           sortable ? "p-0" : tableCellPadding,
           right && "text-right",
@@ -268,19 +287,33 @@ function HeadArrow({ dir, active }: { dir: TableSortOrder; active: boolean }) {
   );
 }
 
-export interface TableCellProps extends Omit<React.TdHTMLAttributes<HTMLTableCellElement>, "align">, CellLayout {}
+export interface TableCellProps extends Omit<React.TdHTMLAttributes<HTMLTableCellElement>, "align">, CellLayout {
+  /**
+   * The row's identity: `true` sets this cell 500 wherever it sits (when a
+   * checkbox or a date leads); `false` keeps a first cell out of the identity
+   * column. Default: the table's `identityColumn` decides.
+   */
+  identity?: boolean;
+}
 
-/** `<td>`: a 44 row (36 in a `dense` table), 13px, 12 a side and 16 on the outer edges. */
+/**
+ * `<td>`: a 44 row (36 in a `dense` table) including its hairline, 13px, 12 a
+ * side and 16 on the outer edges. Vertical alignment comes from its row.
+ */
 export const TableCell = React.forwardRef<HTMLTableCellElement, TableCellProps>(
-  ({ className, align, numeric = false, priority, sticky, ...props }, ref) => {
+  ({ className, align, numeric = false, priority, sticky, identity, ...props }, ref) => {
     const right = numeric || align === "right";
     const side = stickySide(sticky);
     return (
       <td
         ref={ref}
         data-slot="table-cell"
+        data-identity={identity === false ? "false" : undefined}
         className={cn(
-          "h-11 py-2 align-middle",
+          // 4px above and below: a 28 control (or a 32 button) fits a 44 row
+          // with its hairline, and wrapped text still clears the dividers.
+          "h-11 py-1",
+          identity && "font-medium",
           tableCellPadding,
           right && "whitespace-nowrap text-right tabular-nums",
           priority && PRIORITY[priority],

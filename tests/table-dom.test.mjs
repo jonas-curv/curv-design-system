@@ -90,13 +90,85 @@ test('rows and cells: 44, 13px, hairlines, body-only hover, no zebra, edge paddi
  const { container } = await mount(lines());
  const table = q(container, 'table');
  assert.ok(has(table, 'w-full', 'text-body', 'border-collapse'));
- assert.ok(has(table, '[&>tbody>tr>td:first-child]:font-medium'), 'the identity column is 500');
+ assert.ok(identityToken(table), 'the identity column is 500');
  const tr = q(container, 'tbody tr');
  assert.ok(has(tr, 'border-b', 'border-border', '[tbody>&:not([data-state=selected])]:hover:bg-accent/30'));
  assert.ok(!classes(tr).some((c) => /even:|odd:/.test(c)), 'no zebra');
  const td = q(container, 'tbody td');
  assert.ok(has(td, 'h-11', 'px-3', 'first:pl-4', 'last:pr-4'));
  assert.ok(has(q(container, 'tbody'), '[&>tr:last-child]:border-b-0'));
+});
+
+// The identity rule's token, and the cells it reaches (its selector run on the
+// DOM; happy-dom can't match inside :where, and :where only drops specificity).
+const identityToken = (table) => classes(table).find((c) => c.startsWith('[:where(&>tbody>tr') && c.endsWith(')]:font-medium'));
+const identityCells = (container) => {
+ const table = q(container, 'table');
+ table.id = 'identity-probe';
+ const selector = identityToken(table).slice(':where('.length + 1, -')]:font-medium'.length).replace('&', '#identity-probe');
+ return qa(container, selector).map((td) => td.textContent);
+};
+
+test('heights: a 44 row includes its hairline, so the cell keeps 4px above and below for a 28 control (rows 44 / 36, measured in Chromium)', async () => {
+ const { container } = await mount(lines({ dense: true }));
+ const td = q(container, 'tbody td');
+ assert.ok(has(td, 'h-11', 'py-1'), 'a 44 minimum, 4px vertical padding: 28 + 8 + the 1px hairline fits 44, text fits 36');
+ assert.ok(!has(td, 'py-2'), 'py-2 made a 28 control row 45 and every dense row 37');
+ assert.ok(has(q(container, 'table'), '[&>tbody>tr>td]:h-9'));
+ const th = q(container, 'thead th');
+ assert.ok(has(th, 'h-9', 'py-0', 'shadow-[inset_0_-1px_0_var(--border)]'), 'the header hairline is a shadow: 36 includes it');
+});
+
+test('row alignment: the row is middle and its cells inherit it, so a row class lifts every cell', async () => {
+ const { container, render } = await mount(lines());
+ for (const tr of qa(container, 'tr')) assert.ok(has(tr, 'align-middle'), 'every row, head and foot too');
+ for (const cell of qa(container, 'td, th')) assert.ok(!classes(cell).some((c) => /^align-/.test(c)), 'no cell forces its own alignment');
+ await render(
+  h(Table, null, h(TableBody, null,
+   h(TableRow, { className: 'align-top' }, h(TableCell, null, 'A'), h(TableCell, { className: 'align-bottom' }, 'B')),
+   h(TableRow, { className: '[&>td]:align-top' }, h(TableCell, null, 'C')),
+  )),
+ );
+ const [top, workaround] = qa(container, 'tr');
+ assert.ok(has(top, 'align-top') && !has(top, 'align-middle'), 'the row class replaces the default');
+ assert.ok(has(top.children[1], 'align-bottom'), "a cell's own alignment still wins");
+ assert.ok(has(workaround, '[&>td]:align-top', 'align-middle'), 'the 0.6.0 workaround still reaches the cells');
+});
+
+test('identity column: zero specificity, so a weight class on the cell wins; spans and opt-outs keep their own weight', async () => {
+ const { container } = await mount(
+  h(Table, null, h(TableBody, null,
+   h(TableRow, null, h(TableCell, null, 'plain'), h(TableCell, null, 'x')),
+   h(TableRow, null, h(TableCell, { colSpan: 2 }, 'span')),
+   h(TableRow, null, h(TableCell, { colSpan: 1 }, 'one'), h(TableCell, null, 'x')),
+   h(TableRow, { identity: false }, h(TableCell, null, 'row-off'), h(TableCell, null, 'x')),
+   h(TableRow, null, h(TableCell, { identity: false }, 'cell-off'), h(TableCell, null, 'x')),
+   h(TableRow, { className: 'font-semibold' }, h(TableCell, null, 'Total'), h(TableCell, null, 'x')),
+   h(TableRow, { className: 'hover:font-semibold' }, h(TableCell, null, 'variant'), h(TableCell, null, 'x')),
+  )),
+ );
+ const token = identityToken(q(container, 'table'));
+ assert.ok(token.startsWith('[:where('), 'all of it inside :where, so font-normal / font-semibold on a cell beats it');
+ assert.deepEqual(identityCells(container), ['plain', 'one', 'variant']);
+ const [, , , rowOff, cellOff] = qa(container, 'tr');
+ assert.equal(rowOff.getAttribute('data-identity'), 'false');
+ assert.equal(cellOff.firstElementChild.getAttribute('data-identity'), 'false');
+ assert.equal(rowOff.getAttribute('identity'), null, 'the prop never reaches the DOM');
+ assert.equal(q(container, 'tr').getAttribute('data-identity'), null, 'nothing set by default');
+ assert.equal(q(container, 'td').getAttribute('data-identity'), null);
+});
+
+test('identity on a cell: true sets it 500 wherever it sits; it merges with a weight class', async () => {
+ const { container } = await mount(
+  h(Table, { identityColumn: false }, h(TableBody, null,
+   h(TableRow, null, h(TableCell, null, 'Nov 4'), h(TableCell, { identity: true }, 'Acme'), h(TableCell, { identity: true, className: 'font-semibold' }, 'Globex')),
+  )),
+ );
+ assert.equal(identityToken(q(container, 'table')), undefined, 'identityColumn={false} drops the rule');
+ const [date, acme, globex] = qa(container, 'td');
+ assert.ok(!has(date, 'font-medium'));
+ assert.ok(has(acme, 'font-medium'));
+ assert.ok(has(globex, 'font-semibold') && !has(globex, 'font-medium'), 'the caller wins');
 });
 
 test('numbers: align right with tabular figures on head and cell; align="right" does the same', async () => {
@@ -154,7 +226,8 @@ test('dense: rows 36, the header stays 36; identityColumn={false} drops the 500'
  const table = q(container, 'table');
  assert.equal(table.getAttribute('data-density'), 'compact');
  assert.ok(has(table, '[&>tbody>tr>td]:h-9'));
- assert.ok(!classes(table).includes('[&>tbody>tr>td:first-child]:font-medium'));
+ assert.equal(identityToken(table), undefined);
+ assert.ok(!classes(table).some((c) => c.endsWith(':font-medium')));
  assert.ok(has(q(container, 'th'), 'h-9'));
 });
 
